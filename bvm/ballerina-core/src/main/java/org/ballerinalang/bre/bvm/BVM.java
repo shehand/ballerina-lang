@@ -20,6 +20,7 @@ package org.ballerinalang.bre.bvm;
 import org.apache.commons.lang3.StringEscapeUtils;
 import org.ballerinalang.bre.BLangCallableUnitCallback;
 import org.ballerinalang.bre.Context;
+import org.ballerinalang.bre.InstructionHandler;
 import org.ballerinalang.bre.NativeCallContext;
 import org.ballerinalang.bre.old.WorkerExecutionContext;
 import org.ballerinalang.channels.ChannelManager;
@@ -195,6 +196,12 @@ public class BVM {
             }
 
             Instruction instruction = sf.code[sf.ip];
+
+            for (InstructionHandler instructionHandler :
+                    strand.programFile.getInstructionHandlers()) {
+                instructionHandler.handle(strand);
+            }
+
             int opcode = instruction.getOpcode();
             int[] operands = instruction.getOperands();
             sf.ip++;

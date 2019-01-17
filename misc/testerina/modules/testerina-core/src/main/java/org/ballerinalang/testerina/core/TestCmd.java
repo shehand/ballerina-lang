@@ -80,6 +80,9 @@ public class TestCmd implements BLauncherCmd {
     @CommandLine.Option(names = "--exclude-modules", split = ",", description = "modules to be excluded")
     private List<String> excludedModuleList;
 
+    @CommandLine.Option(names = "--nocoverage", hidden = true, description = "to stop creating coverage data file")
+    private boolean coverageDisabled;
+
     @CommandLine.Option(names = "--experimental", description = "enable experimental language features")
     private boolean experimentalFlag;
 
@@ -144,6 +147,7 @@ public class TestCmd implements BLauncherCmd {
             TesterinaUtils.setManifestConfigs(sourceRootPath);
         }
         BTestRunner testRunner = new BTestRunner();
+        testRunner.setCoverageDisabled(coverageDisabled);
         if (listGroups) {
             testRunner.listGroups(sourceRootPath.toString(), paths, experimentalFlag);
             Runtime.getRuntime().exit(0);

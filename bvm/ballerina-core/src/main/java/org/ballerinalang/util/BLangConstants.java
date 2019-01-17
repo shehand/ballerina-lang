@@ -89,5 +89,8 @@ public class BLangConstants {
 
     public static final String COLON = ":";
 
+    public static final String UTF8 = "UTF-8";
+
     public static final String DEFAULT_WORKER_NAME = "default";
+
 }

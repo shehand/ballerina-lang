@@ -31,7 +31,11 @@ import org.ballerinalang.model.values.BValueArray;
 import org.ballerinalang.testerina.core.entity.TestSuite;
 import org.ballerinalang.testerina.core.entity.TesterinaReport;
 import org.ballerinalang.testerina.core.entity.TesterinaResult;
+import org.ballerinalang.testerina.coverage.CoverageDataFormatter;
+import org.ballerinalang.testerina.coverage.CoverageManager;
+import org.ballerinalang.testerina.coverage.LCovData;
 import org.ballerinalang.testerina.util.TesterinaUtils;
+import org.ballerinalang.util.BLangUtils;
 import org.ballerinalang.util.codegen.ProgramFile;
 import org.ballerinalang.util.debugger.Debugger;
 import org.ballerinalang.util.diagnostic.Diagnostic;
@@ -46,6 +50,7 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Locale;
@@ -64,6 +69,7 @@ public class BTestRunner {
     private TesterinaReport tReport = new TesterinaReport();
     private TesterinaRegistry registry = TesterinaRegistry.getInstance();
     private List<String> sourcePackages = new ArrayList<>();
+    private boolean coverageDisabled = false;
 
     public void runTest(String sourceRoot, Path[] sourceFilePaths, List<String> groups) {
         runTest(sourceRoot, sourceFilePaths, groups, Boolean.TRUE);
@@ -98,7 +104,7 @@ public class BTestRunner {
         // Filter the test suites
         filterTestSuites();
         // execute the test programs
-        execute(false);
+        execute(false, sourceRoot);
     }
 
     /**
@@ -113,7 +119,7 @@ public class BTestRunner {
         // Filter the test suites
         filterTestSuites();
         // execute the test programs
-        execute(true);
+        execute(true, null);
     }
 
     /**
@@ -199,6 +205,9 @@ public class BTestRunner {
                 throw new BLangCompilerException("compilation contains errors");
             }
 
+            //TODO: set test coverage flag on programFile than from the suite in runtime since balx should be
+            // self-containing
+
             String packageName = TesterinaUtils.getFullModuleName(sourcePackage.toString());
             // Add test suite to registry if not added.
             addTestSuite(packageName);
@@ -274,8 +283,19 @@ public class BTestRunner {
      * Run all tests.
      * @param buildWithTests build with tests or just execute tests
      */
-    private void execute(boolean buildWithTests) {
+    private void execute(boolean buildWithTests, String sourceRoot) {
         Map<String, TestSuite> testSuites = registry.getTestSuites();
+        if (!coverageDisabled) {
+            CoverageManager coverageManager = CoverageManager.getInstance();
+            Map<String, ProgramFile> programFilesForProject = new HashMap<>();
+
+            for (ProgramFile programFile : registry.getProgramFiles()) {
+                programFilesForProject.put(programFile.getEntryPackage().getPkgPath(), programFile);
+                // Set coverage instruction handlers since coverage is enabled
+                programFile.setInstructionHandlers(BLangUtils.getInstructionHandlers());
+            }
+            coverageManager.setProgramFilesForProject(programFilesForProject);
+        }
         outStream.println();
         outStream.println("Running tests");
         // Check if the test suite is empty
@@ -451,6 +471,23 @@ public class BTestRunner {
             // Call module stop and test stop function
             suite.getInitFunction().invokeStopFunctions();
         });
+
+        // Coverage report handling
+        if (!buildWithTests && !coverageDisabled) {
+
+            try {
+                CoverageManager coverageManager = CoverageManager.getInstance();
+                CoverageDataFormatter coverageDataFormatter = coverageManager.getCoverageDataFormatter();
+                List<LCovData> packageLCovDataList = coverageDataFormatter.getFormattedCoverageData(
+                        coverageManager.getExecutedInstructionOrderMap(), testSuites);
+                coverageDataFormatter.writeFormattedCovDataToFile(packageLCovDataList, sourceRoot);
+
+            } catch (Throwable e) {
+                String errorMsg = String.format("\t[fail] [coverage report generation] :\t    " +
+                        "%s", TesterinaUtils.formatError(e.getMessage()));
+                errStream.println(errorMsg);
+            }
+        }
     }
 
     private boolean isTestDependsOnFailedFunctions(List<String> failedOrSkippedTests, List<String> dependentTests) {
@@ -497,5 +534,14 @@ public class BTestRunner {
         return tReport;
     }
 
+    /**
+     * Setter for the flag coverage disabled.
+     *
+     * @param coverageDisabled coverage disabled flag
+     */
+    public void setCoverageDisabled(boolean coverageDisabled) {
+        this.coverageDisabled = coverageDisabled;
+        CoverageManager.getInstance().setCoverageDisabled(coverageDisabled);
+    }
 }
 

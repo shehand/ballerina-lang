@@ -535,6 +535,15 @@ public class Debugger {
     }
 
     /**
+     * Getter for debugger info holder.
+     *
+     * @return debugger info holder
+     */
+    public DebugInfoHolder getDebugInfoHolder() {
+        return debugInfoHolder;
+    }
+
+    /**
      * Method to set client handler.
      *
      * @param clientHandler instance.

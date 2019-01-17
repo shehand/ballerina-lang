@@ -20,29 +20,22 @@ package org.ballerinalang.util.debugger;
 import org.ballerinalang.util.codegen.LineNumberInfo;
 import org.ballerinalang.util.codegen.PackageInfo;
 import org.ballerinalang.util.codegen.ProgramFile;
-import org.ballerinalang.util.codegen.attributes.AttributeInfo;
-import org.ballerinalang.util.codegen.attributes.LineNumberTableAttributeInfo;
 import org.ballerinalang.util.debugger.dto.BreakPointDTO;
 
-import java.io.File;
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Comparator;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
-import java.util.stream.Collectors;
 
 /**
  * {@link DebugInfoHolder} holds information relevant to debug points for program file.
  *
  * @since 0.88
  */
-class DebugInfoHolder {
+public class DebugInfoHolder {
 
-    private Map<String, DebuggerPkgInfo> packageInfoMap = new HashMap<>();
+    private ProjectLineNumberInfoHolder projectLineNumberInfoHolder;
 
     DebugInfoHolder(ProgramFile programFile) {
+        projectLineNumberInfoHolder = new ProjectLineNumberInfoHolder();
         this.init(programFile);
     }
 
@@ -51,37 +44,7 @@ class DebugInfoHolder {
     }
 
     private void processPkgInfos(PackageInfo[] pkgInfos) {
-        Arrays.stream(pkgInfos).forEach(this::processPkgInfo);
-    }
-
-    /**
-     * Process and build information required for debugging the package.
-     *
-     * @param packageInfo   To extract relevant information.
-     */
-    private void processPkgInfo(PackageInfo packageInfo) {
-        DebuggerPkgInfo debuggerPkgInfo = new DebuggerPkgInfo(packageInfo.getInstructionCount());
-
-        LineNumberTableAttributeInfo lineNumberTableAttributeInfo = (LineNumberTableAttributeInfo) packageInfo
-                .getAttributeInfo(AttributeInfo.Kind.LINE_NUMBER_TABLE_ATTRIBUTE);
-
-        List<LineNumberInfo> lineNumberInfos = lineNumberTableAttributeInfo.getLineNumberInfoList().stream().sorted(
-                Comparator.comparing(LineNumberInfo::getIp)).collect(Collectors.toList());
-
-        LineNumberInfo currentLineNoInfo = null;
-        for (LineNumberInfo lineNoInfo : lineNumberInfos) {
-            if (currentLineNoInfo == null) {
-                currentLineNoInfo = lineNoInfo;
-                continue;
-            }
-            debuggerPkgInfo.addLineNumberInfo(currentLineNoInfo.getIp(), lineNoInfo.getIp(), currentLineNoInfo);
-            currentLineNoInfo = lineNoInfo;
-        }
-        if (currentLineNoInfo != null) {
-            debuggerPkgInfo.addLineNumberInfo(currentLineNoInfo.getIp(),
-                    packageInfo.getInstructionCount(), currentLineNoInfo);
-        }
-        packageInfoMap.put(packageInfo.getPkgPath(), debuggerPkgInfo);
+        this.projectLineNumberInfoHolder.processPkgInfo(pkgInfos);
     }
 
     /**
@@ -91,10 +54,11 @@ class DebugInfoHolder {
      * @return True if success, False otherwise
      */
     private boolean addDebugPoint(BreakPointDTO breakPointDTO) {
-        if (packageInfoMap.get(breakPointDTO.getPackagePath()) == null) {
+        if (this.projectLineNumberInfoHolder.getPackageInfoMap().get(breakPointDTO.getPackagePath()) == null) {
             return false;
         }
-        return packageInfoMap.get(breakPointDTO.getPackagePath()).markDebugPoint(breakPointDTO);
+        return DebuggerPkgInfo.markDebugPoint(breakPointDTO, this.projectLineNumberInfoHolder.getPackageInfoMap()
+                .get(breakPointDTO.getPackagePath()));
     }
 
     /**
@@ -105,7 +69,7 @@ class DebugInfoHolder {
      */
     List<BreakPointDTO> addDebugPoints(List<BreakPointDTO> breakPointDTOS) {
         List<BreakPointDTO> deployedBreakPoints = new ArrayList<>();
-        packageInfoMap.values().forEach(DebuggerPkgInfo::clearDebugPoints);
+        this.projectLineNumberInfoHolder.getPackageInfoMap().values().forEach(DebuggerPkgInfo::clearDebugPoints);
         for (BreakPointDTO nodeLocation : breakPointDTOS) {
             if (addDebugPoint(nodeLocation)) {
                 deployedBreakPoints.add(nodeLocation);
@@ -115,37 +79,20 @@ class DebugInfoHolder {
     }
 
     void clearDebugLocations() {
-        packageInfoMap.values().forEach(DebuggerPkgInfo::clearDebugPoints);
+
+        this.projectLineNumberInfoHolder.getPackageInfoMap().values().forEach(DebuggerPkgInfo::clearDebugPoints);
     }
 
     LineNumberInfo getLineNumber(String packagePath, int ip) {
-        return packageInfoMap.get(packagePath).getLineNumberInfo(ip);
+        return this.projectLineNumberInfoHolder.getPackageInfoMap().get(packagePath).getLineNumberInfo(ip);
     }
 
-    static class DebuggerPkgInfo {
-        LineNumberInfo[] ipLineNos;
-        //key - fileName:ln, value - LineNumberInfo
-        Map<String, LineNumberInfo> lineNumbers = new HashMap<>();
+    /**
+     * Module line number info processor and line number debug info processor.
+     */
+    public static class DebuggerPkgInfo {
 
-        DebuggerPkgInfo(int instructionCount) {
-            this.ipLineNos = new LineNumberInfo[instructionCount];
-        }
-
-        void addLineNumberInfo(int beginIp, int endIp, LineNumberInfo lineNumberInfo) {
-            for (int i = beginIp; i < endIp; i++) {
-                ipLineNos[i] = lineNumberInfo;
-            }
-            lineNumberInfo.setEndIp(endIp);
-            String fileName = lineNumberInfo.getFileName();
-            if (fileName.contains(File.separator)) {
-                String[] pathArray = fileName.split(File.separatorChar == '\\' ? "\\\\" : File.separator);
-                fileName = pathArray[pathArray.length - 1];
-            }
-            String fileNameAndNo = fileName + ":" + lineNumberInfo.getLineNumber();
-            lineNumbers.put(fileNameAndNo, lineNumberInfo);
-        }
-
-        boolean markDebugPoint(BreakPointDTO breakPointDTO) {
+        public static boolean markDebugPoint(BreakPointDTO breakPointDTO, ModuleLineNumberInfo moduleLineNumberInfo) {
             // TODO: Need to improve/change this logic.
             String fileName = breakPointDTO.getFileName();
             if (fileName.contains("/")) {
@@ -156,7 +103,7 @@ class DebugInfoHolder {
                 fileName = pathArray[pathArray.length - 1];
             }
             String fileNameAndNo = fileName + ":" + breakPointDTO.getLineNumber();
-            LineNumberInfo lineNumberInfo = lineNumbers.get(fileNameAndNo);
+            LineNumberInfo lineNumberInfo = moduleLineNumberInfo.getLineNumbers().get(fileNameAndNo);
             if (lineNumberInfo == null) {
                 return false;
             }
@@ -164,12 +111,9 @@ class DebugInfoHolder {
             return true;
         }
 
-        void clearDebugPoints() {
-            lineNumbers.values().forEach(l -> l.setDebugPoint(false));
-        }
+        public static void clearDebugPoints(ModuleLineNumberInfo moduleLineNumberInfo) {
 
-        LineNumberInfo getLineNumberInfo(int ip) {
-            return ipLineNos[ip];
+            moduleLineNumberInfo.getLineNumbers().values().forEach(l -> l.setDebugPoint(false));
         }
     }
 }
