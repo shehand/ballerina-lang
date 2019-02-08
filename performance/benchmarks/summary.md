@@ -5,9 +5,9 @@ During each release, we execute various automated performance test scenarios and
 | Test Scenarios | Description |
 | --- | --- |
 | Passthrough HTTP service | An HTTP Service, which forwards all requests to a back-end service. |
-| Passthrough HTTPS service | An HTTPS Service, which forwards all requests to a back-end service. |
+| Passthrough HTTPS service | An HTTPS Service, which forwards all requests to an HTTPS back-end service. |
 | JSON to XML transformation HTTP service | An HTTP Service, which transforms JSON requests to XML and then forwards all requests to a back-end service. |
-| JSON to XML transformation HTTPS service | An HTTPS Service, which transforms JSON requests to XML and then forwards all requests to a back-end service. |
+| JSON to XML transformation HTTPS service | An HTTPS Service, which transforms JSON requests to XML and then forwards all requests to an HTTPS back-end service. |
 | Passthrough HTTP2 (HTTPS) service | An HTTPS Service exposed over HTTP2 protocol, which forwards all requests to a back-end service. |
 
 Our test client is [Apache JMeter](https://jmeter.apache.org/index.html). We test each scenario for a fixed duration of
@@ -33,7 +33,7 @@ The following are the test parameters.
 | --- | --- | --- |
 | Scenario Name | The name of the test scenario. | Refer to the above table. |
 | Heap Size | The amount of memory allocated to the application | 2G |
-| Concurrent Users | The number of users accessing the application at the same time. | 50, 150, 500 |
+| Concurrent Users | The number of users accessing the application at the same time. | 1000 |
 | Message Size (Bytes) | The request payload size in Bytes. | 50, 1024 |
 | Back-end Delay (ms) | The delay added by the back-end service. | 0 |
 
@@ -56,35 +56,15 @@ test parameters.
 
 The following is the summary of performance test results collected for the measurement period.
 
-|  Scenario Name | Concurrent Users | Message Size (Bytes) | Back-end Service Delay (ms) | Error % | Throughput (Requests/sec) | Average Response Time (ms) | Standard Deviation of Response Time (ms) | 99th Percentile of Response Time (ms) | Ballerina GC Throughput (%) | Average of Ballerina Memory Footprint After Full GC (M) |
+|  Scenario Name | Concurrent Users | Message Size (Bytes) | Back-end Service Delay (ms) | Error % | Throughput (Requests/sec) | Average Response Time (ms) | Standard Deviation of Response Time (ms) | 99th Percentile of Response Time (ms) | Ballerina GC Throughput (%) | Average Ballerina Memory Footprint After Full GC (M) |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
-|  Passthrough HTTP service | 100 | 50 | 0 | 0 | 21578.47 | 4.59 | 6.4 | 37 | 99.46 |  |
-|  Passthrough HTTP service | 100 | 1024 | 0 | 0 | 19466.68 | 5.09 | 6.22 | 36 | 99.51 |  |
-|  Passthrough HTTP service | 300 | 50 | 0 | 0 | 23168.69 | 12.9 | 11.19 | 66 | 98.72 |  |
-|  Passthrough HTTP service | 300 | 1024 | 0 | 0 | 21190.34 | 14.1 | 11.95 | 71 | 98.82 |  |
-|  Passthrough HTTP service | 1000 | 50 | 0 | 0 | 21282.2 | 46.91 | 24.18 | 139 | 96.48 |  |
-|  Passthrough HTTP service | 1000 | 1024 | 0 | 0 | 19893.71 | 50.19 | 25.41 | 145 | 96.65 |  |
-|  Passthrough HTTP2 (HTTPS) service | 100 | 50 | 0 | 0 | 16215.74 | 5.97 | 7.91 | 43 | 99.53 | 24.265 |
-|  Passthrough HTTP2 (HTTPS) service | 100 | 1024 | 0 | 0 | 15142.18 | 6.37 | 7.5 | 39 | 99.57 | 24.264 |
-|  Passthrough HTTP2 (HTTPS) service | 300 | 50 | 0 | 0 | 17015.74 | 17.14 | 15.86 | 81 | 98.95 | 24.746 |
-|  Passthrough HTTP2 (HTTPS) service | 300 | 1024 | 0 | 0 | 15665.8 | 18.5 | 14.6 | 73 | 99.09 | 24.848 |
-|  Passthrough HTTP2 (HTTPS) service | 1000 | 50 | 0 | 5.41 | 7105.43 | 140.1 | 201.48 | 979 | 98.14 | 25.563 |
-|  Passthrough HTTP2 (HTTPS) service | 1000 | 1024 | 0 | 0.25 | 13076.38 | 74.52 | 83.78 | 497 | 97.63 | 25.596 |
-|  Passthrough HTTPS service | 100 | 50 | 0 | 0 | 19925.51 | 4.97 | 7 | 40 | 99.46 | 15.74 |
-|  Passthrough HTTPS service | 100 | 1024 | 0 | 0 | 16554.62 | 5.99 | 5.92 | 27 | 99.47 | 24.627 |
-|  Passthrough HTTPS service | 300 | 50 | 0 | 0 | 21035.72 | 14.19 | 11.73 | 68 | 98.77 | 25.01 |
-|  Passthrough HTTPS service | 300 | 1024 | 0 | 0 | 17255.16 | 17.32 | 11.18 | 60 | 99.02 | 24.652 |
-|  Passthrough HTTPS service | 1000 | 50 | 0 | 0 | 19180.48 | 52.07 | 25.94 | 145 | 96.68 | 25.816 |
-|  Passthrough HTTPS service | 1000 | 1024 | 0 | 0 | 15941.01 | 62.65 | 25.51 | 145 | 97.19 | 26.021 |
-|  JSON to XML transformation HTTP service | 100 | 50 | 0 | 0 | 14030.77 | 7.08 | 8.67 | 48 | 99.03 | 23.793 |
-|  JSON to XML transformation HTTP service | 100 | 1024 | 0 | 0 | 9680.38 | 10.28 | 10.09 | 56 | 99.09 | 23.786 |
-|  JSON to XML transformation HTTP service | 300 | 50 | 0 | 0 | 15451.37 | 19.36 | 13.01 | 76 | 97.6 | 23.788 |
-|  JSON to XML transformation HTTP service | 300 | 1024 | 0 | 0 | 10645.28 | 28.12 | 14.95 | 86 | 97.56 | 23.786 |
-|  JSON to XML transformation HTTP service | 1000 | 50 | 0 | 0 | 14004.2 | 71.34 | 20.14 | 133 | 92.75 | 25.031 |
-|  JSON to XML transformation HTTP service | 1000 | 1024 | 0 | 0 | 10047.52 | 99.44 | 24.84 | 170 | 91.51 | 25.003 |
-|  JSON to XML transformation HTTPS service | 100 | 50 | 0 | 0 | 12943.15 | 7.68 | 8.04 | 44 | 99.07 | 23.397 |
-|  JSON to XML transformation HTTPS service | 100 | 1024 | 0 | 0 | 8627.55 | 11.54 | 9.77 | 54 | 99.14 | 23.403 |
-|  JSON to XML transformation HTTPS service | 300 | 50 | 0 | 0 | 14033.95 | 21.32 | 14.71 | 85 | 97.79 | 23.98 |
-|  JSON to XML transformation HTTPS service | 300 | 1024 | 0 | 0 | 9147.42 | 32.73 | 17.57 | 99 | 97.84 | 23.693 |
-|  JSON to XML transformation HTTPS service | 1000 | 50 | 0 | 0 | 13118.6 | 76.16 | 30.23 | 183 | 93.46 | 25.039 |
-|  JSON to XML transformation HTTPS service | 1000 | 1024 | 0 | 0 | 8761.37 | 114.05 | 43.93 | 257 | 93.28 | 25.177 |
+|  Passthrough HTTP2 (HTTPS) service | 1000 | 50 | 0 | 5.98 | 6826.32 | 145.88 | 207.67 | 991 | 98.25 | 25.744 |
+|  Passthrough HTTP2 (HTTPS) service | 1000 | 1024 | 0 | 2.42 | 9387.31 | 104.96 | 157.21 | 871 | 98 | 25.875 |
+|  Passthrough HTTPS service | 1000 | 50 | 0 | 0.27 | 11229.12 | 84.56 | 1554.44 | 21 | 86.66 | 1455.165 |
+|  Passthrough HTTPS service | 1000 | 1024 | 0 | 0.31 | 9437.73 | 100.82 | 1666.22 | 32 | 88.75 | 1435.248 |
+|  Passthrough HTTP service | 1000 | 50 | 0 | 0 | 21321.09 | 46.84 | 24.2 | 143 | 96.21 |  |
+|  Passthrough HTTP service | 1000 | 1024 | 0 | 0 | 19383.52 | 51.51 | 25.52 | 152 | 96.55 |  |
+|  JSON to XML transformation HTTPS service | 1000 | 50 | 0 | 0.53 | 5648.39 | 168.55 | 2196.14 | 54 | 70.54 | 1648.973 |
+|  JSON to XML transformation HTTPS service | 1000 | 1024 | 0 | 1.15 | 2965.69 | 326.24 | 2996.11 | 10047 | 62.56 | 1780.345 |
+|  JSON to XML transformation HTTP service | 1000 | 50 | 0 | 0 | 13753.32 | 72.64 | 19.38 | 131 | 92.68 | 25.226 |
+|  JSON to XML transformation HTTP service | 1000 | 1024 | 0 | 0 | 9936.91 | 100.54 | 20.95 | 157 | 91.47 | 25.322 |
