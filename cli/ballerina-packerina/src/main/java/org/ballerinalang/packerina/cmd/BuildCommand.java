@@ -18,6 +18,7 @@
 package org.ballerinalang.packerina.cmd;
 
 import org.ballerinalang.compiler.CompilerPhase;
+import org.ballerinalang.coverage.utils.ExecutionCoverageBuilder;
 import org.ballerinalang.jvm.launch.LaunchUtils;
 import org.ballerinalang.jvm.util.BLangConstants;
 import org.ballerinalang.packerina.TaskExecutor;
@@ -152,6 +153,9 @@ public class BuildCommand implements BLauncherCmd {
 
     @CommandLine.Option(names = "--experimental", description = "Enable experimental language features.")
     private boolean experimentalFlag;
+
+    @CommandLine.Option(names = {"--coverage", "-cc"}, hidden = true)
+    private boolean coverage;
 
     private static final String buildCmd = "ballerina build [-o <output>] [--sourceroot] [--offline] [--skip-tests]\n" +
             "                    [--skip-lock] {<ballerina-file | module-name> | -a | --all} [--] [(--key=value)...]";
@@ -369,6 +373,10 @@ public class BuildCommand implements BLauncherCmd {
         // output path is the current directory if -o flag is not given.
         Path outputPath = null == this.output ? Paths.get(System.getProperty("user.dir")) : Paths.get(this.output);
 
+        PrintExecutablePathTask printExecutablePathTask = new PrintExecutablePathTask();
+        CreateJarTask createJarTask = new CreateJarTask(this.dumpBIR, skipCopyLibsFromDist, this.nativeBinary, this.dumpLLVMIR,
+                this.noOptimizeLlvm);
+
         TaskExecutor taskExecutor = new TaskExecutor.TaskBuilder()
                 .addTask(new CleanTargetDirTask(), isSingleFileBuild)   // clean the target directory(projects only)
                 .addTask(new CreateTargetDirTask()) // create target directory.
@@ -379,21 +387,47 @@ public class BuildCommand implements BLauncherCmd {
                 .addTask(new CreateBirTask())   // create the bir
                 .addTask(new CopyNativeLibTask(skipCopyLibsFromDist))    // copy the native libs(projects only)
                 // create the jar.
-                .addTask(new CreateJarTask(this.dumpBIR, skipCopyLibsFromDist, this.nativeBinary, this.dumpLLVMIR,
-                        this.noOptimizeLlvm))
+                .addTask(createJarTask)
                 .addTask(new CopyModuleJarTask(skipCopyLibsFromDist))
                 .addTask(new RunTestsTask(), this.skipTests || isSingleFileBuild) // run tests
                                                                                                 // (projects only)
                 .addTask(new CreateExecutableTask(), this.compile)  // create the executable.jar
                                                                                         // file
                 .addTask(new CopyExecutableTask(outputPath), !isSingleFileBuild)    // copy executable
-                .addTask(new PrintExecutablePathTask(), this.compile)   // print the location of the executable
+                .addTask(printExecutablePathTask, this.compile)   // print the location of the executable
                 .addTask(new RunCompilerPluginTask(), this.compile) // run compiler plugins
                 .addTask(new CleanTargetDirTask(), !isSingleFileBuild)  // clean the target dir(single bals only)
                 .build();
         
         taskExecutor.executeTasks(buildContext);
-        
+
+        if (this.coverage) {
+            if (sourcePath != null && printExecutablePathTask.getExecutableJarPath() != null) {
+                buildContext.out().println("\nGenerating the coverage report");
+                ExecutionCoverageBuilder executionCoverageBuilder =
+                        new ExecutionCoverageBuilder(
+                                this.sourceRootPath, printExecutablePathTask.getExecutableJarPath(),
+                                sourcePath, targetPath, createJarTask.getCompiledSourceJarPath(), compilerContext);
+                boolean generated = executionCoverageBuilder.generateExecFile();
+                if (generated) {
+                    buildContext.out().println("\tballerina.exec is generated");
+                    // unzip the compiled source
+                    executionCoverageBuilder.unzipCompiledSource();
+                    // copy the content as described with package naming
+                    buildContext.out().println("\tCreating source file directory");
+                    executionCoverageBuilder.createSourceFileDirectory();
+                    // generate the coverage
+                    buildContext.out().println("\tGenerating the report");
+                    executionCoverageBuilder.generateCoverageReport();
+                    buildContext.out().println("\nReport is generated. visit target/coverage to see the report.");
+                } else {
+                    buildContext.out().println("Couldn't create the ballerina.exec file");
+                }
+            } else {
+                buildContext.out().println("Source path is empty. Couldn't create the report");
+            }
+        }
+
         if (this.exitWhenFinish) {
             Runtime.getRuntime().exit(0);
         }
