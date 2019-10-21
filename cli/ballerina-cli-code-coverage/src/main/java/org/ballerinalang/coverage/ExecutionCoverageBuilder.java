@@ -15,7 +15,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.ballerinalang.coverage.utils;
+package org.ballerinalang.coverage;
 
 import org.ballerinalang.coverage.CoverageConstants;
 import org.ballerinalang.coverage.buildcontext.BuildContext;

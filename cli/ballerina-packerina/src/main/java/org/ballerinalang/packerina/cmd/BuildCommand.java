@@ -18,7 +18,7 @@
 package org.ballerinalang.packerina.cmd;
 
 import org.ballerinalang.compiler.CompilerPhase;
-import org.ballerinalang.coverage.utils.ExecutionCoverageBuilder;
+import org.ballerinalang.coverage.ExecutionCoverageBuilder;
 import org.ballerinalang.jvm.launch.LaunchUtils;
 import org.ballerinalang.jvm.util.BLangConstants;
 import org.ballerinalang.packerina.TaskExecutor;
