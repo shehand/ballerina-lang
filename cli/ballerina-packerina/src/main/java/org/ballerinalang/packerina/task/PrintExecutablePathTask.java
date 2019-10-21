@@ -29,12 +29,16 @@ import java.nio.file.Path;
  * Task to print the location of the executable.
  */
 public class PrintExecutablePathTask implements Task {
+
+    private Path executableJarPath;
+
     @Override
     public void execute(BuildContext buildContext) {
         Path sourceRootPath = buildContext.get(BuildContextField.SOURCE_ROOT);
         for (BLangPackage module : buildContext.getModules()) {
             if (module.symbol.entryPointExists) {
                 Path executablePath = buildContext.getExecutablePathFromTarget(module.packageID);
+                this.executableJarPath = executablePath;
                 Path relativePathToExecutable = sourceRootPath.relativize(executablePath);
                 if (relativePathToExecutable.toString().contains("..") ||
                     relativePathToExecutable.toString().contains("." + File.separator)) {
@@ -44,5 +48,9 @@ public class PrintExecutablePathTask implements Task {
                 }
             }
         }
+    }
+
+    public Path getExecutableJarPath() {
+        return executableJarPath;
     }
 }
