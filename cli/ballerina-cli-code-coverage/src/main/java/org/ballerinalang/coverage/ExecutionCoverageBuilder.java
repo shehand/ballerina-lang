@@ -17,7 +17,6 @@
  */
 package org.ballerinalang.coverage;
 
-import org.ballerinalang.coverage.CoverageConstants;
 import org.ballerinalang.coverage.buildcontext.BuildContext;
 import org.ballerinalang.tool.LauncherUtils;
 import org.wso2.ballerinalang.compiler.util.CompilerContext;
@@ -92,6 +91,8 @@ public class ExecutionCoverageBuilder {
         }
     }
 
+    // got the code from https://stackoverflow.com/questions/1529611/
+    // how-to-write-a-java-program-which-can-extract-a-jar-file-and-store-its-data-in-s
     public void unzipCompiledSource() {
         boolean directoriesCreated = false;
 
@@ -218,13 +219,14 @@ public class ExecutionCoverageBuilder {
 
     public void createSourceFileDirectory() {
 
-        String src = this.sourceRootPath.resolve(ProjectDirConstants.SOURCE_DIR_NAME).toString();
-        File srcDir = new File(src);
-
+        // to copy the source files to coverage directory
+        String src = this.sourceRootPath
+                .resolve(ProjectDirConstants.SOURCE_DIR_NAME).toString();
         String dest = this.targetPath
                 .resolve(ProjectDirConstants.TARGET_COVERAGE_DIRECTORY)
                 .resolve(this.orgName).toString();
 
+        File srcDir = new File(src);
         File destDir = new File(dest);
 
         if (!srcDir.exists()) {
@@ -241,6 +243,47 @@ public class ExecutionCoverageBuilder {
             }
         }
 
+        // delete already copied test source
+        String deletingDir = this.targetPath
+                .resolve(ProjectDirConstants.TARGET_COVERAGE_DIRECTORY)
+                .resolve(this.orgName)
+                .resolve(this.packageName)
+                .resolve(ProjectDirConstants.TEST_DIR_NAME).toString();
+
+        File deletingFile = new File(deletingDir);
+
+        boolean deletedCopiedTestDir = deleteDirectory(deletingFile);
+
+        if (deletedCopiedTestDir) {
+            // to copy the test source from coverage directory
+            String testSrc = this.sourceRootPath
+                    .resolve(ProjectDirConstants.SOURCE_DIR_NAME)
+                    .resolve(this.packageName)
+                    .resolve(ProjectDirConstants.TEST_DIR_NAME).toString();
+            Path testDir = this.targetPath
+                    .resolve(ProjectDirConstants.TARGET_COVERAGE_DIRECTORY)
+                    .resolve(this.orgName)
+                    .resolve(this.packageName)
+                    .resolve(ProjectDirConstants.TEST_DIR_NAME)
+                    .resolve(ProjectDirConstants.TEST_DIR_NAME);
+
+            File testSrcDir = new File(testSrc);
+            boolean createTestDir = generateDirectoryForGivenPath(testDir);
+            File testDestDir = new File(testDir.toString());
+
+            if (!testSrcDir.exists() && !createTestDir) {
+                throw new RuntimeException("Directory doesn't exists");
+            } else {
+
+                try {
+                    copyFolder(testSrcDir, testDestDir);
+                } catch (RuntimeException e) {
+                    throw new RuntimeException(e);
+                } catch (Exception e) {
+                    this.buildContext.out().println(e);
+                }
+            }
+        }
     }
 
     private void copyFolder(File src, File dest) {
@@ -305,7 +348,7 @@ public class ExecutionCoverageBuilder {
         String cmd = "java -jar " + this.balHome
                 .resolve(ProjectDirConstants.BALLERINA_HOME_BRE)
                 .resolve(ProjectDirConstants.BALLERINA_HOME_LIB)
-                .resolve(CoverageConstants.CLI_FILE_NAME)
+                .resolve(CoverageConstants.CLI_FILE_NAME).toString()
                 + " report " + execFilePath
                 + " --classfiles " + classFilesPath
                 + " --sourcefiles " + sourceFilesPath
@@ -326,12 +369,35 @@ public class ExecutionCoverageBuilder {
         boolean coverageDirectoryCreated;
         boolean extractedDirectoryCreated;
 
-        coverageDirectoryCreated = new File(this.targetPath
-                .resolve(ProjectDirConstants.TARGET_COVERAGE_DIRECTORY).toString()).mkdirs();
-        extractedDirectoryCreated = new File(this.targetPath
+        coverageDirectoryCreated = generateDirectoryForGivenPath(this.targetPath
+                .resolve(ProjectDirConstants.TARGET_COVERAGE_DIRECTORY));
+        extractedDirectoryCreated = generateDirectoryForGivenPath(this.targetPath
                 .resolve(ProjectDirConstants.TARGET_COVERAGE_DIRECTORY)
-                .resolve(CoverageConstants.EXTRACTED_DIRECTORY_NAME).toString()).mkdirs();
+                .resolve(CoverageConstants.EXTRACTED_DIRECTORY_NAME));
 
         return coverageDirectoryCreated && extractedDirectoryCreated;
+    }
+
+    // got the code from https://stackoverflow.com/questions/3634853/how-to-create-a-directory-in-java/3634879
+    private boolean generateDirectoryForGivenPath(Path path){
+        boolean generated;
+        generated = new File(path.toString()).mkdirs();
+        return generated;
+    }
+
+    // got the code from https://stackoverflow.com/questions/20281835/how-to-delete-a-folder-with-files-using-java
+    private boolean deleteDirectory(File file) {
+        boolean deleted;
+
+        File[] contents = file.listFiles();
+        if (contents != null) {
+            for (File f : contents) {
+                if (! Files.isSymbolicLink(f.toPath())) {
+                    deleteDirectory(f);
+                }
+            }
+        }
+        deleted = file.delete();
+        return deleted;
     }
 }
