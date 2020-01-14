@@ -17,19 +17,15 @@
  */
 package org.ballerinalang.coverage;
 
-import org.ballerinalang.coverage.buildcontext.BuildContext;
 import org.ballerinalang.tool.LauncherUtils;
-import org.wso2.ballerinalang.compiler.util.CompilerContext;
 import org.wso2.ballerinalang.compiler.util.ProjectDirConstants;
 
-import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -40,28 +36,28 @@ import java.util.jar.JarFile;
 /**
  * Java class to generate the coverage report.
  *
- * @since 1.0.0
+ * @since 1.1.0
  */
 public class ExecutionCoverageBuilder {
 
-    private Path executableJarPath;
     private Path sourceRootPath;
     private Path targetPath;
     private Path compiledSourceJarPath;
     private String orgName;
     private Path balHome;
     private String packageName;
-    private BuildContext buildContext;
+    private String moduleJarName;
+    private String javaCommand = System.getProperty("java.command");
 
-    public ExecutionCoverageBuilder(Path sourceRootPath, Path executableJarPath, Path sourcePath, Path targetPath,
-                                    Path compiledSourceJarPath, CompilerContext compilerContext) {
+    public ExecutionCoverageBuilder(Path sourceRootPath, Path targetDirPath, Path testJarPath, String orgName,
+                                    String moduleJarName, String packageName) {
         this.sourceRootPath = sourceRootPath;
-        this.executableJarPath = executableJarPath;
-        this.targetPath = targetPath;
-        this.compiledSourceJarPath = compiledSourceJarPath;
-        this.packageName = sourcePath.toString();
-        this.balHome = Paths.get(System.getProperty("ballerina.home"));
-        this.buildContext = new BuildContext(this.sourceRootPath, this.targetPath, sourcePath, compilerContext);
+        this.targetPath = targetDirPath;
+        this.orgName = orgName;
+        this.packageName = packageName;
+        this.compiledSourceJarPath = testJarPath;
+        this.moduleJarName = moduleJarName;
+        this.balHome = Paths.get(System.getProperty(ProjectDirConstants.BALLERINA_HOME));
     }
 
     public boolean generateExecFile() {
@@ -70,21 +66,40 @@ public class ExecutionCoverageBuilder {
             throw LauncherUtils.createLauncherException("Couldn't create the directories -> Coverage, Extracted.");
         }
 
-        String cmd = "java -javaagent:"
-                + this.balHome
-                .resolve(ProjectDirConstants.BALLERINA_HOME_BRE)
-                .resolve(ProjectDirConstants.BALLERINA_HOME_LIB)
-                .resolve(CoverageConstants.AGENT_FILE_NAME).toString()
+        Path dependencyPaths = this.balHome.resolve(ProjectDirConstants.BALLERINA_HOME_BRE)
+                .resolve(ProjectDirConstants.BALLERINA_HOME_LIB);
+        Path jsonPath = this.targetPath
+                .resolve(ProjectDirConstants.CACHES_DIR_NAME)
+                .resolve(ProjectDirConstants.JSON_CACHE_DIR_NAME)
+                .resolve(moduleJarName);
+        String mainClassName = "org.ballerinalang.starter.Starter";
+
+        String execFileGenerationCommand = this.javaCommand + " -javaagent:"
+                + dependencyPaths.resolve(CoverageConstants.AGENT_FILE_NAME).toString()
                 + "=destfile="
                 + this.targetPath
-                .resolve(ProjectDirConstants.TARGET_COVERAGE_DIRECTORY)
+                .resolve(ProjectDirConstants.TARGET_COVERAGE_DIRECTORY).resolve(this.moduleJarName)
                 .resolve(CoverageConstants.EXEC_FILE_NAME).toString()
-                + " -jar "
-                + this.executableJarPath.toString();
+                + " -Djava.ext.dirs=" + dependencyPaths
+                + " -cp " + this.compiledSourceJarPath.toString()
+                + " " + mainClassName
+                + " " + jsonPath.toString();
 
         try {
-            Process proc = Runtime.getRuntime().exec(cmd);
+            Process proc = Runtime.getRuntime().exec(execFileGenerationCommand);
             proc.waitFor();
+            // Then retreive the process output
+            InputStream in = proc.getInputStream();
+            InputStream err = proc.getErrorStream();
+
+            byte b[] = new byte[in.available()];
+            in.read(b, 0, b.length);
+            System.out.println(new String(b));
+
+            byte c[] = new byte[err.available()];
+            err.read(c, 0, c.length);
+            System.out.println(new String(c));
+
             return true;
         } catch (IOException | InterruptedException e) {
             return false;
@@ -103,7 +118,7 @@ public class ExecutionCoverageBuilder {
 
             while (enu.hasMoreElements()) {
                 String destDir = this.targetPath
-                        .resolve(ProjectDirConstants.TARGET_COVERAGE_DIRECTORY)
+                        .resolve(ProjectDirConstants.TARGET_COVERAGE_DIRECTORY).resolve(this.moduleJarName)
                         .resolve(CoverageConstants.EXTRACTED_DIRECTORY_NAME).toString();
 
                 JarEntry je = enu.nextElement();
@@ -125,15 +140,13 @@ public class ExecutionCoverageBuilder {
             }
 
             if (directoriesCreated) {
-                this.buildContext.out().println();
+                System.out.println();
             }
 
             String path = this.targetPath
-                    .resolve(ProjectDirConstants.TARGET_COVERAGE_DIRECTORY)
+                    .resolve(ProjectDirConstants.TARGET_COVERAGE_DIRECTORY).resolve(this.moduleJarName)
                     .resolve(CoverageConstants.EXTRACTED_DIRECTORY_NAME).toString();
-            getOrgName();
             removeUnnecessaryFilesFromUnzip(path);
-
 
         } catch (RuntimeException e) {
             throw new RuntimeException(e);
@@ -154,34 +167,6 @@ public class ExecutionCoverageBuilder {
 
                 }
             }
-        }
-    }
-
-    private void getOrgName() {
-
-        try {
-            BufferedReader tomlReader = Files.newBufferedReader(this.sourceRootPath
-                    .resolve(ProjectDirConstants.MANIFEST_FILE_NAME), StandardCharsets.UTF_8);
-            String lines;
-            String [] lineItems = null;
-            while ((lines = tomlReader.readLine()) != null) {
-                if (lines.startsWith("org-name")) {
-                    lineItems = lines.split("=");
-                }
-            }
-            tomlReader.close();
-
-            if (lineItems == null) {
-                throw new RuntimeException("Please update your "
-                        + ProjectDirConstants.MANIFEST_FILE_NAME
-                        + " with your organization name to proceed.");
-            } else {
-                String orgNameWithMarks = lineItems[1];
-                this.orgName = orgNameWithMarks.substring(2, orgNameWithMarks.length() - 1);
-            }
-
-        } catch (RuntimeException | IOException ignored) {
-
         }
     }
 
@@ -213,7 +198,7 @@ public class ExecutionCoverageBuilder {
         }
 
         if (filesRemoved) {
-            this.buildContext.out().println();
+            System.out.println();
         }
     }
 
@@ -223,7 +208,7 @@ public class ExecutionCoverageBuilder {
         String src = this.sourceRootPath
                 .resolve(ProjectDirConstants.SOURCE_DIR_NAME).toString();
         String dest = this.targetPath
-                .resolve(ProjectDirConstants.TARGET_COVERAGE_DIRECTORY)
+                .resolve(ProjectDirConstants.TARGET_COVERAGE_DIRECTORY).resolve(this.moduleJarName)
                 .resolve(this.orgName).toString();
 
         File srcDir = new File(src);
@@ -239,13 +224,13 @@ public class ExecutionCoverageBuilder {
             } catch (RuntimeException e) {
                 throw new RuntimeException(e);
             } catch (Exception e) {
-                this.buildContext.out().println(e);
+                System.out.println(e);
             }
         }
 
         // delete already copied test source
         String deletingDir = this.targetPath
-                .resolve(ProjectDirConstants.TARGET_COVERAGE_DIRECTORY)
+                .resolve(ProjectDirConstants.TARGET_COVERAGE_DIRECTORY).resolve(this.moduleJarName)
                 .resolve(this.orgName)
                 .resolve(this.packageName)
                 .resolve(ProjectDirConstants.TEST_DIR_NAME).toString();
@@ -261,7 +246,7 @@ public class ExecutionCoverageBuilder {
                     .resolve(this.packageName)
                     .resolve(ProjectDirConstants.TEST_DIR_NAME).toString();
             Path testDir = this.targetPath
-                    .resolve(ProjectDirConstants.TARGET_COVERAGE_DIRECTORY)
+                    .resolve(ProjectDirConstants.TARGET_COVERAGE_DIRECTORY).resolve(this.moduleJarName)
                     .resolve(this.orgName)
                     .resolve(this.packageName)
                     .resolve(ProjectDirConstants.TEST_DIR_NAME)
@@ -280,7 +265,7 @@ public class ExecutionCoverageBuilder {
                 } catch (RuntimeException e) {
                     throw new RuntimeException(e);
                 } catch (Exception e) {
-                    this.buildContext.out().println(e);
+                    System.out.println(e);
                 }
             }
         }
@@ -334,18 +319,18 @@ public class ExecutionCoverageBuilder {
     public void generateCoverageReport() {
 
         String execFilePath = this.targetPath
-                .resolve(ProjectDirConstants.TARGET_COVERAGE_DIRECTORY)
+                .resolve(ProjectDirConstants.TARGET_COVERAGE_DIRECTORY).resolve(this.moduleJarName)
                 .resolve(CoverageConstants.EXEC_FILE_NAME).toString();
         String classFilesPath = this.targetPath
-                .resolve(ProjectDirConstants.TARGET_COVERAGE_DIRECTORY)
+                .resolve(ProjectDirConstants.TARGET_COVERAGE_DIRECTORY).resolve(this.moduleJarName)
                 .resolve(CoverageConstants.EXTRACTED_DIRECTORY_NAME)
                 .resolve(this.orgName).toString();
         String sourceFilesPath = this.targetPath
-                .resolve(ProjectDirConstants.TARGET_COVERAGE_DIRECTORY).toString();
+                .resolve(ProjectDirConstants.TARGET_COVERAGE_DIRECTORY).resolve(this.moduleJarName).toString();
         String reportPath = this.targetPath
-                .resolve(ProjectDirConstants.TARGET_COVERAGE_DIRECTORY).toString();
+                .resolve(ProjectDirConstants.TARGET_COVERAGE_DIRECTORY).resolve(this.moduleJarName).toString();
 
-        String cmd = "java -jar " + this.balHome
+        String cmd = this.javaCommand + " -jar " + this.balHome
                 .resolve(ProjectDirConstants.BALLERINA_HOME_BRE)
                 .resolve(ProjectDirConstants.BALLERINA_HOME_LIB)
                 .resolve(CoverageConstants.CLI_FILE_NAME).toString()
@@ -370,9 +355,9 @@ public class ExecutionCoverageBuilder {
         boolean extractedDirectoryCreated;
 
         coverageDirectoryCreated = generateDirectoryForGivenPath(this.targetPath
-                .resolve(ProjectDirConstants.TARGET_COVERAGE_DIRECTORY));
+                .resolve(ProjectDirConstants.TARGET_COVERAGE_DIRECTORY).resolve(this.moduleJarName));
         extractedDirectoryCreated = generateDirectoryForGivenPath(this.targetPath
-                .resolve(ProjectDirConstants.TARGET_COVERAGE_DIRECTORY)
+                .resolve(ProjectDirConstants.TARGET_COVERAGE_DIRECTORY).resolve(this.moduleJarName)
                 .resolve(CoverageConstants.EXTRACTED_DIRECTORY_NAME));
 
         return coverageDirectoryCreated && extractedDirectoryCreated;
@@ -380,9 +365,7 @@ public class ExecutionCoverageBuilder {
 
     // got the code from https://stackoverflow.com/questions/3634853/how-to-create-a-directory-in-java/3634879
     private boolean generateDirectoryForGivenPath(Path path){
-        boolean generated;
-        generated = new File(path.toString()).mkdirs();
-        return generated;
+        return new File(path.toString()).mkdirs();
     }
 
     // got the code from https://stackoverflow.com/questions/20281835/how-to-delete-a-folder-with-files-using-java
