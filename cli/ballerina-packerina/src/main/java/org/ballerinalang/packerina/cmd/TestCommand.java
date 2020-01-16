@@ -29,6 +29,7 @@ import org.ballerinalang.packerina.task.CopyNativeLibTask;
 import org.ballerinalang.packerina.task.CreateBaloTask;
 import org.ballerinalang.packerina.task.CreateBirTask;
 import org.ballerinalang.packerina.task.CreateJarTask;
+import org.ballerinalang.packerina.task.CreateJsonTask;
 import org.ballerinalang.packerina.task.CreateTargetDirTask;
 import org.ballerinalang.packerina.task.RunTestsTask;
 import org.ballerinalang.tool.BLauncherCmd;
@@ -120,6 +121,9 @@ public class TestCommand implements BLauncherCmd {
 
     @CommandLine.Option(names = "--experimental", description = "Enable experimental language features.")
     private boolean experimentalFlag;
+
+    @CommandLine.Option(names = {"--coverage", "-cc"}, hidden = true)
+    private boolean coverage;
 
     // --debug flag is handled by ballerina.sh/ballerina.bat. It will launch ballerina with java debug options.
     @CommandLine.Option(names = "--debug", description = "start Ballerina in remote debugging mode")
@@ -276,7 +280,8 @@ public class TestCommand implements BLauncherCmd {
                 .addTask(new CreateJarTask(this.dumpBIR, this.skipCopyLibsFromDist, this.nativeBinary, this.dumpLLVMIR,
                         this.noOptimizeLLVM))
                 .addTask(new CopyModuleJarTask(skipCopyLibsFromDist))
-                .addTask(new RunTestsTask()) // run tests
+                .addTask(new CreateJsonTask()) // // create the json to store test init data
+                .addTask(new RunTestsTask(this.coverage)) // run tests
                 .build();
 
         taskExecutor.executeTasks(buildContext);
