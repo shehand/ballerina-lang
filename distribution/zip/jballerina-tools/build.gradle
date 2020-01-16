@@ -108,7 +108,8 @@ dependencies {
     dist project(':openapi-ballerina:ballerina-client-generator')
     dist project(':docerina')
     dist project(':protobuf-ballerina')
-    dist project(':ballerina-cli-code-coverage')
+    dist project(':testerina:testerina-code-coverage')
+    dist project(':testerina:testerina-launcher')
     docerina project(':docerina-gradle-plugin')
 
     langserverLib project(path: ':language-server:language-server-core', configuration: 'libs')
