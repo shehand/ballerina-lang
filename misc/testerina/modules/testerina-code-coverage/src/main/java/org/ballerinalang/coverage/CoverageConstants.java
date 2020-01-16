@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, WSO2 Inc. (http://www.wso2.org) All Rights Reserved.
+ * Copyright (c) 2020, WSO2 Inc. (http://www.wso2.org) All Rights Reserved.
  *
  * WSO2 Inc. licenses this file to you under the Apache License,
  * Version 2.0 (the "License"); you may not use this file except
@@ -20,15 +20,13 @@ package org.ballerinalang.coverage;
 /**
  * Java class that holds coverage constants.
  *
- * @since 1.0.0
+ * @since 1.2.0
  */
 public class CoverageConstants {
 
     public static final String EXEC_FILE_NAME = "ballerina.exec";
     public static final String AGENT_FILE_NAME = "jacocoagent.jar";
     public static final String CLI_FILE_NAME = "jacococli.jar";
-
     public static final String COVERAGE_REPORT_NAME = "TesterinaReport";
-
     public static final String EXTRACTED_DIRECTORY_NAME = "Extracted";
 }
