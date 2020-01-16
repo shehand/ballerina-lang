@@ -44,7 +44,6 @@ import static org.wso2.ballerinalang.compiler.util.ProjectDirConstants.BLANG_COM
 public class CreateJarTask implements Task {
 
     private boolean dumpBir;
-    private Path compiledSourceJarPath;
     private boolean buildNative;
     private boolean dumpLlvmIr;
     private boolean noOptimizeLlvm;
@@ -104,7 +103,6 @@ public class CreateJarTask implements Task {
 
             // get the jar path of the module.
             Path jarOutput = buildContext.getJarPathFromTargetCache(module.packageID);
-            this.compiledSourceJarPath = jarOutput;
 
             if (!Files.exists(jarOutput)) {
                 if (buildNative) {
@@ -180,9 +178,5 @@ public class CreateJarTask implements Task {
         String ballerinaVersion = RepoUtils.getBallerinaVersion();
         String runtimeJarName = "ballerina-rt-" + ballerinaVersion + BLANG_COMPILED_JAR_EXT;
         return Paths.get(balHomePath, "bre", "lib", runtimeJarName);
-    }
-
-    public Path getCompiledSourceJarPath() {
-        return compiledSourceJarPath;
     }
 }
