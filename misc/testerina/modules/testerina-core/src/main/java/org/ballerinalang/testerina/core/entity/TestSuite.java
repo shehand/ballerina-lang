@@ -299,7 +299,7 @@ public class TestSuite {
         if (initFunction != null && startFunction != null) {
             // As the init function we need to use $moduleInit to initialize all the dependent modules
             // properly.
-            initFunction.bFunction.name.value = "$moduleInit";
+            initFunction.setName("$moduleInit");
             initFunction.scheduler = initScheduler;
             initFunction.invoke();
             // Now we initialize the init of testable module.
@@ -309,7 +309,7 @@ public class TestSuite {
             }
             // As the start function we need to use $moduleStart to start all the dependent modules
             // properly.
-            startFunction.bFunction.name.value = "$moduleStart";
+            startFunction.setName("$moduleStart");
             startFunction.scheduler = initScheduler;
             startFunction.invoke();
 
@@ -337,7 +337,7 @@ public class TestSuite {
                 testStopFunction.invoke();
             }
 
-            stopFunction.bFunction.name.value = "$moduleStop";
+            stopFunction.setName("$moduleStop");
             stopFunction.directInvoke(new Class[]{});
         }
         // this.initScheduler.poison();

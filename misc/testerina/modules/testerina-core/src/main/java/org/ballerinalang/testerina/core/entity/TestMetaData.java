@@ -1,3 +1,20 @@
+/*
+ * Copyright (c) 2020, WSO2 Inc. (http://www.wso2.org) All Rights Reserved.
+ *
+ * WSO2 Inc. licenses this file to you under the Apache License,
+ * Version 2.0 (the "License"); you may not use this file except
+ * in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *    http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
 package org.ballerinalang.testerina.core.entity;
 
 import org.ballerinalang.model.elements.PackageID;
@@ -6,6 +23,9 @@ import org.wso2.ballerinalang.compiler.tree.BLangPackage;
 
 import java.util.HashMap;
 
+/**
+ * Java class to hold the meta data of a specific module's test suit.
+ */
 public class TestMetaData {
     private String initFunctionName;
     private String startFunctionName;
@@ -16,8 +36,8 @@ public class TestMetaData {
     private PackageID packageID;
     private boolean hasTestablePackages;
     private String packageName;
-    private static HashMap<String, String> callableFunctionNames;
-    private static HashMap<String, String> testFunctionNames;
+    private HashMap<String, String> callableFunctionNames;
+    private HashMap<String, String> testFunctionNames;
 
     public TestMetaData(BLangPackage bLangPackage, String packageName) {
         this.initFunctionName = bLangPackage.initFunction.name.value;
@@ -29,7 +49,7 @@ public class TestMetaData {
         this.packageID = bLangPackage.packageID;
         this.hasTestablePackages = bLangPackage.hasTestablePackage();
         this.packageName = packageName;
-        computePackageFunctions(bLangPackage);
+        this.computePackageFunctions(bLangPackage);
     }
 
     public void setStartFunctionName(String startFunctionName) {
@@ -98,17 +118,17 @@ public class TestMetaData {
         this.packageID = packageID;
     }
 
-    public static void setCallableFunctionNames(HashMap<String, String> callableFunctionNames) {
-        TestMetaData.callableFunctionNames = callableFunctionNames;
+    public void setCallableFunctionNames(HashMap<String, String> callableFunctionNames) {
+        this.callableFunctionNames = callableFunctionNames;
     }
 
-    public static void setTestFunctionNames(HashMap<String, String> testFunctionNames) {
-        TestMetaData.testFunctionNames = testFunctionNames;
+    public void setTestFunctionNames(HashMap<String, String> testFunctionNames) {
+        this.testFunctionNames = testFunctionNames;
     }
 
-    private static void computePackageFunctions(BLangPackage bLangPackage) {
-        callableFunctionNames = new HashMap<>();
-        testFunctionNames = new HashMap<>();
+    private void computePackageFunctions(BLangPackage bLangPackage) {
+        this.callableFunctionNames = new HashMap<>();
+        this.testFunctionNames = new HashMap<>();
 
         bLangPackage.functions.stream().forEach(function -> {
             try {

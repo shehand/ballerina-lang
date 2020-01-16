@@ -27,5 +27,6 @@ public class TesterinaConstants {
 
     public static final String BALLERINA_SOURCE_ROOT = "ballerina.source.root";
     public static final String TESTERINA_TEMP_DIR = ".testerina";
+    public static final String TESTERINA_TEST_SUITE = "test_suit.json";
 
 }

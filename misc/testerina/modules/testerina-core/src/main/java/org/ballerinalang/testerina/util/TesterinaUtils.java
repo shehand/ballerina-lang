@@ -20,6 +20,7 @@ package org.ballerinalang.testerina.util;
 import org.ballerinalang.testerina.core.BTestRunner;
 import org.ballerinalang.testerina.core.TesterinaConstants;
 import org.ballerinalang.testerina.core.TesterinaRegistry;
+import org.ballerinalang.testerina.core.entity.TestMetaData;
 import org.ballerinalang.toml.model.Manifest;
 import org.wso2.ballerinalang.compiler.tree.BLangPackage;
 import org.wso2.ballerinalang.compiler.util.Names;
@@ -32,6 +33,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -122,14 +124,24 @@ public class TesterinaUtils {
      * @param outStream      error stream for logging.
      * @param errStream      info stream for logging.
      */
-    public static void executeTests(Path sourceRootPath, Map<BLangPackage, TestarinaClassLoader> programFileMap,
-                                    PrintStream outStream, PrintStream errStream) {
+    public static void executeTests(Path sourceRootPath, Map<BLangPackage, TestarinaClassLoader>
+            programFileMap, PrintStream outStream, PrintStream errStream) {
         // Set org-name and version to the Testerina Registry.
         setManifestConfigs(sourceRootPath);
         
         BTestRunner testRunner = new BTestRunner(outStream, errStream);
         // Run the tests
-        testRunner.runTest(programFileMap);
+        HashMap<TestMetaData, TestarinaClassLoader> testMetaDataMap = new HashMap<>();
+        programFileMap.forEach((sourcePackage, classLoader) -> {
+            String packageName;
+            if (sourcePackage.packageID.getName().getValue().equals(".")) {
+                packageName = sourcePackage.packageID.getName().getValue();
+            } else {
+                packageName = TesterinaUtils.getFullModuleName(sourcePackage.packageID.getName().getValue());
+            }
+            testMetaDataMap.putIfAbsent(new TestMetaData(sourcePackage, packageName), classLoader);
+        });
+        testRunner.runTest(testMetaDataMap);
         
         if (testRunner.getTesterinaReport().isFailure()) {
             cleanUpDir(sourceRootPath.resolve(TesterinaConstants.TESTERINA_TEMP_DIR));
@@ -138,6 +150,28 @@ public class TesterinaUtils {
         cleanUpDir(sourceRootPath.resolve(TesterinaConstants.TESTERINA_TEMP_DIR));
     }
 
+    /**
+     * Execute tests in build.
+     *
+     * @param sourceRootPath source root path
+     * @param testMetaDataMap map containing testMetaData nodes along with their compiled program files
+     * @param outStream      error stream for logging.
+     * @param errStream      info stream for logging.
+     */
+    public static void execTests(Path sourceRootPath, Map<TestMetaData, TestarinaClassLoader> testMetaDataMap,
+                                 PrintStream outStream, PrintStream errStream) {
+        setManifestConfigs(sourceRootPath);
+
+        BTestRunner testRunner = new BTestRunner(outStream, errStream);
+        // Run the tests
+        testRunner.runTest(testMetaDataMap);
+
+        if (testRunner.getTesterinaReport().isFailure()) {
+            cleanUpDir(sourceRootPath.resolve(TesterinaConstants.TESTERINA_TEMP_DIR));
+            Runtime.getRuntime().exit(1);
+        }
+        cleanUpDir(sourceRootPath.resolve(TesterinaConstants.TESTERINA_TEMP_DIR));
+    }
     /**
      * Format error message.
      *
