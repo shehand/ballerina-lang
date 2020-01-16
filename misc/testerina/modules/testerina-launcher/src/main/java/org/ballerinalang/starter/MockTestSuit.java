@@ -1,7 +1,23 @@
+/*
+ * Copyright (c) 2020, WSO2 Inc. (http://www.wso2.org) All Rights Reserved.
+ *
+ * WSO2 Inc. licenses this file to you under the Apache License,
+ * Version 2.0 (the "License"); you may not use this file except
+ * in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
 package org.ballerinalang.starter;
 
 import com.google.gson.Gson;
-import org.ballerinalang.model.elements.PackageID;
 import org.ballerinalang.testerina.core.TesterinaConstants;
 import org.ballerinalang.testerina.core.TesterinaRegistry;
 import org.ballerinalang.testerina.core.entity.Test;
@@ -10,57 +26,54 @@ import org.ballerinalang.testerina.core.entity.TestMetaData;
 import org.ballerinalang.testerina.core.entity.TestSuite;
 import org.ballerinalang.testerina.util.TestarinaClassLoader;
 import org.ballerinalang.testerina.util.TesterinaUtils;
-import org.wso2.ballerinalang.compiler.util.Name;
 
 import java.io.BufferedReader;
-import java.io.FileReader;
 import java.io.PrintStream;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * Java class to mock the test suit in the test run.
+ */
 class MockTestSuit {
 
-    private static PrintStream outsStream;
-    private static PrintStream errStream;
+    private static PrintStream outsStream = System.out;
+    private static PrintStream errStream = System.err;
 
-    MockTestSuit(PrintStream outStream, PrintStream errStream) {
-        errStream = errStream;
-        outsStream = outStream;
-    }
-
-    void readJson() {
-        Path jsonCachePath = Paths.get(System.getProperty("java.io.tmpdir"), TesterinaConstants.TESTERINA_TEST_SUITE);
+    void readJson(String jsonPath) {
+        Path jsonCachePath = Paths.get(jsonPath, TesterinaConstants.TESTERINA_TEST_SUITE);
         try {
-            BufferedReader br = new BufferedReader(new FileReader(jsonCachePath.toString()));
+            BufferedReader br = Files.newBufferedReader(jsonCachePath, StandardCharsets.UTF_8);
 
             //convert the json string back to object
             Gson gson = new Gson();
             TestJsonData response = gson.fromJson(br, TestJsonData.class);
-            initTestSuit(Paths.get(response.getSourceRootPath()), Paths.get(response.getJarPath()), response.getModuleJarName(), response);
+            initTestSuit(Paths.get(response.getSourceRootPath()), Paths.get(response.getJarPath()), response);
+        } catch (RuntimeException e) {
+            throw new RuntimeException(e);
         } catch (Exception e) {
-            System.err.println(e);
+            errStream.println(e);
         }
     }
 
-    private static void initTestSuit(Path sourceRootPath, Path jarPath, String moduleJarName, TestJsonData testJsonData) {
+    private static void initTestSuit(Path sourceRootPath, Path jarPath, TestJsonData testJsonData) {
         TestMetaData testMetaData = new TestMetaData();
 
         // set the PackageID
-        Name orgName = new Name(testJsonData.getOrgName());
-        Name version = new Name(testJsonData.getVersion());
-        List<Name> nameComp = new ArrayList<>(Arrays.asList(testJsonData.getNameComps()));
-        testMetaData.setPackageID(new PackageID(orgName, nameComp, version));
+        testMetaData.setPackageID(testJsonData.getPackageID());
 
         // set the tests into the test suit and init the test suit
         List<Test> testNames = new ArrayList<>();
         Map<String, String> tmpTestMap = testJsonData.getTestFunctionNames();
         tmpTestMap.forEach((functionName, className) -> {
-            if(!functionName.contains("$")) {
+            if (!functionName.contains("$")) {
                 Test test = new Test();
                 test.setTestName(functionName);
                 testNames.add(test);
@@ -93,63 +106,18 @@ class MockTestSuit {
 
         // set rest required data
         testMetaData.setPackageName(testJsonData.getPackageName());
-        testMetaData.setHasTestablePackages(true);
+        testMetaData.setHasTestablePackages(Boolean.parseBoolean(testJsonData.isHasTestablePackages()));
 
         // create testerina class loader to run the tests
-        TestarinaClassLoader testarinaClassLoader = new TestarinaClassLoader(jarPath,
-                Paths.get(sourceRootPath.toString(), "target", "tmp").toFile(), moduleJarName);
+        HashSet<Path> moduleDependencies = new HashSet<>();
+        String [] dependencyPaths = testJsonData.getDependencyJarPaths();
+        for (String path: dependencyPaths) {
+            moduleDependencies.add(Paths.get(path));
+        }
+        TestarinaClassLoader testarinaClassLoader = new TestarinaClassLoader(jarPath, moduleDependencies);
 
         HashMap<TestMetaData, TestarinaClassLoader> testMetaDataMap = new HashMap<>();
         testMetaDataMap.put(testMetaData, testarinaClassLoader);
-        startTestSuit(sourceRootPath, testMetaDataMap);
-    }
-
-    void sapleTestSuit(Path sourceRootPath, Path jarPath, String moduleJarName) {
-        TestMetaData metaData = new TestMetaData();
-
-        Name orgName = new Name("shehan");
-        Name version = new Name("0.1.0");
-        List<Name> nameComp = new ArrayList<>();
-        nameComp.add(new Name("sample"));
-
-        List<Test> tests = new ArrayList<>();
-        Test test = new Test();
-        test.setTestName("testFunction");
-        tests.add(test);
-
-        TestSuite testSuite = new TestSuite("shehan/sample:0.1.0");
-        testSuite.setTests(tests);
-
-        Map<String, TestSuite> testSuiteMap = new HashMap<>();
-        testSuiteMap.put("shehan/sample:0.1.0", testSuite);
-
-        TesterinaRegistry testerinaRegistry = TesterinaRegistry.getInstance();
-        testerinaRegistry.setTestSuites(testSuiteMap);
-
-        HashMap<String, String> normalFunctionNames = new HashMap<>();
-        HashMap<String, String> testFunctionNames = new HashMap<>();
-        normalFunctionNames.put("add", "shehan.sample.main");
-        normalFunctionNames.put("main", "shehan.sample.main");
-        testFunctionNames.put("testFunction", "shehan.sample.tests.main_test");
-        testFunctionNames.put("$annot_func$0", "shehan.sample.tests.main_test");
-
-        metaData.setInitFunctionName("shehan/sample:0.1.0.<init>");
-        metaData.setStartFunctionName("shehan/sample:0.1.0.<start>");
-        metaData.setStopFunctionName("shehan/sample:0.1.0.<stop>");
-        metaData.setTestInitFunctionName("shehan/sample:0.1.0.<testinit>");
-        metaData.setTestStartFunctionName("shehan/sample:0.1.0.<teststart>");
-        metaData.setTestStopFunctionName("shehan/sample:0.1.0.<teststop>");
-        metaData.setPackageID(new PackageID(orgName, nameComp, version));
-        metaData.setPackageName("shehan/sample:0.1.0");
-        metaData.setCallableFunctionNames(normalFunctionNames);
-        metaData.setTestFunctionNames(testFunctionNames);
-        metaData.setHasTestablePackages(true);
-
-        TestarinaClassLoader testarinaClassLoader = new TestarinaClassLoader(jarPath,
-                Paths.get(sourceRootPath.toString(), "target", "tmp").toFile(), moduleJarName);
-
-        HashMap<TestMetaData, TestarinaClassLoader> testMetaDataMap = new HashMap<>();
-        testMetaDataMap.put(metaData, testarinaClassLoader);
         startTestSuit(sourceRootPath, testMetaDataMap);
     }
 
