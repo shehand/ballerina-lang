@@ -1,13 +1,33 @@
+/*
+ * Copyright (c) 2020, WSO2 Inc. (http://www.wso2.org) All Rights Reserved.
+ *
+ * WSO2 Inc. licenses this file to you under the Apache License,
+ * Version 2.0 (the "License"); you may not use this file except
+ * in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *    http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
 package org.ballerinalang.testerina.core.entity;
 
 import org.ballerinalang.model.elements.PackageID;
-import org.wso2.ballerinalang.compiler.util.Name;
+
+import java.util.Arrays;
 import java.util.HashMap;
 
+/**
+ * Java class to store and get data from a json (for a test run).
+ */
 public class TestJsonData {
     private String orgName;
     private String version;
-    private Name[] nameComps;
     private String initFunctionName;
     private String startFunctionName;
     private String stopFunctionName;
@@ -22,6 +42,16 @@ public class TestJsonData {
     private HashMap<String, String> callableFunctionNames;
     private HashMap<String, String> testFunctionNames;
     private PackageID packageID;
+    private String [] dependencyJarPaths;
+
+    public String[] getDependencyJarPaths() {
+        String[] tmpDependencyJarPaths = this.dependencyJarPaths;
+        return tmpDependencyJarPaths;
+    }
+
+    public void setDependencyJarPaths(String [] dependencyJarPaths) {
+        this.dependencyJarPaths = Arrays.copyOf(dependencyJarPaths, dependencyJarPaths.length);
+    }
 
     public PackageID getPackageID() {
         return packageID;
@@ -69,14 +99,6 @@ public class TestJsonData {
 
     public void setVersion(String version) {
         this.version = version;
-    }
-
-    public Name[] getNameComps() {
-        return nameComps;
-    }
-
-    public void setNameComps(Name[] nameComps) {
-        this.nameComps = nameComps;
     }
 
     public String getInitFunctionName() {
