@@ -27,6 +27,7 @@ public class CoverageConstants {
     public static final String EXEC_FILE_NAME = "ballerina.exec";
     public static final String AGENT_FILE_NAME = "jacocoagent.jar";
     public static final String CLI_FILE_NAME = "jacococli.jar";
-    public static final String COVERAGE_REPORT_NAME = "TesterinaReport";
+    public static final String COVERAGE_REPORT_NAME = "Testerina_Report";
     public static final String EXTRACTED_DIRECTORY_NAME = "Extracted";
+    public static final String TESTERINA_LAUNCHER_CLASS_NAME = "org.ballerinalang.test.launcher.Launch";
 }

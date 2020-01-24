@@ -57,7 +57,7 @@ public class ExecutionCoverageBuilder {
     private Path balHome;
     private String packageName;
     private String moduleJarName;
-    private String javaCommand = System.getProperty("java.command");
+    private String javaCommand;
     private transient PrintStream out = System.out;
     private transient PrintStream err = System.err;
 
@@ -70,6 +70,7 @@ public class ExecutionCoverageBuilder {
         this.compiledSourceJarPath = testJarPath;
         this.moduleJarName = moduleJarName;
         this.balHome = Paths.get(System.getProperty(BALLERINA_HOME));
+        this.javaCommand = System.getProperty("java.command");
     }
 
     public boolean generateExecFile() {
@@ -78,7 +79,7 @@ public class ExecutionCoverageBuilder {
         }
         Path dependencyPaths = this.balHome.resolve(BALLERINA_HOME_BRE).resolve(BALLERINA_HOME_LIB);
         Path jsonPath = this.targetPath.resolve(CACHES_DIR_NAME).resolve(JSON_CACHE_DIR_NAME).resolve(moduleJarName);
-        String mainClassName = "org.ballerinalang.starter.Starter";
+        String mainClassName = CoverageConstants.TESTERINA_LAUNCHER_CLASS_NAME;
         String execFileGenerationCommand = this.javaCommand + " -javaagent:"
                 + dependencyPaths.resolve(CoverageConstants.AGENT_FILE_NAME).toString()
                 + "=destfile="
