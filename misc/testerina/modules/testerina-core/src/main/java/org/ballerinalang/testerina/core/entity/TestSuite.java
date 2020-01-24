@@ -19,7 +19,6 @@
 package org.ballerinalang.testerina.core.entity;
 
 import org.ballerinalang.jvm.scheduling.Scheduler;
-import org.ballerinalang.testerina.util.TestarinaClassLoader;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -41,7 +40,7 @@ public class TestSuite {
     private TesterinaFunction testStartFunction;
     private TesterinaFunction testStopFunction;
     private List<Test> tests = new ArrayList<>();
-    private TestarinaClassLoader programFile;
+    private ClassLoader programFile;
     private List<String> beforeSuiteFunctionNames = new ArrayList<>();
     private List<String> afterSuiteFunctionNames = new ArrayList<>();
 
@@ -121,7 +120,7 @@ public class TestSuite {
         this.suiteName = suiteName;
     }
 
-    public TestarinaClassLoader getProgramFile() {
+    public ClassLoader getProgramFile() {
         return programFile;
     }
 
@@ -248,7 +247,7 @@ public class TestSuite {
         this.afterSuiteFunctions = afterSuiteFunctions;
     }
 
-    public void setProgramFile(TestarinaClassLoader programFile) {
+    public void setProgramFile(ClassLoader programFile) {
         this.programFile = programFile;
     }
 

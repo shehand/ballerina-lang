@@ -47,7 +47,6 @@ import org.ballerinalang.testerina.core.entity.TestSuite;
 import org.ballerinalang.testerina.core.entity.TesterinaFunction;
 import org.ballerinalang.testerina.core.entity.TesterinaReport;
 import org.ballerinalang.testerina.core.entity.TesterinaResult;
-import org.ballerinalang.testerina.util.TestarinaClassLoader;
 import org.ballerinalang.testerina.util.TesterinaUtils;
 import org.ballerinalang.tool.BLauncherException;
 import org.ballerinalang.tool.LauncherUtils;
@@ -148,7 +147,7 @@ public class BTestRunner {
      *
      * @param packageList map containing bLangPackage nodes along with their compiled program files
      */
-    public void runTest(Map<TestMetaData, TestarinaClassLoader> packageList) {
+    public void runTest(Map<TestMetaData, String> packageList) {
         registry.setGroups(Collections.emptyList());
         registry.setShouldIncludeGroups(true);
         buildSuites(packageList);
@@ -267,8 +266,8 @@ public class BTestRunner {
      *
      * @param packageList map containing bLangPackage nodes along with their compiled program files
      */
-    private void buildSuites(Map<TestMetaData, TestarinaClassLoader> packageList) {
-        packageList.forEach((metaData, classLoader) -> {
+    private void buildSuites(Map<TestMetaData, String> packageList) {
+        packageList.forEach((metaData, testName) -> {
             String packageName;
             if (metaData.getPackageID().getName().getValue().equals(".")) {
                 packageName = metaData.getPackageID().getName().getValue();
@@ -280,7 +279,7 @@ public class BTestRunner {
             addTestSuite(packageName);
             // Keeps a track of the sources that are being built
             sourcePackages.add(packageName);
-            processProgramFile(metaData, classLoader);
+            processProgramFile(metaData, testName);
         });
 
         registry.setTestSuitesCompiled(true);
@@ -300,17 +299,13 @@ public class BTestRunner {
      *
      * @param programFile program file generated
      */
-    private void processProgramFile(TestMetaData programFile, TestarinaClassLoader classLoader) {
+    private void processProgramFile(TestMetaData programFile, String testName) {
         // process the compiled files
         ServiceLoader<CompilerPlugin> processorServiceLoader = ServiceLoader.load(CompilerPlugin.class);
         processorServiceLoader.forEach(plugin -> {
             if (plugin instanceof TestAnnotationProcessor) {
                 try {
-                    if (programFile.isHasTestablePackages()) {
-                        packageProcessed(programFile, classLoader);
-                    } else {
-                        return;
-                    }
+                    packageProcessed(programFile, testName);
                 } catch (BLauncherException e) {
                     throw e;
                 } catch (Exception e) {
@@ -326,9 +321,9 @@ public class BTestRunner {
      * This method will process BLangPackage and assign functions to test suite.
      *
      * @param testMetaData compiled package.
-     * @param classLoader  class loader to load and run package tests.
+     * @param testName  class loader to load and run package tests.
      */
-    public void packageProcessed(TestMetaData testMetaData, TestarinaClassLoader classLoader) {
+    private void packageProcessed(TestMetaData testMetaData, String testName) {
         //packageInit = false;
         // TODO the below line is required since this method is currently getting explicitly called from BTestRunner
         TestSuite suite = TesterinaRegistry.getInstance().getTestSuites().get(testMetaData.getPackageID().toString());
@@ -351,49 +346,56 @@ public class BTestRunner {
         String initClassName = BFileUtil.getQualifiedClassName(testMetaData.getPackageID().orgName.value,
                 testMetaData.getPackageID().name.value,
                 MODULE_INIT_CLASS_NAME);
-        Class<?> initClazz = classLoader.loadClass(initClassName);
 
-        suite.setInitFunction(new TesterinaFunction(initClazz,
-                testMetaData.getInitFunctionName()));
-        suite.setStartFunction(new TesterinaFunction(initClazz,
-                testMetaData.getStartFunctionName()));
-        suite.setStopFunction(new TesterinaFunction(initClazz,
-                testMetaData.getStopFunctionName()));
-        // add all functions of the package as utility functions
-        for (Map.Entry<String, String> entry : testMetaData.getNormalFunctionNames().entrySet()) {
-            String functionName = entry.getKey();
-            String functionClassName = entry.getValue();
-            Class<?> functionClass = classLoader.loadClass(functionClassName);
+        try {
+            Class<?> initClazz = ClassLoader.getSystemClassLoader().loadClass(initClassName);
 
-            suite.addTestUtilityFunction(new TesterinaFunction(functionClass, functionName));
+            suite.setInitFunction(new TesterinaFunction(initClazz,
+                    testMetaData.getInitFunctionName()));
+            suite.setStartFunction(new TesterinaFunction(initClazz,
+                    testMetaData.getStartFunctionName()));
+            suite.setStopFunction(new TesterinaFunction(initClazz,
+                    testMetaData.getStopFunctionName()));
+            // add all functions of the package as utility functions
+            for (Map.Entry<String, String> entry : testMetaData.getNormalFunctionNames().entrySet()) {
+                String functionName = entry.getKey();
+                String functionClassName = entry.getValue();
+                Class<?> functionClass = ClassLoader.getSystemClassLoader().loadClass(functionClassName);
+
+                suite.addTestUtilityFunction(new TesterinaFunction(functionClass, functionName));
+            }
+
+            // Add all functions of the test function to test suite
+            String testClassName = BFileUtil.getQualifiedClassName(testMetaData.getPackageID().orgName.value,
+                    testMetaData.getPackageID().name.value,
+                    testMetaData.getPackageID().name.value);
+
+            Class<?> testInitClazz = ClassLoader.getSystemClassLoader().loadClass(testClassName);
+            suite.setTestInitFunction(new TesterinaFunction(testInitClazz,
+                    testMetaData.getTestInitFunctionName()));
+            suite.setTestStartFunction(new TesterinaFunction(testInitClazz,
+                    testMetaData.getTestStartFunctionName()));
+            suite.setTestStopFunction(new TesterinaFunction(testInitClazz,
+                    testMetaData.getTestStopFunctionName()));
+
+            for (Map.Entry<String, String> entry : testMetaData.getTestFunctionNames().entrySet()) {
+                String functionName = entry.getKey();
+                String functionClassName = entry.getValue();
+                Class<?> functionClass = ClassLoader.getSystemClassLoader().loadClass(functionClassName);
+
+                suite.addTestUtilityFunction(new TesterinaFunction(functionClass, functionName));
+            }
+
+            resolveFunctions(suite);
+            int[] testExecutionOrder = checkCyclicDependencies(suite.getTests());
+            List<Test> sortedTests = orderTests(suite.getTests(), testExecutionOrder);
+            suite.setTests(sortedTests);
+            suite.setProgramFile(ClassLoader.getSystemClassLoader());
+        } catch (RuntimeException e) {
+            throw new RuntimeException(e);
+        } catch (Exception e) {
+            throw LauncherUtils.createLauncherException(e.toString());
         }
-
-        // Add all functions of the test function to test suite
-        String testClassName = BFileUtil.getQualifiedClassName(testMetaData.getPackageID().orgName.value,
-                testMetaData.getPackageID().name.value,
-                testMetaData.getPackageID().name.value);
-
-        Class<?> testInitClazz = classLoader.loadClass(testClassName);
-        suite.setTestInitFunction(new TesterinaFunction(testInitClazz,
-                testMetaData.getTestInitFunctionName()));
-        suite.setTestStartFunction(new TesterinaFunction(testInitClazz,
-                testMetaData.getTestStartFunctionName()));
-        suite.setTestStopFunction(new TesterinaFunction(testInitClazz,
-                testMetaData.getTestStopFunctionName()));
-
-        for (Map.Entry<String, String> entry : testMetaData.getTestFunctionNames().entrySet()) {
-            String functionName = entry.getKey();
-            String functionClassName = entry.getValue();
-            Class<?> functionClass = classLoader.loadClass(functionClassName);
-
-            suite.addTestUtilityFunction(new TesterinaFunction(functionClass, functionName));
-        }
-
-        resolveFunctions(suite);
-        int[] testExecutionOrder = checkCyclicDependencies(suite.getTests());
-        List<Test> sortedTests = orderTests(suite.getTests(), testExecutionOrder);
-        suite.setTests(sortedTests);
-        suite.setProgramFile(classLoader);
     }
 
     private static List<Test> orderTests(List<Test> tests, int[] testExecutionOrder) {
