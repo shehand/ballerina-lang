@@ -22,38 +22,26 @@ import org.ballerinalang.coverage.ExecutionCoverageBuilder;
 import org.ballerinalang.model.elements.PackageID;
 import org.ballerinalang.packerina.buildcontext.BuildContext;
 import org.ballerinalang.packerina.buildcontext.BuildContextField;
+import org.ballerinalang.testerina.core.TesterinaConstants;
 import org.wso2.ballerinalang.compiler.tree.BLangPackage;
 import org.wso2.ballerinalang.compiler.util.ProjectDirConstants;
-import org.wso2.ballerinalang.util.Lists;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.net.URI;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.FileSystem;
-import java.nio.file.FileSystems;
-import java.nio.file.FileVisitResult;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.nio.file.SimpleFileVisitor;
-import java.nio.file.StandardCopyOption;
-import java.nio.file.attribute.BasicFileAttributes;
-import java.util.Collections;
-import java.util.HashSet;
 import java.util.List;
 
-import static org.ballerinalang.tool.LauncherUtils.createLauncherException;
 import static org.wso2.ballerinalang.compiler.util.ProjectDirConstants.BALLERINA_HOME;
 import static org.wso2.ballerinalang.compiler.util.ProjectDirConstants.BALLERINA_HOME_BRE;
 import static org.wso2.ballerinalang.compiler.util.ProjectDirConstants.BALLERINA_HOME_LIB;
-import static org.wso2.ballerinalang.compiler.util.ProjectDirConstants.BLANG_COMPILED_JAR_EXT;
 
 /**
  * Task for executing tests.
  */
 public class RunTestsTask implements Task {
-    private static HashSet<String> excludeExtensions = new HashSet<>(Lists.of("DSA", "SF"));
     private boolean generateCoverage;
 
     public RunTestsTask(boolean generateCoverage) {
@@ -94,27 +82,13 @@ public class RunTestsTask implements Task {
                 jarPath = modulejarPath;
             }
 
-            try {
-                URI runnableJar = URI.create("jar:" + jarPath.toUri().toString());
-                try (FileSystem toFs = FileSystems.newFileSystem(runnableJar, Collections.emptyMap())) {
-                    copyTesterinaLauncher(buildContext, toFs);
-                    if (this.generateCoverage) {
-                        String orgName = bLangPackage.packageID.getOrgName().toString();
-                        String packageName = bLangPackage.packageID.getName().toString();
-                        generateCoverageReportForTestRun(moduleJarName, jarPath, sourceRootPath, targetDirPath,
-                                orgName, packageName, buildContext);
-                    } else {
-                        readDataFromJsonAndMockTheTestSuit(moduleJarName, targetDirPath, jarPath, buildContext);
-                    }
-                } catch (RuntimeException e) {
-                    throw new RuntimeException(e);
-                } catch (Exception e) {
-                    buildContext.err().println(e);
-                }
-            } catch (RuntimeException e) {
-                throw new RuntimeException(e);
-            } catch (Exception e) {
-                buildContext.err().println(e);
+            if (this.generateCoverage) {
+                String orgName = bLangPackage.packageID.getOrgName().toString();
+                String packageName = bLangPackage.packageID.getName().toString();
+                generateCoverageReportForTestRun(moduleJarName, jarPath, sourceRootPath, targetDirPath,
+                        orgName, packageName, buildContext);
+            } else {
+                readDataFromJsonAndMockTheTestSuit(moduleJarName, targetDirPath, jarPath, buildContext);
             }
         }
     }
@@ -148,7 +122,8 @@ public class RunTestsTask implements Task {
         Path balDependencyPath = Paths.get(System.getProperty(BALLERINA_HOME)).resolve(BALLERINA_HOME_BRE)
                 .resolve(BALLERINA_HOME_LIB);
         String javaCommand = System.getProperty("java.command");
-        String mainClassName = "org.ballerinalang.starter.Starter";
+        String mainClassName = TesterinaConstants.TESTERINA_LAUNCHER_CLASS_NAME;
+        // TODO: remove the Djava.ext.dirs
         String runningCommand = javaCommand + " -Djava.ext.dirs=" + balDependencyPath.toString() + " -cp "
                 + testJarPath.toString() + " " + mainClassName + " " + jsonPath.toString();
         try {
@@ -173,75 +148,6 @@ public class RunTestsTask implements Task {
             }
         } catch (IOException | InterruptedException e) {
             buildContext.err().println(e);
-        }
-    }
-
-    private void copyTesterinaLauncher(BuildContext buildContext, FileSystem toFs) {
-        String balHomePath = buildContext.get(BuildContextField.HOME_REPO).toString();
-        String ballerinaVersion = System.getProperty("ballerina.version");
-        String testStarterName = "testerina-launcher-" + ballerinaVersion + BLANG_COMPILED_JAR_EXT;
-        Path testStarterJar = Paths.get(balHomePath, "bre", "lib", testStarterName);
-        try {
-            copyFromJarToJar(testStarterJar, toFs);
-        } catch (IOException e) {
-            throw createLauncherException("unable to copy the ballerina runtime all jar :" + e.getMessage());
-        }
-    }
-
-    /**
-     * Copy jar file to another jar file.
-     *
-     * @param fromJar Executable jar out stream
-     * @param toFs    Source file
-     * @throws IOException If file copy failed IOException will be thrown
-     */
-    private static void copyFromJarToJar(Path fromJar, FileSystem toFs) throws IOException {
-        Path to = toFs.getRootDirectories().iterator().next();
-        URI moduleJarUri = URI.create("jar:" + fromJar.toUri().toString());
-        // Load the from jar to a file system.
-        try (FileSystem fromFs = FileSystems.newFileSystem(moduleJarUri, Collections.emptyMap())) {
-            Path from = fromFs.getRootDirectories().iterator().next();
-            // Walk and copy the files.
-            Files.walkFileTree(from, new Copy(from, to));
-        }
-    }
-
-    static class Copy extends SimpleFileVisitor<Path> {
-        private Path fromPath;
-        private Path toPath;
-        private StandardCopyOption copyOption;
-
-
-        Copy(Path fromPath, Path toPath, StandardCopyOption copyOption) {
-            this.fromPath = fromPath;
-            this.toPath = toPath;
-            this.copyOption = copyOption;
-        }
-
-        Copy(Path fromPath, Path toPath) {
-            this(fromPath, toPath, StandardCopyOption.REPLACE_EXISTING);
-        }
-
-        @Override
-        public FileVisitResult preVisitDirectory(Path dir, BasicFileAttributes attrs) throws IOException {
-            Path targetPath = toPath.resolve(fromPath.relativize(dir).toString());
-            if (!Files.exists(targetPath)) {
-                Files.createDirectory(targetPath);
-            }
-            return FileVisitResult.CONTINUE;
-        }
-
-        @Override
-        public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
-            Path toFile = toPath.resolve(fromPath.relativize(file).toString());
-            Path tmpToFilePath = toFile.getFileName();
-            String fileName = tmpToFilePath != null ? tmpToFilePath.toString() : "";
-            if ((!Files.exists(toFile) &&
-                    !excludeExtensions.contains(fileName.substring(fileName.lastIndexOf(".") + 1))) ||
-                    toFile.toString().startsWith("/META-INF/services")) {
-                Files.copy(file, toFile, copyOption);
-            }
-            return FileVisitResult.CONTINUE;
         }
     }
 }
