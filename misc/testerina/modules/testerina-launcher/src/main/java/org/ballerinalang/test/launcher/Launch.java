@@ -24,7 +24,6 @@ import org.ballerinalang.testerina.core.entity.Test;
 import org.ballerinalang.testerina.core.entity.TestJsonData;
 import org.ballerinalang.testerina.core.entity.TestMetaData;
 import org.ballerinalang.testerina.core.entity.TestSuite;
-import org.ballerinalang.testerina.util.TestarinaClassLoader;
 import org.ballerinalang.testerina.util.TesterinaUtils;
 
 import java.io.BufferedReader;
@@ -35,27 +34,28 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 
 /**
- * Java class to mock the test suit in the test run.
+ * Main class to init the test suit.
  */
-class MockTestSuit {
+public class Starter {
 
     private static PrintStream outsStream = System.out;
     private static PrintStream errStream = System.err;
 
-    void readJson(String jsonPath) {
-        Path jsonCachePath = Paths.get(jsonPath, TesterinaConstants.TESTERINA_TEST_SUITE);
+    public static void main(String[] args) {
+
+        Path jsonCachePath = Paths.get(args[0], TesterinaConstants.TESTERINA_TEST_SUITE);
         try {
             BufferedReader br = Files.newBufferedReader(jsonCachePath, StandardCharsets.UTF_8);
 
             //convert the json string back to object
             Gson gson = new Gson();
             TestJsonData response = gson.fromJson(br, TestJsonData.class);
-            initTestSuit(Paths.get(response.getSourceRootPath()), Paths.get(response.getJarPath()), response);
+            HashMap<TestMetaData, String> testMetaDataMap = initTestSuit(response);
+            startTestSuit(Paths.get(response.getSourceRootPath()), testMetaDataMap);
         } catch (RuntimeException e) {
             throw new RuntimeException(e);
         } catch (Exception e) {
@@ -63,7 +63,7 @@ class MockTestSuit {
         }
     }
 
-    private static void initTestSuit(Path sourceRootPath, Path jarPath, TestJsonData testJsonData) {
+    private static HashMap<TestMetaData, String> initTestSuit(TestJsonData testJsonData) {
         TestMetaData testMetaData = new TestMetaData();
 
         // set the PackageID
@@ -108,20 +108,15 @@ class MockTestSuit {
         testMetaData.setPackageName(testJsonData.getPackageName());
         testMetaData.setHasTestablePackages(Boolean.parseBoolean(testJsonData.isHasTestablePackages()));
 
-        // create testerina class loader to run the tests
-        HashSet<Path> moduleDependencies = new HashSet<>();
-        String [] dependencyPaths = testJsonData.getDependencyJarPaths();
-        for (String path: dependencyPaths) {
-            moduleDependencies.add(Paths.get(path));
-        }
-        TestarinaClassLoader testarinaClassLoader = new TestarinaClassLoader(jarPath, moduleDependencies);
+        String testName = testJsonData.getPackageName();
 
-        HashMap<TestMetaData, TestarinaClassLoader> testMetaDataMap = new HashMap<>();
-        testMetaDataMap.put(testMetaData, testarinaClassLoader);
-        startTestSuit(sourceRootPath, testMetaDataMap);
+        HashMap<TestMetaData, String> testMetaDataMap = new HashMap<>();
+        testMetaDataMap.put(testMetaData, testName);
+
+        return testMetaDataMap;
     }
 
-    private static void startTestSuit(Path sourceRootPath, Map<TestMetaData, TestarinaClassLoader> classLoaderMap) {
+    private static void startTestSuit(Path sourceRootPath, Map<TestMetaData, String> classLoaderMap) {
         TesterinaUtils.execTests(sourceRootPath, classLoaderMap, outsStream, errStream);
     }
 }
