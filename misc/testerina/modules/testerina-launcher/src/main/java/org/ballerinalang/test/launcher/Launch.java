@@ -15,7 +15,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.ballerinalang.starter;
+package org.ballerinalang.test.launcher;
 
 import com.google.gson.Gson;
 import org.ballerinalang.testerina.core.TesterinaConstants;
@@ -40,7 +40,7 @@ import java.util.Map;
 /**
  * Main class to init the test suit.
  */
-public class Starter {
+public class Launch {
 
     private static PrintStream outsStream = System.out;
     private static PrintStream errStream = System.err;
@@ -117,6 +117,6 @@ public class Starter {
     }
 
     private static void startTestSuit(Path sourceRootPath, Map<TestMetaData, String> classLoaderMap) {
-        TesterinaUtils.execTests(sourceRootPath, classLoaderMap, outsStream, errStream);
+        TesterinaUtils.executeTests(sourceRootPath, classLoaderMap, outsStream, errStream);
     }
 }
