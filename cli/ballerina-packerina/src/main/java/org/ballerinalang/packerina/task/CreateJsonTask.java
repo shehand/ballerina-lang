@@ -55,7 +55,6 @@ public class CreateJsonTask implements Task {
         Path sourceRootPath = buildContext.get(BuildContextField.SOURCE_ROOT);
         Path targetPath = buildContext.get(BuildContextField.TARGET_DIR);
 
-        Map<BLangPackage, String> programFileMap = new HashMap<>();
         List<BLangPackage> moduleBirMap = buildContext.getModules();
         // Only tests in packages are executed so default packages i.e. single bal files which has the package name
         // as "." are ignored. This is to be consistent with the "ballerina test" command which only executes tests
@@ -63,6 +62,7 @@ public class CreateJsonTask implements Task {
         moduleBirMap.stream()
                 .forEach(bLangPackage -> {
 
+                    Map<BLangPackage, String> programFileMap = new HashMap<>();
                     Path jarPath = buildContext.getTestJarPathFromTargetCache(bLangPackage.packageID);
                     Path modulejarPath = buildContext.getJarPathFromTargetCache(bLangPackage.packageID).getFileName();
                     // subsitute test jar if module jar if tests not exists
