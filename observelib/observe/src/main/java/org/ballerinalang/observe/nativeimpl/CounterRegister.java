@@ -17,7 +17,8 @@
  */
 package org.ballerinalang.observe.nativeimpl;
 
-import org.ballerinalang.jvm.BallerinaErrors;
+import org.ballerinalang.jvm.api.BErrorCreator;
+import org.ballerinalang.jvm.api.BStringUtils;
 import org.ballerinalang.jvm.observability.metrics.Counter;
 import org.ballerinalang.jvm.scheduling.Strand;
 import org.ballerinalang.jvm.values.ObjectValue;
@@ -33,7 +34,7 @@ import org.ballerinalang.natives.annotations.Receiver;
 
 @BallerinaFunction(
         orgName = "ballerina",
-        packageName = "observe",
+        packageName = "observe", version = "0.8.0",
         functionName = "register",
         receiver = @Receiver(type = TypeKind.OBJECT, structType = ObserveNativeImplConstants.COUNTER,
                 structPackage = ObserveNativeImplConstants.OBSERVE_PACKAGE_PATH),
@@ -47,7 +48,7 @@ public class CounterRegister {
             Counter registeredCounter = counter.register();
             counterObj.addNativeData(ObserveNativeImplConstants.METRIC_NATIVE_INSTANCE_KEY, registeredCounter);
         } catch (Exception e) {
-            return BallerinaErrors.createError(e.getMessage());
+            return BErrorCreator.createError(BStringUtils.fromString((e.getMessage())));
         }
 
         return null;

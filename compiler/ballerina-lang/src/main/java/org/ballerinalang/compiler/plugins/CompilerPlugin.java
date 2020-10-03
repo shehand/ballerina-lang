@@ -20,6 +20,7 @@ package org.ballerinalang.compiler.plugins;
 import org.ballerinalang.model.elements.PackageID;
 import org.ballerinalang.model.tree.AnnotationAttachmentNode;
 import org.ballerinalang.model.tree.AnnotationNode;
+import org.ballerinalang.model.tree.ClassDefinition;
 import org.ballerinalang.model.tree.FunctionNode;
 import org.ballerinalang.model.tree.PackageNode;
 import org.ballerinalang.model.tree.ServiceNode;
@@ -90,6 +91,15 @@ public interface CompilerPlugin {
     void process(TypeDefinition typeDefinition, List<AnnotationAttachmentNode> annotations);
 
     /**
+     * Processes a list of annotations attached to a class def node.
+     *
+     * @param classDefinition  the class def node being annotated
+     * @param annotations a list of annotations attached to the object node
+     */
+    default void process(ClassDefinition classDefinition, List<AnnotationAttachmentNode> annotations) {
+    }
+
+    /**
      * Processes a list of annotations attached to a function node.
      *
      * @param functionNode the function node being annotated
@@ -116,8 +126,25 @@ public interface CompilerPlugin {
     /**
      * Notifies when the code generated phase is completed.
      *
-     * @param packageID packageId of the generated code
+     * @param packageID  packageId of the generated code
      * @param binaryPath path to the generated binary file (balx)
      */
     void codeGenerated(PackageID packageID, Path binaryPath);
+
+
+    /**
+     * Notifies when the compiler starts executing compiler plugins for a particular module.
+     *
+     * @param packageID PackageID of the module
+     */
+    default void pluginExecutionStarted(PackageID packageID) {
+    }
+
+    /**
+     * Notifies when the compiler completes executing compiler plugins for a particular module.
+     *
+     * @param packageID PackageID of the module
+     */
+    default void pluginExecutionCompleted(PackageID packageID) {
+    }
 }

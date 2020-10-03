@@ -27,6 +27,8 @@ import org.ballerinalang.jvm.util.BLangConstants;
 @SuppressWarnings("unchecked")
 public class BStringType extends BType {
 
+    private final int tag;
+
     /**
      * Create a {@code BStringType} which represents the boolean type.
      *
@@ -34,19 +36,30 @@ public class BStringType extends BType {
      */
     BStringType(String typeName, BPackage pkg) {
         super(typeName, pkg, String.class);
+        tag = TypeTags.STRING_TAG;
+    }
+
+    BStringType(String typeName, BPackage pkg, int tag) {
+        super(typeName, pkg, String.class);
+        this.tag = tag;
     }
 
     public <V extends Object> V getZeroValue() {
-        return (V) new String(BLangConstants.STRING_EMPTY_VALUE);
+        return (V) BLangConstants.STRING_EMPTY_VALUE;
     }
 
     @Override
     public <V extends Object> V getEmptyValue() {
-        return (V) new String(BLangConstants.STRING_EMPTY_VALUE);
+        return (V) BLangConstants.STRING_EMPTY_VALUE;
     }
 
     @Override
     public int getTag() {
-        return TypeTags.STRING_TAG;
+        return tag;
+    }
+
+    @Override
+    public boolean isReadOnly() {
+        return true;
     }
 }

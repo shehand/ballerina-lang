@@ -18,8 +18,10 @@
 
 package org.ballerinalang.mime.nativeimpl;
 
-import org.ballerinalang.jvm.BallerinaValues;
-import org.ballerinalang.jvm.values.ObjectValue;
+import org.ballerinalang.jvm.api.BStringUtils;
+import org.ballerinalang.jvm.api.BValueCreator;
+import org.ballerinalang.jvm.api.values.BObject;
+import org.ballerinalang.jvm.api.values.BString;
 import org.ballerinalang.mime.util.MimeUtil;
 
 import static org.ballerinalang.mime.util.MimeConstants.CONTENT_DISPOSITION_STRUCT;
@@ -33,14 +35,14 @@ import static org.ballerinalang.mime.util.MimeConstants.PROTOCOL_MIME_PKG_ID;
  */
 public class ContentDisposition {
 
-    public static ObjectValue getContentDispositionObject(String contentDisposition) {
-        ObjectValue contentDispositionObj = BallerinaValues.createObjectValue(PROTOCOL_MIME_PKG_ID,
-                                                                              CONTENT_DISPOSITION_STRUCT);
-        MimeUtil.populateContentDispositionObject(contentDispositionObj, contentDisposition);
+    public static BObject getContentDispositionObject(BString contentDisposition) {
+        BObject contentDispositionObj = BValueCreator.createObjectValue(PROTOCOL_MIME_PKG_ID,
+                                                                        CONTENT_DISPOSITION_STRUCT);
+        MimeUtil.populateContentDispositionObject(contentDispositionObj, contentDisposition.getValue());
         return contentDispositionObj;
     }
 
-    public static String convertContentDispositionToString(ObjectValue contentDispositionObj) {
+    public static BString convertContentDispositionToString(BObject contentDispositionObj) {
         StringBuilder dispositionBuilder = new StringBuilder();
         if (contentDispositionObj != null) {
             String disposition = String.valueOf(contentDispositionObj.get(DISPOSITION_FIELD));
@@ -49,6 +51,6 @@ public class ContentDisposition {
                 MimeUtil.convertDispositionObjectToString(dispositionBuilder, contentDispositionObj);
             }
         }
-        return dispositionBuilder.toString();
+        return BStringUtils.fromString(dispositionBuilder.toString());
     }
 }

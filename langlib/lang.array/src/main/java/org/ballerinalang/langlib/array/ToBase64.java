@@ -18,7 +18,9 @@
 
 package org.ballerinalang.langlib.array;
 
-import org.ballerinalang.jvm.BallerinaErrors;
+import org.ballerinalang.jvm.api.BErrorCreator;
+import org.ballerinalang.jvm.api.BStringUtils;
+import org.ballerinalang.jvm.api.values.BString;
 import org.ballerinalang.jvm.scheduling.Strand;
 import org.ballerinalang.jvm.types.BArrayType;
 import org.ballerinalang.jvm.types.BType;
@@ -34,6 +36,7 @@ import java.util.Base64;
 import static org.ballerinalang.jvm.util.BLangConstants.ARRAY_LANG_LIB;
 import static org.ballerinalang.jvm.util.exceptions.BallerinaErrorReasons.OPERATION_NOT_SUPPORTED_IDENTIFIER;
 import static org.ballerinalang.jvm.util.exceptions.BallerinaErrorReasons.getModulePrefixedReason;
+import static org.ballerinalang.util.BLangCompilerConstants.ARRAY_VERSION;
 
 /**
  * Native implementation of lang.array:toBase64(byte[]).
@@ -41,21 +44,24 @@ import static org.ballerinalang.jvm.util.exceptions.BallerinaErrorReasons.getMod
  * @since 1.0
  */
 @BallerinaFunction(
-        orgName = "ballerina", packageName = "lang.array", functionName = "toBase64",
+        orgName = "ballerina", packageName = "lang.array", version = ARRAY_VERSION, functionName = "toBase64",
         args = {@Argument(name = "arr", type = TypeKind.ARRAY)},
         returnType = {@ReturnType(type = TypeKind.STRING)},
         isPublic = true
 )
 public class ToBase64 {
 
-    public static String toBase64(Strand strand, ArrayValue arr) {
+    private static final BString NOT_SUPPORT_DETAIL_ERROR = BStringUtils
+            .fromString("toBase64() is only supported on 'byte[]'");
+
+    public static BString toBase64(Strand strand, ArrayValue arr) {
         BType arrType = arr.getType();
         if (arrType.getTag() != TypeTags.ARRAY_TAG ||
                 ((BArrayType) arrType).getElementType().getTag() != TypeTags.BYTE_TAG) {
-            throw BallerinaErrors.createError(getModulePrefixedReason(ARRAY_LANG_LIB,
-                                                                      OPERATION_NOT_SUPPORTED_IDENTIFIER),
-                                              "toBase64() is only supported on 'byte[]'");
+            throw BErrorCreator.createError(getModulePrefixedReason(ARRAY_LANG_LIB,
+                                                                    OPERATION_NOT_SUPPORTED_IDENTIFIER),
+                                            NOT_SUPPORT_DETAIL_ERROR);
         }
-        return Base64.getEncoder().encodeToString(arr.getBytes());
+        return BStringUtils.fromString(Base64.getEncoder().encodeToString(arr.getBytes()));
     }
 }

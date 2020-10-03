@@ -36,10 +36,10 @@ import org.wso2.ballerinalang.compiler.bir.model.VarKind;
 import org.wso2.ballerinalang.compiler.bir.writer.CPEntry.ByteCPEntry;
 import org.wso2.ballerinalang.compiler.bir.writer.CPEntry.FloatCPEntry;
 import org.wso2.ballerinalang.compiler.bir.writer.CPEntry.IntegerCPEntry;
-import org.wso2.ballerinalang.compiler.bir.writer.CPEntry.PackageCPEntry;
 import org.wso2.ballerinalang.compiler.bir.writer.CPEntry.StringCPEntry;
 import org.wso2.ballerinalang.compiler.semantics.model.types.BType;
 import org.wso2.ballerinalang.compiler.util.TypeTags;
+import org.wso2.ballerinalang.compiler.util.diagnotic.DiagnosticPos;
 
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
@@ -65,34 +65,27 @@ public class BIRBinaryWriter {
     public byte[] serialize() {
         ByteBuf birbuf = Unpooled.buffer();
         BIRTypeWriter typeWriter = new BIRTypeWriter(birbuf, cp);
-        BIRInstructionWriter insWriter = new BIRInstructionWriter(birbuf, typeWriter, cp, this);
 
 
         // Write the package details in the form of constant pool entry
-        int orgCPIndex = addStringCPEntry(birPackage.org.value);
-        int nameCPIndex = addStringCPEntry(birPackage.name.value);
-        int versionCPIndex = addStringCPEntry(birPackage.version.value);
-        int pkgIndex = cp.addCPEntry(new PackageCPEntry(orgCPIndex, nameCPIndex, versionCPIndex));
-        birbuf.writeInt(pkgIndex);
+        birbuf.writeInt(BIRWriterUtils.addPkgCPEntry(this.birPackage, this.cp));
 
         //Write import module declarations
         writeImportModuleDecls(birbuf, birPackage.importModules);
         // Write constants
         writeConstants(birbuf, birPackage.constants);
         // Write type defs
-        writeTypeDefs(birbuf, typeWriter, insWriter, birPackage.typeDefs);
+        writeTypeDefs(birbuf, typeWriter, birPackage.typeDefs);
         // Write global vars
         writeGlobalVars(birbuf, typeWriter, birPackage.globalVars);
         // Write type def bodies
-        writeTypeDefBodies(birbuf, typeWriter, insWriter, birPackage.typeDefs);
+        writeTypeDefBodies(birbuf, typeWriter, birPackage.typeDefs);
         // Write functions
-        writeFunctions(birbuf, typeWriter, insWriter, birPackage.functions);
+        writeFunctions(birbuf, typeWriter, birPackage.functions);
         // Write annotations
-        writeAnnotations(birbuf, typeWriter, insWriter, birPackage.annotations);
+        writeAnnotations(birbuf, typeWriter, birPackage.annotations);
 
         // Write the constant pool entries.
-        // TODO Only one constant pool is available for now. This will change in future releases
-        // TODO e.g., strtab, shstrtab, rodata.
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
         try (DataOutputStream dataOut = new DataOutputStream(baos)) {
             dataOut.write(cp.serialize());
@@ -118,31 +111,31 @@ public class BIRBinaryWriter {
     /**
      * Write the type definitions. Only the container will be written, to avoid
      * cyclic dependencies with global vars.
-     * 
+     *
      * @param buf ByteBuf
      * @param typeWriter Type writer
-     * @param insWriter Instruction writer              
      * @param birTypeDefList Type definitions list
      */
-    private void writeTypeDefs(ByteBuf buf, BIRTypeWriter typeWriter, BIRInstructionWriter insWriter,
-                List<BIRTypeDefinition> birTypeDefList) {
+    private void writeTypeDefs(ByteBuf buf, BIRTypeWriter typeWriter,
+                               List<BIRTypeDefinition> birTypeDefList) {
         buf.writeInt(birTypeDefList.size());
-        birTypeDefList.forEach(typeDef -> writeType(buf, typeWriter, insWriter, typeDef));
+        birTypeDefList.forEach(typeDef -> writeType(buf, typeWriter, typeDef));
     }
 
     /**
      * Write the body of the type definitions.
-     * 
+     *
      * @param buf ByteBuf
      * @param typeWriter Type writer
      * @param birTypeDefList Type definitions list
      */
-    private void writeTypeDefBodies(ByteBuf buf, BIRTypeWriter typeWriter, BIRInstructionWriter insWriter,
+    private void writeTypeDefBodies(ByteBuf buf, BIRTypeWriter typeWriter,
                                     List<BIRTypeDefinition> birTypeDefList) {
         List<BIRTypeDefinition> filtered = birTypeDefList.stream().filter(t -> t.type.tag == TypeTags.OBJECT
                 || t.type.tag == TypeTags.RECORD).collect(Collectors.toList());
+        buf.writeInt(filtered.size());
         filtered.forEach(typeDef -> {
-            writeFunctions(buf, typeWriter, insWriter, typeDef.attachedFuncs);
+            writeFunctions(buf, typeWriter, typeDef.attachedFuncs);
             writeReferencedTypes(buf, typeDef.referencedTypes);
         });
     }
@@ -160,6 +153,8 @@ public class BIRBinaryWriter {
             buf.writeInt(addStringCPEntry(birGlobalVar.name.value));
             // Flags
             buf.writeInt(birGlobalVar.flags);
+            // Origin
+            buf.writeByte(birGlobalVar.origin.value());
 
             typeWriter.writeMarkdownDocAttachment(buf, birGlobalVar.markdownDocAttachment);
 
@@ -168,42 +163,45 @@ public class BIRBinaryWriter {
         }
     }
 
-    private void writeType(ByteBuf buf, BIRTypeWriter typeWriter, BIRInstructionWriter insWriter,
+    private void writeType(ByteBuf buf, BIRTypeWriter typeWriter,
                            BIRTypeDefinition typeDef) {
-        insWriter.writePosition(typeDef.pos);
+        writePosition(buf, typeDef.pos);
         // Type name CP Index
         buf.writeInt(addStringCPEntry(typeDef.name.value));
         // Flags
         buf.writeInt(typeDef.flags);
         buf.writeByte(typeDef.isLabel ? 1 : 0);
+        // Origin
+        buf.writeByte(typeDef.origin.value());
         // write documentation
         typeWriter.writeMarkdownDocAttachment(buf, typeDef.markdownDocAttachment);
         writeType(buf, typeDef.type);
     }
 
-    private void writeFunctions(ByteBuf buf, BIRTypeWriter typeWriter, BIRInstructionWriter insWriter,
+    private void writeFunctions(ByteBuf buf, BIRTypeWriter typeWriter,
                                 List<BIRNode.BIRFunction> birFunctionList) {
         buf.writeInt(birFunctionList.size());
-        birFunctionList.forEach(func -> writeFunction(buf, typeWriter, insWriter, func));
+        birFunctionList.forEach(func -> writeFunction(buf, typeWriter, func));
     }
 
-    private void writeFunction(ByteBuf buf, BIRTypeWriter typeWriter, BIRInstructionWriter insWriter,
-                               BIRNode.BIRFunction birFunction) {
+    private void writeFunction(ByteBuf buf, BIRTypeWriter typeWriter, BIRNode.BIRFunction birFunction) {
 
         // Write Position
-        insWriter.writePosition(birFunction.pos);
+        writePosition(buf, birFunction.pos);
         // Function name CP Index
         buf.writeInt(addStringCPEntry(birFunction.name.value));
         // Function worker name CP Index
         buf.writeInt(addStringCPEntry(birFunction.workerName.value));
         // Flags
         buf.writeInt(birFunction.flags);
+        // Origin
+        buf.writeByte(birFunction.origin.value());
 
         // Function type as a CP Index
         writeType(buf, birFunction.type);
 
         // Store annotations here...
-        writeAnnotAttachments(buf, insWriter, birFunction.annotAttachments);
+        writeAnnotAttachments(buf, birFunction.annotAttachments);
 
         buf.writeInt(birFunction.requiredParams.size());
         for (BIRParameter parameter : birFunction.requiredParams) {
@@ -230,14 +228,16 @@ public class BIRBinaryWriter {
 
         typeWriter.writeMarkdownDocAttachment(buf, birFunction.markdownDocAttachment);
 
+        writeFunctionsGlobalVarDependency(buf, birFunction);
+
         ByteBuf birbuf = Unpooled.buffer();
-        BIRTypeWriter funcTypeWriter = new BIRTypeWriter(birbuf, cp);
-        BIRInstructionWriter funcInsWriter = new BIRInstructionWriter(birbuf, funcTypeWriter, cp, this);
+        ByteBuf scopebuf = Unpooled.buffer();
+        BIRInstructionWriter funcInsWriter = new BIRInstructionWriter(birbuf, scopebuf, cp, this);
 
         // Arg count
         birbuf.writeInt(birFunction.argsCount);
-        // Local variables
 
+        // Write return variable, function parameters and local variables
         birbuf.writeBoolean(birFunction.returnVariable != null);
         if (birFunction.returnVariable != null) {
             birbuf.writeByte(birFunction.returnVariable.kind.getValue());
@@ -262,11 +262,12 @@ public class BIRBinaryWriter {
             writeType(birbuf, localVar.type);
             birbuf.writeInt(addStringCPEntry(localVar.name.value));
             // skip compiler added vars and only write metaVarName for user added vars
-            if (localVar.kind.equals(VarKind.LOCAL) || localVar.kind.equals(VarKind.ARG)) {
+            if (localVar.kind.equals(VarKind.ARG)) {
                 birbuf.writeInt(addStringCPEntry(localVar.metaVarName != null ? localVar.metaVarName : ""));
             }
             // add enclosing basic block id
             if (localVar.kind.equals(VarKind.LOCAL)) {
+                birbuf.writeInt(addStringCPEntry(localVar.metaVarName != null ? localVar.metaVarName : ""));
                 birbuf.writeInt(addStringCPEntry(localVar.endBB != null ? localVar.endBB.id.value : ""));
                 birbuf.writeInt(addStringCPEntry(localVar.startBB != null ? localVar.startBB.id.value : ""));
                 birbuf.writeInt(localVar.insOffset);
@@ -274,7 +275,7 @@ public class BIRBinaryWriter {
         }
 
         // Write basic blocks related to parameter default values
-        birFunction.parameters.values().stream().filter(bbList -> !bbList.isEmpty()).forEach(funcInsWriter::writeBBs);
+        birFunction.parameters.values().forEach(funcInsWriter::writeBBs);
 
         // Write basic blocks
         funcInsWriter.writeBBs(birFunction.basicBlocks);
@@ -290,6 +291,8 @@ public class BIRBinaryWriter {
             birbuf.writeBoolean(details.send);
         }
 
+        // Write the instruction vs scope table
+        writeScopes(buf, scopebuf, funcInsWriter.getScopeCount());
 
         // Write length of the function body so that it can be skipped easily.
         int length = birbuf.nioBuffer().limit();
@@ -297,13 +300,31 @@ public class BIRBinaryWriter {
         buf.writeBytes(birbuf.nioBuffer().array(), 0, length);
     }
 
+    private void writeFunctionsGlobalVarDependency(ByteBuf buf, BIRNode.BIRFunction birFunction) {
+        buf.writeInt(birFunction.dependentGlobalVars.size());
+
+        for (BIRNode.BIRVariableDcl var : birFunction.dependentGlobalVars) {
+            buf.writeInt(addStringCPEntry(var.name.value));
+        }
+    }
+
+    private void writeScopes(ByteBuf buf, ByteBuf scopebuf, int scopeCount) {
+        int length = scopebuf.nioBuffer().limit();
+        // 4 is the size of int which is the number of scopes that we are going to add to the beginning of the buffer
+        buf.writeLong(length + 4);
+        buf.writeInt(scopeCount);
+        buf.writeBytes(scopebuf.nioBuffer().array(), 0, length);
+    }
+
     private void writeTaintTable(ByteBuf buf, TaintTable taintTable) {
         ByteBuf birbuf = Unpooled.buffer();
         birbuf.writeShort(taintTable.rowCount);
         birbuf.writeShort(taintTable.columnCount);
+        birbuf.writeInt(taintTable.taintTable.size());
         for (Integer paramIndex : taintTable.taintTable.keySet()) {
             birbuf.writeShort(paramIndex);
             List<Byte> taintRecord = taintTable.taintTable.get(paramIndex);
+            birbuf.writeInt(taintRecord.size());
             for (Byte taintStatus : taintRecord) {
                 birbuf.writeByte(taintStatus);
             }
@@ -313,18 +334,20 @@ public class BIRBinaryWriter {
         buf.writeBytes(birbuf.nioBuffer().array(), 0, length);
     }
 
-    private void writeAnnotations(ByteBuf buf, BIRTypeWriter typeWriter, BIRInstructionWriter insWriter,
-                                List<BIRNode.BIRAnnotation> birAnnotationList) {
+    private void writeAnnotations(ByteBuf buf, BIRTypeWriter typeWriter,
+                                  List<BIRNode.BIRAnnotation> birAnnotationList) {
         buf.writeInt(birAnnotationList.size());
         birAnnotationList.forEach(annotation -> writeAnnotation(buf, typeWriter, annotation));
     }
 
     private void writeAnnotation(ByteBuf buf, BIRTypeWriter typeWriter,
-                               BIRNode.BIRAnnotation birAnnotation) {
+                                 BIRNode.BIRAnnotation birAnnotation) {
         // Annotation name CP Index
         buf.writeInt(addStringCPEntry(birAnnotation.name.value));
 
         buf.writeInt(birAnnotation.flags);
+        buf.writeByte(birAnnotation.origin.value());
+        writePosition(buf, birAnnotation.pos);
 
         buf.writeInt(birAnnotation.attachPoints.size());
         for (AttachPoint attachPoint : birAnnotation.attachPoints) {
@@ -333,6 +356,7 @@ public class BIRBinaryWriter {
         }
 
         writeType(buf, birAnnotation.annotationType);
+        typeWriter.writeMarkdownDocAttachment(buf, birAnnotation.markdownDocAttachment);
     }
 
     private void writeConstants(ByteBuf buf, List<BIRNode.BIRConstant> birConstList) {
@@ -345,12 +369,14 @@ public class BIRBinaryWriter {
         // Annotation name CP Index
         buf.writeInt(addStringCPEntry(birConstant.name.value));
         buf.writeInt(birConstant.flags);
+        buf.writeByte(birConstant.origin.value());
+        writePosition(buf, birConstant.pos);
 
         typeWriter.writeMarkdownDocAttachment(buf, birConstant.markdownDocAttachment);
 
         writeType(buf, birConstant.type);
 
-        // write the length of the conctant value, so that it can be skipped.
+        // write the length of the constant value, so that it can be skipped.
         ByteBuf birbuf = Unpooled.buffer();
         writeConstValue(birbuf, birConstant.constValue);
         int length = birbuf.nioBuffer().limit();
@@ -362,6 +388,12 @@ public class BIRBinaryWriter {
         writeType(buf, constValue.type);
         switch (constValue.type.tag) {
             case TypeTags.INT:
+            case TypeTags.SIGNED32_INT:
+            case TypeTags.SIGNED16_INT:
+            case TypeTags.SIGNED8_INT:
+            case TypeTags.UNSIGNED32_INT:
+            case TypeTags.UNSIGNED16_INT:
+            case TypeTags.UNSIGNED8_INT:
                 buf.writeInt(addIntCPEntry((Long) constValue.value));
                 break;
             case TypeTags.BYTE:
@@ -375,11 +407,12 @@ public class BIRBinaryWriter {
                 buf.writeInt(addFloatCPEntry(doubleVal));
                 break;
             case TypeTags.STRING:
+            case TypeTags.CHAR_STRING:
             case TypeTags.DECIMAL:
                 buf.writeInt(addStringCPEntry((String) constValue.value));
                 break;
             case TypeTags.BOOLEAN:
-                buf.writeByte((Boolean) constValue.value ? 1 : 0);
+                buf.writeBoolean((Boolean) constValue.value);
                 break;
             case TypeTags.NIL:
                 break;
@@ -419,26 +452,22 @@ public class BIRBinaryWriter {
         buf.writeInt(cp.addShapeCPEntry(type));
     }
 
-    void writeAnnotAttachments(ByteBuf buff,
-                                       BIRInstructionWriter insWriter,
-                                       List<BIRAnnotationAttachment> annotAttachments) {
+    void writeAnnotAttachments(ByteBuf buff, List<BIRAnnotationAttachment> annotAttachments) {
         ByteBuf annotBuf = Unpooled.buffer();
         annotBuf.writeInt(annotAttachments.size());
         for (BIRAnnotationAttachment annotAttachment : annotAttachments) {
-            writeAnnotAttachment(annotBuf, insWriter, annotAttachment);
+            writeAnnotAttachment(annotBuf, annotAttachment);
         }
         int length = annotBuf.nioBuffer().limit();
         buff.writeLong(length);
         buff.writeBytes(annotBuf.nioBuffer().array(), 0, length);
     }
 
-    private void writeAnnotAttachment(ByteBuf annotBuf,
-                                      BIRInstructionWriter insWriter,
-                                      BIRAnnotationAttachment annotAttachment) {
+    private void writeAnnotAttachment(ByteBuf annotBuf, BIRAnnotationAttachment annotAttachment) {
         // Write module information of the annotation attachment
-        annotBuf.writeInt(insWriter.addPkgCPEntry(annotAttachment.packageID));
+        annotBuf.writeInt(BIRWriterUtils.addPkgCPEntry(annotAttachment.packageID, this.cp));
         // Write position
-        insWriter.writePosition(annotBuf, annotAttachment.pos);
+        writePosition(annotBuf, annotAttachment.pos);
         annotBuf.writeInt(addStringCPEntry(annotAttachment.annotTagRef.value));
         writeAnnotAttachValues(annotBuf, annotAttachment.annotValues);
     }
@@ -472,5 +501,9 @@ public class BIRBinaryWriter {
             BIRAnnotationLiteralValue annotLiteralValue = (BIRAnnotationLiteralValue) annotValue;
             writeConstValue(annotBuf, new ConstValue(annotLiteralValue.value, annotLiteralValue.type));
         }
+    }
+
+    private void writePosition(ByteBuf buf, DiagnosticPos pos) {
+        BIRWriterUtils.writePosition(pos, buf, this.cp);
     }
 }

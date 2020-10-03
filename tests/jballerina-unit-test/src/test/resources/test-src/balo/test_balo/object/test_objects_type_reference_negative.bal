@@ -16,12 +16,12 @@
 
 import testorg/foo;
 
-type Manager1 object {
+class Manager1 {
     string dpt = "HR";
 
     *foo:Employee1;
 
-    function __init(string name, int age=25) {
+    function init(string name, int age=25) {
         self.name = name;
         self.age = age;
         self.salary = 3000.0;
@@ -30,10 +30,14 @@ type Manager1 object {
     public function getBonus(float ratio, int months=6) returns float {
         return self.salary*ratio*months;
     }
-};
+}
 
-type Manager2 object {
+class Manager2 {
     string dpt = "HR";
 
     *foo:Manager1;  // Referring a non-abstract object in a BALO
-};
+}
+
+class NamedPerson {
+    *foo:NormalPerson;
+}

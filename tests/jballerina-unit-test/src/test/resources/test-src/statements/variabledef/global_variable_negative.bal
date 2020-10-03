@@ -28,19 +28,15 @@ public int invalidPublicGlobalInt = 1;
 
 public int invalidPublicGobalVar = 1;
 
-int uninitializedModuleVariable;
-
-var uninitializedModuleVar;
-
 listener Listener uninitializedModuleListener;
 
 public listener Listener uninitializedPublicModuleListener;
 
-public type Listener object {
+public class Listener {
 
     *Listener;
 
-    public function __init() {
+    public function init() {
 
     }
 
@@ -59,4 +55,4 @@ public type Listener object {
     public function __immediateStop() returns error? {
         return ();
     }
-};
+}

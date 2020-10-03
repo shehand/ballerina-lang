@@ -18,9 +18,9 @@
 
 package org.ballerinalang.stdlib.task.objects;
 
-import org.ballerinalang.jvm.BRuntime;
+import org.ballerinalang.jvm.api.BRuntime;
+import org.ballerinalang.jvm.api.values.BObject;
 import org.ballerinalang.jvm.types.AttachedFunction;
-import org.ballerinalang.jvm.values.ObjectValue;
 
 import static org.ballerinalang.stdlib.task.utils.TaskConstants.RESOURCE_ON_TRIGGER;
 
@@ -31,22 +31,16 @@ import static org.ballerinalang.stdlib.task.utils.TaskConstants.RESOURCE_ON_TRIG
  */
 public class ServiceInformation {
     private BRuntime runtime;
-    private ObjectValue service;
-    private Object attachment;
+    private BObject service;
+    private final Object[] attachments;
 
-    public ServiceInformation(BRuntime runtime, ObjectValue service, Object attachment) {
+    public ServiceInformation(BRuntime runtime, BObject service, Object... attachments) {
         this.runtime = runtime;
         this.service = service;
-        this.attachment = attachment;
+        this.attachments = attachments;
     }
 
-    public ServiceInformation(BRuntime runtime, ObjectValue service) {
-        this.runtime = runtime;
-        this.service = service;
-        this.attachment = null;
-    }
-
-    public ObjectValue getService() {
+    public BObject getService() {
         return service;
     }
 
@@ -63,8 +57,8 @@ public class ServiceInformation {
         return null;
     }
 
-    public Object getAttachment() {
-        return attachment;
+    public Object[] getAttachment() {
+        return this.attachments.clone();
     }
 
     public BRuntime getRuntime() {

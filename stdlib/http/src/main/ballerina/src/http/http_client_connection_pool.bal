@@ -15,7 +15,7 @@
 // under the License.
 
 import ballerina/config;
-import ballerinax/java;
+import ballerina/java;
 
 # Configurations for managing HTTP client connection pool.
 #
@@ -31,19 +31,19 @@ public type PoolConfiguration record {
 };
 
 //This is a hack to get the global map initialized, without involving locking.
-type ConnectionManager object {
+class ConnectionManager {
     public PoolConfiguration poolConfig = {};
-    public function __init() {
+    public function init() {
         self.initGlobalPool(self.poolConfig);
     }
     function initGlobalPool(PoolConfiguration poolConfig) {
         return externInitGlobalPool(poolConfig);
     }
-};
+}
 
 function externInitGlobalPool(PoolConfiguration poolConfig) =
 @java:Method {
-    class: "org.ballerinalang.net.http.clientendpoint.InitGlobalPool",
+    'class: "org.ballerinalang.net.http.clientendpoint.InitGlobalPool",
     name: "initGlobalPool"
 } external;
 

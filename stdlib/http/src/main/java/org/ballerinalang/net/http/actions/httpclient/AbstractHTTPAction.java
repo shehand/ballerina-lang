@@ -22,7 +22,9 @@ import io.netty.handler.codec.EncoderException;
 import io.netty.handler.codec.http.DefaultLastHttpContent;
 import io.netty.handler.codec.http.HttpHeaderNames;
 import io.netty.handler.codec.http.HttpHeaders;
-import org.ballerinalang.jvm.BallerinaValues;
+import org.ballerinalang.jvm.api.BValueCreator;
+import org.ballerinalang.jvm.api.values.BError;
+import org.ballerinalang.jvm.api.values.BObject;
 import org.ballerinalang.jvm.observability.ObservabilityConstants;
 import org.ballerinalang.jvm.observability.ObserveUtils;
 import org.ballerinalang.jvm.observability.ObserverContext;
@@ -31,9 +33,7 @@ import org.ballerinalang.jvm.transactions.TransactionLocalContext;
 import org.ballerinalang.jvm.util.exceptions.BallerinaConnectorException;
 import org.ballerinalang.jvm.util.exceptions.BallerinaException;
 import org.ballerinalang.jvm.values.ArrayValue;
-import org.ballerinalang.jvm.values.ErrorValue;
 import org.ballerinalang.jvm.values.MapValue;
-import org.ballerinalang.jvm.values.ObjectValue;
 import org.ballerinalang.mime.util.EntityBodyHandler;
 import org.ballerinalang.mime.util.HeaderUtil;
 import org.ballerinalang.mime.util.MultipartDataSource;
@@ -82,8 +82,8 @@ public abstract class AbstractHTTPAction {
         CACHE_BALLERINA_VERSION = System.getProperty(BALLERINA_VERSION);
     }
 
-    protected static HttpCarbonMessage createOutboundRequestMsg(Strand strand, String serviceUri, MapValue config, 
-                                                                String path, ObjectValue request) {
+    protected static HttpCarbonMessage createOutboundRequestMsg(Strand strand, String serviceUri, MapValue config,
+                                                                String path, BObject request) {
         if (request == null) {
             request = ValueCreatorUtils.createRequestObject();
         }
@@ -115,7 +115,7 @@ public abstract class AbstractHTTPAction {
     static void prepareOutboundRequest(Strand strand, String serviceUri, String path, HttpCarbonMessage outboundRequest,
                                        Boolean nonEntityBodyReq) {
         if (strand.isInTransaction()) {
-            TransactionLocalContext transactionLocalContext = strand.transactionLocalContext;
+            TransactionLocalContext transactionLocalContext = strand.currentTrxContext;
             outboundRequest.setHeader(HttpConstants.HEADER_X_XID, transactionLocalContext.getGlobalTransactionId());
             outboundRequest.setHeader(HttpConstants.HEADER_X_REGISTER_AT_URL, transactionLocalContext.getURL());
         }
@@ -247,7 +247,7 @@ public abstract class AbstractHTTPAction {
     }
 
     private static void checkDirtiness(DataContext dataContext, HttpCarbonMessage outboundRequestMsg) {
-        ObjectValue requestObj = dataContext.getRequestObj();
+        BObject requestObj = dataContext.getRequestObj();
         String contentType = HttpUtil.getContentTypeFromTransportMessage(outboundRequestMsg);
         outboundRequestMsg.setIoException(null);
         if (requestObj != null) {
@@ -259,9 +259,9 @@ public abstract class AbstractHTTPAction {
         }
     }
 
-    private static void cleanOutboundReq(HttpCarbonMessage outboundRequestMsg, ObjectValue request,
+    private static void cleanOutboundReq(HttpCarbonMessage outboundRequestMsg, BObject request,
                                          String contentType) {
-        ObjectValue entity = extractEntity(request);
+        BObject entity = extractEntity(request);
         if (entity != null) {
             Object messageDataSource = EntityBodyHandler.getMessageDataSource(entity);
             if (messageDataSource == null && EntityBodyHandler.getByteChannel(entity) == null
@@ -275,11 +275,11 @@ public abstract class AbstractHTTPAction {
         }
     }
 
-    static boolean isNoEntityBodyRequest(ObjectValue request) {
+    static boolean isNoEntityBodyRequest(BObject request) {
         return (Boolean) request.get(HttpConstants.REQUEST_NO_ENTITY_BODY_FIELD);
     }
 
-    private static boolean dirty(ObjectValue request) {
+    private static boolean dirty(BObject request) {
         return (Boolean) request.get(HttpConstants.REQUEST_REUSE_STATUS_FIELD);
     }
 
@@ -323,8 +323,8 @@ public abstract class AbstractHTTPAction {
 
         final HttpMessageDataStreamer outboundMsgDataStreamer = getHttpMessageDataStreamer(outboundRequestMsg);
         final OutputStream messageOutputStream = outboundMsgDataStreamer.getOutputStream();
-        ObjectValue requestObj = dataContext.getRequestObj();
-        ObjectValue entityObj = null;
+        BObject requestObj = dataContext.getRequestObj();
+        BObject entityObj = null;
         if (requestObj != null) {
             entityObj = extractEntity(requestObj);
             if (entityObj == null) {
@@ -383,7 +383,7 @@ public abstract class AbstractHTTPAction {
      * @param boundaryString      Boundary string that should be used in encoding body parts
      * @param messageOutputStream Output stream to which the payload is written
      */
-    private static void serializeMultiparts(ObjectValue entityObj, OutputStream messageOutputStream,
+    private static void serializeMultiparts(BObject entityObj, OutputStream messageOutputStream,
                                             String boundaryString) throws IOException {
         ArrayValue bodyParts = EntityBodyHandler.getBodyPartArray(entityObj);
         if (bodyParts != null && bodyParts.size() > 0) {
@@ -401,13 +401,13 @@ public abstract class AbstractHTTPAction {
      * @param messageOutputStream Output stream to which the payload is written
      */
     private static void serializeMultipartDataSource(OutputStream messageOutputStream,
-                                                     String boundaryString, ObjectValue entityObj) {
+                                                     String boundaryString, BObject entityObj) {
         MultipartDataSource multipartDataSource = new MultipartDataSource(entityObj, boundaryString);
         multipartDataSource.serialize(messageOutputStream);
         HttpUtil.closeMessageOutputStream(messageOutputStream);
     }
 
-    private static void serializeDataSource(ObjectValue entityObj, OutputStream messageOutputStream)
+    private static void serializeDataSource(BObject entityObj, OutputStream messageOutputStream)
             throws IOException {
         Object messageDataSource = EntityBodyHandler.getMessageDataSource(entityObj);
         if (messageDataSource != null) {
@@ -436,15 +436,15 @@ public abstract class AbstractHTTPAction {
 
         @Override
         public void onResponseHandle(ResponseHandle responseHandle) {
-            ObjectValue httpFuture = BallerinaValues.createObjectValue(HttpConstants.PROTOCOL_HTTP_PKG_ID,
-                    HttpConstants.HTTP_FUTURE);
+            BObject httpFuture = BValueCreator.createObjectValue(HttpConstants.PROTOCOL_HTTP_PKG_ID,
+                                                                 HttpConstants.HTTP_FUTURE);
             httpFuture.addNativeData(HttpConstants.TRANSPORT_HANDLE, responseHandle);
             this.dataContext.notifyInboundResponseStatus(httpFuture, null);
         }
 
         @Override
         public void onError(Throwable throwable) {
-            ErrorValue httpConnectorError;
+            BError httpConnectorError;
             if (throwable instanceof ClientConnectorException) {
                 httpConnectorError = HttpUtil.createHttpError(throwable);
             } else if (throwable instanceof IOException) {
@@ -473,32 +473,32 @@ public abstract class AbstractHTTPAction {
 
         @Override
         public void onMessage(HttpCarbonMessage httpCarbonMessage) {
-            super.onMessage(httpCarbonMessage);
             int statusCode = httpCarbonMessage.getHttpStatusCode();
             addHttpStatusCode(statusCode);
+            super.onMessage(httpCarbonMessage);
         }
 
         @Override
         public void onError(Throwable throwable) {
-            super.onError(throwable);
             if (throwable instanceof ClientConnectorException) {
                 ClientConnectorException clientConnectorException = (ClientConnectorException) throwable;
                 addHttpStatusCode(clientConnectorException.getHttpStatusCode());
                 Optional<ObserverContext> observerContext =
                         ObserveUtils.getObserverContextOfCurrentFrame(context.getStrand());
                 observerContext.ifPresent(ctx -> {
-                    ctx.addProperty(ObservabilityConstants.PROPERTY_ERROR, Boolean.TRUE);
+                    ctx.addTag(ObservabilityConstants.TAG_KEY_ERROR, ObservabilityConstants.TAG_TRUE_VALUE);
                     ctx.addProperty(ObservabilityConstants.PROPERTY_ERROR_MESSAGE, throwable.getMessage());
                 });
 
             }
+            super.onError(throwable);
         }
 
         private void addHttpStatusCode(int statusCode) {
             Optional<ObserverContext> observerContext =
                     ObserveUtils.getObserverContextOfCurrentFrame(context.getStrand());
-            observerContext.ifPresent(ctx -> ctx.addTag(ObservabilityConstants.TAG_KEY_HTTP_STATUS_CODE,
-                    String.valueOf(statusCode)));
+            observerContext.ifPresent(ctx -> ctx.addProperty(ObservabilityConstants.PROPERTY_KEY_HTTP_STATUS_CODE,
+                    statusCode));
         }
     }
 }

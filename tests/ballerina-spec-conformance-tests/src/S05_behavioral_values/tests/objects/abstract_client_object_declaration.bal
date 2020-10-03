@@ -57,7 +57,7 @@ const STRING_FIELD = "string";
 
 // If a non-abstract object type OT has a type reference to an abstract object type AT,
 // then each method declared in AT must be defined in OT using either a method-defn or an outside-method-defn.
-type AbstractClientObject abstract client object {
+type AbstractClientObject client object {
     public string publicStringField;
     float defaultVisibilityFloatField;
 
@@ -74,7 +74,7 @@ type AbstractClientObject abstract client object {
                                returns float;
 };
 
-type ObjReferenceToAbstractClientObject client object {
+client class ObjReferenceToAbstractClientObject {
     *AbstractClientObject;
     private int privateIntField;
 
@@ -101,12 +101,12 @@ type ObjReferenceToAbstractClientObject client object {
         return self.defaultVisibilityFloatField;
     }
 
-    function __init(string argOne, int argTwo, float argThree) {
+    function init(string argOne, int argTwo, float argThree) {
         self.publicStringField = argOne;
         self.privateIntField = argTwo;
         self.defaultVisibilityFloatField = argThree;
     }
-};
+}
 
 function ObjReferenceToAbstractClientObject.defaultVisibiltyMethodOutsideDecl(string argOne, int argTwo) {
     self.defaultVisibilityFloatField += argTwo;
@@ -173,19 +173,19 @@ function testAbstractClientObjectDeclaration() {
             "public visibility remote method declared outside to be accessible");
 }
 
-type ClientAbstractObject client abstract object {
+type ClientAbstractObject client object {
     public string publicStringField;
     float floatField;
 
     remote function getPrivateField() returns int;
 };
 
-type ObjReferenceToClientAbstractObject client object {
+client class ObjReferenceToClientAbstractObject {
     *ClientAbstractObject;
 
     private float privateFloatField;
 
-    function __init() {
+    function init() {
         self.publicStringField = STRING_FIELD;
         self.floatField = FLOAT_VALUE_ONE;
         self.privateFloatField = FLOAT_VALUE_TWO;
@@ -194,7 +194,7 @@ type ObjReferenceToClientAbstractObject client object {
     remote function getPrivateField() returns float {
         return self.privateFloatField;
     }
-};
+}
 
 @test:Config {}
 function testClientAbstractObjectDeclaration() {

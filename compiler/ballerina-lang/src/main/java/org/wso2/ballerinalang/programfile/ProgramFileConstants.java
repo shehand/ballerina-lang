@@ -25,25 +25,12 @@ public class ProgramFileConstants {
 
     public static final int MAGIC_NUMBER = 0xBA1DA4CE;
     public static final short VERSION_NUMBER = 50;
-    public static final int BIR_VERSION_NUMBER = 52;
-    public static final short MIN_SUPPORTED_VERSION = 52;
-    public static final short MAX_SUPPORTED_VERSION = 52;
-
-    // int, float, string, boolean, reference type
-    public static final int NO_OF_VAR_TYPE_CATEGORIES = 5;
-    public static final int INT_OFFSET = 0;
-    public static final int FLOAT_OFFSET = 1;
-    public static final int STRING_OFFSET = 2;
-    public static final int BOOL_OFFSET = 3;
-    public static final int REF_OFFSET = 4;
-
-    // byte has been given negative offset value in order to properly find the correct opCodes at
-    // {@link CodeGenerator#getOpcodeForArrayOperations(int, int)} method.
-    public static final int BYTE_NEGATIVE_OFFSET = 1;
-
+    public static final int BIR_VERSION_NUMBER = 53;
+    public static final short MIN_SUPPORTED_VERSION = 53;
+    public static final short MAX_SUPPORTED_VERSION = 53;
 
     // todo move this to a proper place
-    public static final String IMPLEMENTATION_VERSION = "2019r3";
+    public static final String IMPLEMENTATION_VERSION = "2020r2";
     public static final String[] SUPPORTED_PLATFORMS = {"java8"};
     public static final String ANY_PLATFORM = "any";
 }

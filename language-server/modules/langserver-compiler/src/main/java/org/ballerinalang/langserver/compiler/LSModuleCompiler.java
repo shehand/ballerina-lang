@@ -15,10 +15,13 @@
  */
 package org.ballerinalang.langserver.compiler;
 
-import org.antlr.v4.runtime.ANTLRErrorStrategy;
-import org.ballerinalang.langserver.compiler.common.LSDocument;
+import org.ballerinalang.langserver.commons.LSContext;
+import org.ballerinalang.langserver.commons.workspace.LSDocumentIdentifier;
+import org.ballerinalang.langserver.commons.workspace.WorkspaceDocumentManager;
+import org.ballerinalang.langserver.compiler.common.LSDocumentIdentifierImpl;
+import org.ballerinalang.langserver.compiler.config.LSClientConfig;
+import org.ballerinalang.langserver.compiler.config.LSClientConfigHolder;
 import org.ballerinalang.langserver.compiler.exception.CompilationFailedException;
-import org.ballerinalang.langserver.compiler.workspace.WorkspaceDocumentManager;
 import org.ballerinalang.langserver.compiler.workspace.repository.WorkspacePackageRepository;
 import org.ballerinalang.model.elements.PackageID;
 import org.ballerinalang.repository.PackageRepository;
@@ -52,63 +55,54 @@ public class LSModuleCompiler {
     /**
      * Get the BLangPackage for a given program.
      *
-     * @param context            Language Server Context
-     * @param docManager         Document manager
-     * @param errStrategy        custom error strategy class
-     * @param compileFullProject updateAndCompileFile full project from the source root
+     * @param context              Language Server Context
+     * @param docManager           Document manager
+     * @param compileFullProject   updateAndCompileFile full project from the source root
      * @param stopOnSemanticErrors whether stop compilation on semantic errors
-     *
      * @return {@link List}      A list of packages when compile full project
      * @throws CompilationFailedException when compilation fails
      */
     public static BLangPackage getBLangPackage(LSContext context, WorkspaceDocumentManager docManager,
-                                               Class<? extends ANTLRErrorStrategy> errStrategy,
                                                boolean compileFullProject, boolean stopOnSemanticErrors)
             throws CompilationFailedException {
-        List<BLangPackage> bLangPackages = getBLangPackages(context, docManager, errStrategy,
-                                                            compileFullProject, false, stopOnSemanticErrors);
+        List<BLangPackage> bLangPackages = getBLangPackages(context, docManager,
+                compileFullProject, false, stopOnSemanticErrors);
         return bLangPackages.get(0);
     }
 
     /**
      * Get the all ballerina modules for a given project.
      *
-     * @param context            Language Server Context
-     * @param docManager         Document manager
-     * @param errStrategy        Custom error strategy class
+     * @param context              Language Server Context
+     * @param docManager           Document manager
      * @param stopOnSemanticErrors Whether stop compilation on semantic errors
-     * 
      * @return {@link List}      A list of packages when compile full project
-     * @throws URISyntaxException when the uri of the source root is invalid
+     * @throws URISyntaxException         when the uri of the source root is invalid
      * @throws CompilationFailedException when the compiler throws any error
      */
     public static List<BLangPackage> getBLangModules(LSContext context, WorkspaceDocumentManager docManager,
-                                                     Class<? extends ANTLRErrorStrategy> errStrategy,
                                                      boolean stopOnSemanticErrors)
             throws URISyntaxException, CompilationFailedException {
         String sourceRoot = Paths.get(new URI(context.get(DocumentServiceKeys.SOURCE_ROOT_KEY))).toString();
         PackageRepository pkgRepo = new WorkspacePackageRepository(sourceRoot, docManager);
 
         CompilerContext compilerContext = prepareCompilerContext(pkgRepo, sourceRoot, docManager, stopOnSemanticErrors);
-        Compiler compiler = LSCompilerUtil.getCompiler(context, compilerContext, errStrategy);
+        Compiler compiler = LSCompilerUtil.getCompiler(context, compilerContext);
         return compilePackagesSafe(compiler, sourceRoot, false, context);
     }
 
     /**
      * Get the BLangPackage for a given program.
      *
-     * @param context            Language Server Context
-     * @param docManager         Document manager
-     * @param errStrategy        custom error strategy class
-     * @param compileFullProject updateAndCompileFile full project from the source root
-     * @param clearProjectModules whether clear current project modules from ls package cache
+     * @param context              Language Server Context
+     * @param docManager           Document manager
+     * @param compileFullProject   updateAndCompileFile full project from the source root
+     * @param clearProjectModules  whether clear current project modules from ls package cache
      * @param stopOnSemanticErrors whether stop compilation on semantic errors
-     *
      * @return {@link List}      A list of packages when compile full project
      * @throws CompilationFailedException Whenever compilation fails
      */
     public static List<BLangPackage> getBLangPackages(LSContext context, WorkspaceDocumentManager docManager,
-                                                      Class<? extends ANTLRErrorStrategy> errStrategy,
                                                       boolean compileFullProject, boolean clearProjectModules,
                                                       boolean stopOnSemanticErrors)
             throws CompilationFailedException {
@@ -119,7 +113,7 @@ public class LSModuleCompiler {
             uri = LSCompilerUtil.createTempFile(unsavedFileId.get()).toUri().toString();
             context.put(DocumentServiceKeys.FILE_URI_KEY, uri);
         }
-        LSDocument sourceDoc = new LSDocument(uri);
+        LSDocumentIdentifier sourceDoc = new LSDocumentIdentifierImpl(uri);
         context.put(DocumentServiceKeys.LS_DOCUMENT_KEY, sourceDoc);
         String projectRoot = sourceDoc.getProjectRoot();
         PackageRepository pkgRepo = new WorkspacePackageRepository(projectRoot, docManager);
@@ -156,7 +150,7 @@ public class LSModuleCompiler {
                 // If the flag is set, we remove all the modules in the current project from the LSPackageCache
                 LSPackageCache.getInstance(compilerContext).invalidateProjectModules(sourceDoc.getProjectModules());
             }
-            Compiler compiler = LSCompilerUtil.getCompiler(context, compilerContext, errStrategy);
+            Compiler compiler = LSCompilerUtil.getCompiler(context, compilerContext);
             List<BLangPackage> projectPackages = compilePackagesSafe(compiler, projectRoot, false, context);
             packages.addAll(projectPackages);
             Optional<BLangPackage> currentPkg = projectPackages.stream().filter(bLangPackage -> {
@@ -167,7 +161,7 @@ public class LSModuleCompiler {
             // No need to check the option is existing since the current package always exist
             LSPackageCache.getInstance(compilerContext).invalidate(currentPkg.get().packageID);
         } else {
-            Compiler compiler = LSCompilerUtil.getCompiler(context, compilerContext, errStrategy);
+            Compiler compiler = LSCompilerUtil.getCompiler(context, compilerContext);
             BLangPackage bLangPackage = compileSafe(compiler, projectRoot, pkgName, context);
             LSPackageCache.getInstance(compilerContext).invalidate(bLangPackage.packageID);
             packages.add(bLangPackage);
@@ -189,16 +183,17 @@ public class LSModuleCompiler {
      * @param compiler    {@link Compiler}
      * @param projectRoot project root
      * @param pkgName     package name or file name
-     * @param context   {@link LSContext}
+     * @param context     {@link LSContext}
      * @return {@link BLangPackage}
      * @throws CompilationFailedException thrown when compilation failed
      */
     protected static BLangPackage compileSafe(Compiler compiler, String projectRoot, String pkgName, LSContext context)
             throws CompilationFailedException {
         LSCompilerCache.Key key = new LSCompilerCache.Key(projectRoot, context);
+        LSClientConfig config = LSClientConfigHolder.getInstance().getConfig();
         try {
             long startTime = 0L;
-            if (LSClientLogger.isTraceEnabled()) {
+            if (config.isTraceLogEnabled()) {
                 startTime = System.nanoTime();
             }
             boolean isCacheSupported = context.get(DocumentServiceKeys.IS_CACHE_SUPPORTED) != null &&
@@ -207,28 +202,28 @@ public class LSModuleCompiler {
                     context.get(DocumentServiceKeys.IS_CACHE_OUTDATED_SUPPORTED);
             BLangPackage bLangPackage;
             if (isCacheSupported) {
-                LSCompilerCache.CacheEntry cacheEntry = LSCompilerCache.get(key, context);
+                LSCompilerCache.CacheEntry cacheEntry = LSCompilerCache.getPackage(key, context);
                 if (cacheEntry != null && (isOutdatedSupported || !cacheEntry.isOutdated())) {
-                    if (LSClientLogger.isTraceEnabled()) {
+                    if (config.isTraceLogEnabled()) {
                         long endTime = System.nanoTime();
                         long eTime = TimeUnit.MILLISECONDS.convert(endTime - startTime, TimeUnit.NANOSECONDS);
                         LSClientLogger.logTrace("Operation '" + context.getOperation().getName() + "' {projectRoot: '" +
-                                                        projectRoot + "'}, served through cache within " + eTime +
-                                                        "ms");
+                                projectRoot + "'}, served through cache within " + eTime +
+                                "ms");
                     }
                     // Cache hit
                     return cacheEntry.get().getLeft();
                 }
                 bLangPackage = compiler.compile(pkgName);
-                LSCompilerCache.put(key, EitherPair.forLeft(bLangPackage), context);
+                LSCompilerCache.putPackage(key, bLangPackage, context);
             } else {
                 bLangPackage = compiler.compile(pkgName);
             }
-            if (LSClientLogger.isTraceEnabled()) {
+            if (config.isTraceLogEnabled()) {
                 long endTime = System.nanoTime();
                 long eTime = TimeUnit.MILLISECONDS.convert(endTime - startTime, TimeUnit.NANOSECONDS);
                 LSClientLogger.logTrace("Operation '" + context.getOperation().getName() + "' {projectRoot: '" +
-                                                projectRoot + "'}, compilation took " + eTime + "ms");
+                        projectRoot + "'}, compilation took " + eTime + "ms");
             }
             return bLangPackage;
         } catch (RuntimeException e) {
@@ -246,7 +241,7 @@ public class LSModuleCompiler {
      * @param compiler    {@link Compiler}
      * @param projectRoot project root
      * @param isBuild     if `True` builds all packages
-     * @param context   {@link LSContext}
+     * @param context     {@link LSContext}
      * @return a list of {@link BLangPackage}
      * @throws CompilationFailedException thrown when compilation failed
      */
@@ -254,9 +249,10 @@ public class LSModuleCompiler {
                                                             LSContext context)
             throws CompilationFailedException {
         LSCompilerCache.Key key = new LSCompilerCache.Key(projectRoot, context);
+        LSClientConfig config = LSClientConfigHolder.getInstance().getConfig();
         try {
             long startTime = 0L;
-            if (LSClientLogger.isTraceEnabled()) {
+            if (config.isTraceLogEnabled()) {
                 startTime = System.nanoTime();
             }
             boolean isCacheSupported = context.get(DocumentServiceKeys.IS_CACHE_SUPPORTED) != null &&
@@ -265,28 +261,28 @@ public class LSModuleCompiler {
                     context.get(DocumentServiceKeys.IS_CACHE_OUTDATED_SUPPORTED);
             List<BLangPackage> bLangPackages;
             if (isCacheSupported) {
-                LSCompilerCache.CacheEntry cacheEntry = LSCompilerCache.get(key, context);
+                LSCompilerCache.CacheEntry cacheEntry = LSCompilerCache.getPackages(key, context);
                 if (cacheEntry != null && (isOutdatedSupported || !cacheEntry.isOutdated())) {
-                    if (LSClientLogger.isTraceEnabled()) {
+                    if (config.isTraceLogEnabled()) {
                         long endTime = System.nanoTime();
                         long eTime = TimeUnit.MILLISECONDS.convert(endTime - startTime, TimeUnit.NANOSECONDS);
                         LSClientLogger.logTrace("Operation '" + context.getOperation().getName() + "' {projectRoot: '" +
-                                                        projectRoot + "'}, served through cache within " + eTime +
-                                                        "ms");
+                                projectRoot + "'}, served through cache within " + eTime +
+                                "ms");
                     }
                     // Cache hit
                     return cacheEntry.get().getRight();
                 }
                 bLangPackages = compiler.compilePackages(isBuild);
-                LSCompilerCache.put(key, EitherPair.forRight(bLangPackages), context);
+                LSCompilerCache.putPackages(key, bLangPackages, context);
             } else {
                 bLangPackages = compiler.compilePackages(isBuild);
             }
-            if (LSClientLogger.isTraceEnabled()) {
+            if (config.isTraceLogEnabled()) {
                 long endTime = System.nanoTime();
                 long eTime = TimeUnit.MILLISECONDS.convert(endTime - startTime, TimeUnit.NANOSECONDS);
                 LSClientLogger.logTrace("Operation '" + context.getOperation().getName() + "' {projectRoot: '" +
-                                                projectRoot + "'}, compilation took " + eTime + "ms");
+                        projectRoot + "'}, compilation took " + eTime + "ms");
             }
             return bLangPackages;
         } catch (RuntimeException e) {

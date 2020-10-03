@@ -40,9 +40,9 @@ public class AnydataNegativeTest {
         assertEquals(result.getErrorCount(), 31);
 
         // Invalid literal assignments to `anydata`
-        validateError(result, index++, "invalid usage of record literal with type 'anydata'", 36, 20);
-        validateError(result, index++, "invalid usage of record literal with type 'anydata'", 37, 21);
-        validateError(result, index++, "invalid usage of record literal with type 'anydata'", 38, 20);
+        validateError(result, index++, "ambiguous type '(anydata|map<int>)'", 36, 29);
+        validateError(result, index++, "ambiguous type '(anydata|map<(int|float)>)'", 37, 36);
+        validateError(result, index++, "ambiguous type '(map<json>|anydata)'", 38, 30);
 
         // Invalid map assignments to `anydata`
         validateError(result, index++, "incompatible types: expected 'anydata', found 'map'", 54, 10);
@@ -57,15 +57,15 @@ public class AnydataNegativeTest {
         validateError(result, index++, "incompatible types: expected 'anydata', found 'map<Foo>'", 75, 10);
         validateError(result, index++,
                 "incompatible types: expected 'anydata', found 'map<" +
-                        "[(int|float|string|boolean|byte|table<any>|json|xml|Bar|map<anydata>|anydata[]),string]>'",
+                        "[(int|float|string|boolean|byte|json|xml|Bar|map<anydata>|anydata[]),string]>'",
                 78, 10);
         validateError(result, index++,
                 "incompatible types: expected 'anydata', found 'map<[" +
-                        "[(int|float|string|boolean|byte|table<any>|json|xml|Bar|map<anydata>|anydata[]),string]," +
+                        "[(int|float|string|boolean|byte|json|xml|Bar|map<anydata>|anydata[]),string]," +
                         "Bar]>'", 81, 10);
         validateError(result, index++,
                       "incompatible types: expected 'anydata', found " +
-                              "'map<(int|float|string|boolean|byte|table<any>|json|xml|Bar|map<anydata>|anydata[])>'",
+                              "'map<(int|float|string|boolean|byte|json|xml|Bar|map<anydata>|anydata[])>'",
                 84, 10);
 
         // Test invalid array assignments
@@ -80,32 +80,32 @@ public class AnydataNegativeTest {
         validateError(result, index++, "incompatible types: expected 'anydata', found 'Foo[]'", 112, 10);
         validateError(result, index++,
                       "incompatible types: expected 'anydata', found " +
-                              "'(int|float|string|boolean|byte|table<any>|json|xml|Bar|map<anydata>|anydata[])[]'", 115,
+                              "'(int|float|string|boolean|byte|json|xml|Bar|map<anydata>|anydata[])[]'", 115,
                       10);
         validateError(result, index++,
                 "incompatible types: expected 'anydata', found '[" +
-                        "[(int|float|string|boolean|byte|table<any>|json|xml|Bar|map<anydata>|anydata[]),string]" +
+                        "[(int|float|string|boolean|byte|json|xml|Bar|map<anydata>|anydata[]),string]" +
                         ",int,float][]'", 118, 10);
 
         // Test invalid union assignments
         validateError(result, index++,
                       "incompatible types: expected 'anydata', found " +
-                              "'(int|float|string|boolean|byte|table<any>|json|xml|Bar|map<anydata>|anydata[])'", 123,
+                              "'(int|float|string|boolean|byte|json|xml|Bar|map<anydata>|anydata[])'", 123,
                       18);
 
         // Test invalid tuple assignments
         validateError(result, index++, "incompatible types: expected 'anydata', found '[int,float,Bar]'", 128, 18);
         validateError(result, index++, "incompatible types: expected 'anydata', found '" +
-                              "[(int|float|string|boolean|byte|table<any>|json|xml|Bar|map<anydata>|anydata[]),int]'",
+                              "[(int|float|string|boolean|byte|json|xml|Bar|map<anydata>|anydata[]),int]'",
                 131, 10);
         validateError(result, index++, "incompatible types: expected 'anydata', found '[" +
-                "[(int|float|string|boolean|byte|table<any>|json|xml|Bar|map<anydata>|anydata[]),int]," +
+                "[(int|float|string|boolean|byte|json|xml|Bar|map<anydata>|anydata[]),int]," +
                         "string,int]'", 134, 10);
 
         // Test invalid map insertions
         validateError(result, index++, "incompatible types: expected 'anydata', found 'Bar'", 139, 16);
         validateError(result, index++, "incompatible types: expected 'anydata', found " +
-                "'(int|float|string|boolean|byte|table<any>|json|xml|Bar|map<anydata>|anydata[])'", 142, 21);
+                "'(int|float|string|boolean|byte|json|xml|Bar|map<anydata>|anydata[])'", 142, 21);
 
         validateError(result, index, "incompatible types: expected 'anydata', found 'error'", 147, 18);
     }

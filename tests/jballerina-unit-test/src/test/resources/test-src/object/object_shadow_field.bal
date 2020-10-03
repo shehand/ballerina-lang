@@ -3,12 +3,12 @@ public function testShadowingObjectField () returns [int, string] {
     return [p.age, p.name];
 }
 
-type Person object {
+class Person {
     public int age = 10;
     public string name = "";
 
-    function __init (int a = 10, string n = "sample result") {
+    function init (int a = 10, string n = "sample result") {
         self.age = a;
         self.name = n;
     }
-};
+}

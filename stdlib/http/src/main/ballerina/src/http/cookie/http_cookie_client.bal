@@ -21,7 +21,7 @@
 # + cookieConfig - Configurations associated with the cookies
 # + httpClient - HTTP client for outbound HTTP requests
 # + cookieStore - Stores the cookies of the client
-public type CookieClient object {
+public client class CookieClient {
 
     public string url;
     public ClientConfiguration config;
@@ -36,7 +36,7 @@ public type CookieClient object {
     # + cookieConfig - Configurations associated with the cookies
     # + httpClient - HTTP client for outbound HTTP requests
     # + cookieStore - Stores the cookies of the client
-     public function __init(string url, ClientConfiguration config, CookieConfig cookieConfig, HttpClient httpClient, CookieStore? cookieStore) {
+     public function init(string url, ClientConfiguration config, CookieConfig cookieConfig, HttpClient httpClient, CookieStore? cookieStore) {
          self.url = url;
          self.config = config;
          self.cookieConfig = cookieConfig;
@@ -53,7 +53,7 @@ public type CookieClient object {
     # + message - An HTTP outbound request message or any payload of type `string`, `xml`, `json`, `byte[]`,
     #             `io:ReadableByteChannel` or `mime:Entity[]`
     # + return - The response for the request or an `http:ClientError` if failed to establish communication with the upstream server
-    public function get(string path, public RequestMessage message = ()) returns @tainted Response|ClientError {
+    public remote function get(string path, RequestMessage message = ()) returns @tainted Response|ClientError {
         Request request = <Request>message;
         addStoredCookiesToRequest(self.url, path, self.cookieStore, request);
         var inboundResponse = self.httpClient->get(path, message = request);
@@ -67,7 +67,7 @@ public type CookieClient object {
     # + message - An HTTP outbound request message or any payload of type `string`, `xml`, `json`, `byte[]`,
     #             `io:ReadableByteChannel` or `mime:Entity[]`
     # + return - The response for the request or an `http:ClientError` if failed to establish communication with the upstream server
-    public function post(string path, RequestMessage message) returns Response|ClientError {
+    public remote function post(string path, RequestMessage message) returns Response|ClientError {
         Request request = <Request>message;
         addStoredCookiesToRequest(self.url, path, self.cookieStore, request);
         var inboundResponse = self.httpClient->post(path, request);
@@ -81,7 +81,7 @@ public type CookieClient object {
     # + message - An HTTP outbound request message or any payload of type `string`, `xml`, `json`, `byte[]`,
     #             `io:ReadableByteChannel` or `mime:Entity[]`
     # + return - The response for the request or an `http:ClientError` if failed to establish communication with the upstream server
-    public function head(string path, public RequestMessage message = ()) returns @tainted Response|ClientError {
+    public remote function head(string path, RequestMessage message = ()) returns @tainted Response|ClientError {
         Request request = <Request>message;
         addStoredCookiesToRequest(self.url, path, self.cookieStore, request);
         var inboundResponse = self.httpClient->head(path, message = request);
@@ -95,7 +95,7 @@ public type CookieClient object {
     # + message - An HTTP outbound request message or any payload of type `string`, `xml`, `json`, `byte[]`,
     #             `io:ReadableByteChannel` or `mime:Entity[]`
     # + return - The response for the request or an `http:ClientError` if failed to establish communication with the upstream server
-    public function put(string path, RequestMessage message) returns Response|ClientError {
+    public remote function put(string path, RequestMessage message) returns Response|ClientError {
         Request request = <Request>message;
         addStoredCookiesToRequest(self.url, path, self.cookieStore, request);
         var inboundResponse = self.httpClient->put(path, request);
@@ -108,7 +108,7 @@ public type CookieClient object {
     # + path - Request path
     # + request - An HTTP inbound request message
     # + return - The response for the request or an `http:ClientError` if failed to establish communication with the upstream server
-    public function forward(string path, Request request) returns Response|ClientError{
+    public remote function forward(string path, Request request) returns Response|ClientError{
         addStoredCookiesToRequest(self.url, path, self.cookieStore, request);
         var inboundResponse = self.httpClient->forward(path, request);
         return addCookiesInResponseToStore(inboundResponse, self.cookieStore, self.cookieConfig, self.url, path);
@@ -122,7 +122,7 @@ public type CookieClient object {
     # + message - An HTTP outbound request message or any payload of type `string`, `xml`, `json`, `byte[]`,
     #             `io:ReadableByteChannel` or `mime:Entity[]`
     # + return - The response for the request or an `http:ClientError` if failed to establish communication with the upstream server
-    public function execute(string httpVerb, string path, RequestMessage message) returns Response|ClientError {
+    public remote function execute(string httpVerb, string path, RequestMessage message) returns Response|ClientError {
         Request request = <Request>message;
         addStoredCookiesToRequest(self.url, path, self.cookieStore, request);
         var inboundResponse = self.httpClient->execute(httpVerb, path, request);
@@ -136,7 +136,7 @@ public type CookieClient object {
     # + message - An HTTP outbound request message or any payload of type `string`, `xml`, `json`, `byte[]`,
     #             `io:ReadableByteChannel` or `mime:Entity[]`
     # + return - The response for the request or an `http:ClientError` if failed to establish communication with the upstream server
-    public function patch(string path, RequestMessage message) returns Response|ClientError  {
+    public remote function patch(string path, RequestMessage message) returns Response|ClientError  {
         Request request = <Request>message;
         addStoredCookiesToRequest(self.url, path, self.cookieStore, request);
         var inboundResponse =  self.httpClient->patch(path, request);
@@ -150,7 +150,7 @@ public type CookieClient object {
     # + message - An HTTP outbound request message or any payload of type `string`, `xml`, `json`, `byte[]`,
     #             `io:ReadableByteChannel` or `mime:Entity[]`
     # + return - The response for the request or an `http:ClientError` if failed to establish communication with the upstream server
-    public function delete(string path, public RequestMessage message = ()) returns Response|ClientError  {
+    public remote function delete(string path, RequestMessage message = ()) returns Response|ClientError  {
         Request request = <Request>message;
         addStoredCookiesToRequest(self.url, path, self.cookieStore, request);
         var inboundResponse =  self.httpClient->delete(path, request);
@@ -164,7 +164,7 @@ public type CookieClient object {
     # + message - An HTTP outbound request message or any payload of type `string`, `xml`, `json`, `byte[]`,
     #             `io:ReadableByteChannel` or `mime:Entity[]`
     # + return - The response for the request or an `http:ClientError` if failed to establish communication with the upstream server
-    public function options(string path, public RequestMessage message = ()) returns Response|ClientError {
+    public remote function options(string path, RequestMessage message = ()) returns Response|ClientError {
         Request request = <Request>message;
         addStoredCookiesToRequest(self.url, path, self.cookieStore, request);
         var inboundResponse =  self.httpClient->options(path, message = request);
@@ -179,52 +179,52 @@ public type CookieClient object {
     # + path - The resource path
     # + message - An HTTP outbound request message or any payload of type `string`, `xml`, `json`, `byte[]`,
     #             `io:ReadableByteChannel` or `mime:Entity[]`
-    # + return - An `HttpFuture`, which represents an asynchronous service invocation, or an `ClientError` if the submission fails
-    public function submit(string httpVerb, string path, RequestMessage message) returns HttpFuture|ClientError {
+    # + return - An `HttpFuture`, which represents an asynchronous service invocation or else an `http:ClientError` if the submission fails
+    public remote function submit(string httpVerb, string path, RequestMessage message) returns HttpFuture|ClientError {
         Request request = <Request>message;
         return self.httpClient->submit(httpVerb, path, request);
     }
 
-    # Retrieves the `Response` for a previously-submitted request.
+    # Retrieves the `http:Response` for a previously-submitted request.
     #
-    # + httpFuture - The `HttpFuture` relates to a previous asynchronous invocation
-    # + return - An HTTP response message or an `ClientError` if the invocation fails
-    public function getResponse(HttpFuture httpFuture) returns Response|ClientError {
+    # + httpFuture - The `http:HttpFuture` relates to a previous asynchronous invocation
+    # + return - An HTTP response message or else an `http:ClientError` if the invocation fails
+    public remote function getResponse(HttpFuture httpFuture) returns Response|ClientError {
         return self.httpClient->getResponse(httpFuture);
     }
 
-    # Checks whether a `PushPromise` exists for a previously-submitted request.
+    # Checks whether an `http:PushPromise` exists for a previously-submitted request.
     #
-    # + httpFuture - The `HttpFuture` related to a previous asynchronous invocation
-    # + return - A `boolean`, which represents whether a `PushPromise` exists
-    public function hasPromise(HttpFuture httpFuture) returns boolean {
+    # + httpFuture - The `http:HttpFuture` related to a previous asynchronous invocation
+    # + return - A `boolean`, which represents whether an `http:PushPromise` exists
+    public remote function hasPromise(HttpFuture httpFuture) returns boolean {
         return self.httpClient->hasPromise(httpFuture);
     }
 
-    # Retrieves the next available `PushPromise` for a previously-submitted request.
+    # Retrieves the next available `http:PushPromise` for a previously-submitted request.
     #
-    # + httpFuture - The `HttpFuture` related to a previous asynchronous invocation
-    # + return - An HTTP Push Promise message or an `ClientError` if the invocation fails
-    public function getNextPromise(HttpFuture httpFuture) returns PushPromise|ClientError{
+    # + httpFuture - The `http:HttpFuture` related to a previous asynchronous invocation
+    # + return - An HTTP Push Promise message or else an `http:ClientError` if the invocation fails
+    public remote function getNextPromise(HttpFuture httpFuture) returns PushPromise|ClientError{
         return self.httpClient->getNextPromise(httpFuture);
     }
 
-    # Retrieves the promised server push `Response` message.
+    # Retrieves the promised server push `http:Response` message.
     #
-    # + promise - The related `PushPromise`
-    # + return - A promised HTTP `Response` message or an `ClientError` if the invocation fails
-    public function getPromisedResponse(PushPromise promise) returns Response|ClientError {
+    # + promise - The related `http:PushPromise`
+    # + return - A promised HTTP `http:Response` message or else an `http:ClientError` if the invocation fails
+    public remote function getPromisedResponse(PushPromise promise) returns Response|ClientError {
         return self.httpClient->getPromisedResponse(promise);
     }
 
-    # Rejects a `PushPromise`. When a `PushPromise` is rejected, there is no chance of fetching a promised
+    # Rejects an `http:PushPromise`. When an `http:PushPromise` is rejected, there is no chance of fetching a promised
     # response using the rejected promise.
     #
     # + promise - The Push Promise to be rejected
-    public function rejectPromise(PushPromise promise) {
+    public remote function rejectPromise(PushPromise promise) {
         self.httpClient->rejectPromise(promise);
     }
-};
+}
 
 // Gets the relevant cookies from the cookieStore and adds them to the request.
 function addStoredCookiesToRequest(string url, string path, CookieStore? cookieStore, Request request) {

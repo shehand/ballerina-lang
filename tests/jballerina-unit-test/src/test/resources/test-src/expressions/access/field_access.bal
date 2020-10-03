@@ -14,6 +14,8 @@
 // specific language governing permissions and limitations
 // under the License.
 
+const ASSERTION_ERROR_REASON = "AssertionError";
+
 type Employee record {
     string name;
     Employee? employer = ();
@@ -205,15 +207,15 @@ function testLaxUnionFieldAccessNegative3() returns boolean {
 
 function assertNonMappingJsonError(json|error je) returns boolean {
     if (je is error) {
-        return je.reason() == "{ballerina}JSONOperationError" && je.detail()?.message == "JSON value is not a mapping";
+        return je.message() == "{ballerina}JSONOperationError" && je.detail()["message"].toString() == "JSON value is not a mapping";
     }
     return false;
 }
 
 function assertKeyNotFoundError(json|error je, string key) returns boolean {
     if (je is error) {
-        return je.reason() == "{ballerina/lang.map}KeyNotFound" &&
-                                je.detail()?.message == "Key '" + key + "' not found in JSON mapping";
+        return je.message() == "{ballerina/lang.map}KeyNotFound" &&
+                                je.detail()["message"].toString() == "Key '" + key + "' not found in JSON mapping";
     }
     return false;
 }
@@ -237,13 +239,13 @@ type Foo record {
     function() returns Baz bazFunc = getBaz;
 };
 
-type Bar object {
+class Bar {
     int i;
 
-    public function __init(int i) {
+    public function init(int i) {
         self.i = i;
     }
-};
+}
 
 type Baz record {
     float f = 2.0;

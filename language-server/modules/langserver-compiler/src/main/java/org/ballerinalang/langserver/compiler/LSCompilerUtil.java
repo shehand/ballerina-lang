@@ -15,12 +15,12 @@
  */
 package org.ballerinalang.langserver.compiler;
 
-import org.antlr.v4.runtime.DefaultErrorStrategy;
 import org.ballerinalang.compiler.CompilerOptionName;
 import org.ballerinalang.compiler.CompilerPhase;
-import org.ballerinalang.langserver.compiler.common.CustomErrorStrategyFactory;
-import org.ballerinalang.langserver.compiler.common.LSDocument;
-import org.ballerinalang.langserver.compiler.workspace.WorkspaceDocumentManager;
+import org.ballerinalang.langserver.commons.LSContext;
+import org.ballerinalang.langserver.commons.workspace.LSDocumentIdentifier;
+import org.ballerinalang.langserver.commons.workspace.WorkspaceDocumentManager;
+import org.ballerinalang.langserver.compiler.config.LSClientConfigHolder;
 import org.ballerinalang.langserver.compiler.workspace.repository.LangServerFSProgramDirectory;
 import org.ballerinalang.langserver.compiler.workspace.repository.LangServerFSProjectDirectory;
 import org.ballerinalang.model.elements.PackageID;
@@ -28,16 +28,15 @@ import org.ballerinalang.repository.PackageRepository;
 import org.ballerinalang.toml.exceptions.TomlException;
 import org.ballerinalang.toml.model.Manifest;
 import org.ballerinalang.toml.parser.ManifestProcessor;
-import org.ballerinalang.util.diagnostic.DiagnosticListener;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.wso2.ballerinalang.compiler.Compiler;
 import org.wso2.ballerinalang.compiler.SourceDirectory;
+import org.wso2.ballerinalang.compiler.diagnostic.BLangDiagnosticLog;
 import org.wso2.ballerinalang.compiler.util.CompilerContext;
 import org.wso2.ballerinalang.compiler.util.CompilerOptions;
 import org.wso2.ballerinalang.compiler.util.ProjectDirConstants;
 import org.wso2.ballerinalang.compiler.util.ProjectDirs;
-import org.wso2.ballerinalang.compiler.util.diagnotic.BLangDiagnosticLog;
 
 import java.io.File;
 import java.io.IOException;
@@ -66,8 +65,6 @@ public class LSCompilerUtil {
     private static final Logger logger = LoggerFactory.getLogger(LSCompilerUtil.class);
 
     public static final String UNTITLED_BAL = "untitled.bal";
-    
-    public static final boolean EXPERIMENTAL_FEATURES_ENABLED;
 
     private static Path untitledProjectPath;
 
@@ -82,8 +79,7 @@ public class LSCompilerUtil {
         } catch (IOException e) {
             logger.error("Unable to create the empty stream.");
         }
-        String experimental = System.getProperty("experimental");
-        EXPERIMENTAL_FEATURES_ENABLED = Boolean.parseBoolean(experimental);
+
         // Here we will create a tmp directory as the untitled project repo.
         File untitledDir = com.google.common.io.Files.createTempDir();
         untitledProjectPath = untitledDir.toPath();
@@ -96,50 +92,42 @@ public class LSCompilerUtil {
             }
         } catch (IOException e) {
             logger.error("Unable to create untitled project directory, " +
-                                 "unsaved files might not work properly.");
+                    "unsaved files might not work properly.");
         }
     }
 
     /**
      * Prepare the compiler context.
      *
-     * @param packageID          Package Name
-     * @param packageRepository  Package Repository
-     * @param sourceRoot         The source root of the project
-     * @param documentManager    {@link WorkspaceDocumentManager} Document Manager
-     * @param compilerPhase      {@link CompilerPhase} Compiler Phase
+     * @param packageID            Package Name
+     * @param packageRepository    Package Repository
+     * @param sourceRoot           The source root of the project
+     * @param documentManager      {@link WorkspaceDocumentManager} Document Manager
+     * @param compilerPhase        {@link CompilerPhase} Compiler Phase
      * @param stopOnSemanticErrors Whether stop compilation on semantic errors
      * @return {@link CompilerContext}     Compiler context
      */
     public static CompilerContext prepareCompilerContext(PackageID packageID, PackageRepository packageRepository,
                                                          String sourceRoot,
                                                          WorkspaceDocumentManager documentManager,
-                                                         CompilerPhase compilerPhase, boolean stopOnSemanticErrors) {
+                                                         CompilerPhase compilerPhase,
+                                                         boolean stopOnSemanticErrors) {
         LSContextManager lsContextManager = LSContextManager.getInstance();
         CompilerContext context = lsContextManager.getCompilerContext(packageID, sourceRoot, documentManager);
         context.put(PackageRepository.class, packageRepository);
         CompilerOptions options = CompilerOptions.getInstance(context);
         options.put(PROJECT_DIR, sourceRoot);
-        options.put(CompilerOptionName.EXPERIMENTAL_FEATURES_ENABLED, Boolean.toString(EXPERIMENTAL_FEATURES_ENABLED));
+        boolean isExperimentalEnabled = LSClientConfigHolder.getInstance().getConfig().isAllowExperimental();
+        options.put(CompilerOptionName.EXPERIMENTAL_FEATURES_ENABLED, Boolean.toString(isExperimentalEnabled));
 
         if (null == compilerPhase) {
             throw new AssertionError("Compiler Phase can not be null.");
         }
-        String phase = compilerPhase.toString().equals(CompilerPhase.COMPILER_PLUGIN.toString()) ? "annotationProcess"
-                : compilerPhase.toString();
-
-        options.put(COMPILER_PHASE, phase);
-        options.put(PRESERVE_WHITESPACE, Boolean.valueOf(true).toString());
+        options.put(COMPILER_PHASE, compilerPhase.toString());
+        options.put(PRESERVE_WHITESPACE, Boolean.TRUE.toString());
         options.put(TEST_ENABLED, String.valueOf(true));
         options.put(SKIP_TESTS, String.valueOf(false));
         options.put(TOOLING_COMPILATION, String.valueOf(stopOnSemanticErrors));
-
-        // In order to capture the syntactic errors, need to go through the default error strategy
-        context.put(DefaultErrorStrategy.class, null);
-
-        if (context.get(DiagnosticListener.class) instanceof CollectDiagnosticListener) {
-            ((CollectDiagnosticListener) context.get(DiagnosticListener.class)).clearAll();
-        }
 
         LangServerFSProjectDirectory projectDirectory =
                 LangServerFSProjectDirectory.getInstance(Paths.get(sourceRoot), documentManager);
@@ -151,9 +139,9 @@ public class LSCompilerUtil {
     /**
      * Prepare the compiler context.
      *
-     * @param packageRepository  Package Repository
-     * @param sourceRoot         The source root of the project
-     * @param documentManager    {@link WorkspaceDocumentManager} Document Manager
+     * @param packageRepository    Package Repository
+     * @param sourceRoot           The source root of the project
+     * @param documentManager      {@link WorkspaceDocumentManager} Document Manager
      * @param stopOnSemanticErrors Whether stop compilation on semantic errors
      * @return {@link CompilerContext}     Compiler context
      */
@@ -170,20 +158,20 @@ public class LSCompilerUtil {
      * Prepare the compiler context. Use this method if you don't have the source root but a LSDocument instance
      * for a lsDocument in the project.
      *
-     * @param pkgID         Package ID
-     * @param pkgRepo Package Repository
-     * @param lsDocument          LSDocument for Source Root
-     * @param docManager {@link WorkspaceDocumentManager} Document Manager
-     * @param compilerPhase {@link CompilerPhase} Compiler Phase
+     * @param pkgID                Package ID
+     * @param pkgRepo              Package Repository
+     * @param lsDocument           LSDocument for Source Root
+     * @param docManager           {@link WorkspaceDocumentManager} Document Manager
+     * @param compilerPhase        {@link CompilerPhase} Compiler Phase
      * @param stopOnSemanticErrors Whether stop compilation on semantic errors
      * @return {@link CompilerContext}     Compiler context
      */
     public static CompilerContext prepareCompilerContext(PackageID pkgID, PackageRepository pkgRepo,
-                                                         LSDocument lsDocument,
+                                                         LSDocumentIdentifier lsDocument,
                                                          WorkspaceDocumentManager docManager,
                                                          CompilerPhase compilerPhase, boolean stopOnSemanticErrors) {
         CompilerContext context = prepareCompilerContext(pkgID, pkgRepo, lsDocument.getProjectRoot(), docManager,
-                                                         compilerPhase, stopOnSemanticErrors);
+                compilerPhase, stopOnSemanticErrors);
         Path sourceRootPath = lsDocument.getProjectRootPath();
         if (lsDocument.isWithinProject()) {
             LangServerFSProjectDirectory projectDirectory =
@@ -201,38 +189,34 @@ public class LSCompilerUtil {
      * Prepare the compiler context. Use this method if you don't have the source root but a LSDocument instance
      * for a document in the project.
      *
-     * @param packageID         Package Name
-     * @param packageRepository Package Repository
-     * @param sourceRoot        LSDocument for Source Root
-     * @param documentManager {@link WorkspaceDocumentManager} Document Manager
+     * @param packageID            Package Name
+     * @param packageRepository    Package Repository
+     * @param sourceRoot           LSDocument for Source Root
+     * @param documentManager      {@link WorkspaceDocumentManager} Document Manager
      * @param stopOnSemanticErrors Whether stop compilation on semantic errors
      * @return {@link CompilerContext}     Compiler context
      */
     public static CompilerContext prepareCompilerContext(PackageID packageID, PackageRepository packageRepository,
-                                                         LSDocument sourceRoot,
+                                                         LSDocumentIdentifier sourceRoot,
                                                          WorkspaceDocumentManager documentManager,
                                                          boolean stopOnSemanticErrors) {
         return prepareCompilerContext(packageID, packageRepository, sourceRoot, documentManager,
-                                      CompilerPhase.COMPILER_PLUGIN, stopOnSemanticErrors);
+                CompilerPhase.COMPILER_PLUGIN, stopOnSemanticErrors);
     }
 
     /**
      * Get compiler for the given context and file.
      *
-     * @param context               Language server context
-     * @param compilerContext       Compiler context
-     * @param customErrorStrategy   custom error strategy class
+     * @param context             Language server context
+     * @param compilerContext     Compiler context
      * @return {@link Compiler}     ballerina compiler
      */
-    static Compiler getCompiler(LSContext context, CompilerContext compilerContext, Class customErrorStrategy) {
+    static Compiler getCompiler(LSContext context, CompilerContext compilerContext) {
         context.put(DocumentServiceKeys.COMPILER_CONTEXT_KEY, compilerContext);
-        if (customErrorStrategy != null) {
-            compilerContext.put(DefaultErrorStrategy.class,
-                                CustomErrorStrategyFactory.getCustomErrorStrategy(customErrorStrategy, context));
-        }
-        BLangDiagnosticLog.getInstance(compilerContext).errorCount = 0;
+        BLangDiagnosticLog.getInstance(compilerContext).resetErrorCount();
         Compiler compiler = Compiler.getInstance(compilerContext);
         compiler.setOutStream(emptyPrintStream);
+        compiler.setErrorStream(emptyPrintStream);
         return compiler;
     }
 
@@ -352,7 +336,7 @@ public class LSCompilerUtil {
     /**
      * Get the toml content from the config.
      *
-     * @param projectDirPath    Project Directory Path
+     * @param projectDirPath Project Directory Path
      * @return {@link Manifest} Toml Model
      */
     static Manifest getManifest(Path projectDirPath) {
@@ -364,8 +348,11 @@ public class LSCompilerUtil {
         }
     }
 
-    static class EmptyPrintStream extends PrintStream {
-        EmptyPrintStream() throws UnsupportedEncodingException {
+    /**
+     * Represents an empty print stream to avoid writing to the standard print stream.
+     */
+    public static class EmptyPrintStream extends PrintStream {
+        public EmptyPrintStream() throws UnsupportedEncodingException {
             super(new OutputStream() {
                 @Override
                 public void write(int b) {

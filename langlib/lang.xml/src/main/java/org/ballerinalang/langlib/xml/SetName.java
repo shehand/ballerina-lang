@@ -17,23 +17,29 @@
  */
 package org.ballerinalang.langlib.xml;
 
-import org.ballerinalang.jvm.XMLValueUtil;
+import org.ballerinalang.jvm.XMLNodeType;
+import org.ballerinalang.jvm.api.values.BString;
 import org.ballerinalang.jvm.scheduling.Strand;
 import org.ballerinalang.jvm.util.exceptions.BLangExceptionHelper;
 import org.ballerinalang.jvm.util.exceptions.RuntimeErrors;
+import org.ballerinalang.jvm.values.XMLItem;
 import org.ballerinalang.jvm.values.XMLValue;
 import org.ballerinalang.model.types.TypeKind;
 import org.ballerinalang.natives.annotations.Argument;
 import org.ballerinalang.natives.annotations.BallerinaFunction;
 import org.ballerinalang.natives.annotations.ReturnType;
 
+import javax.xml.namespace.QName;
+
+import static org.ballerinalang.util.BLangCompilerConstants.XML_VERSION;
+
 /**
- * Returns a new xml element whose name is changed to provided name, all other content copied from xmlVal.
+ * Change the name of element `xmlVal` to `newName`.
  *
  * @since 1.0
  */
 @BallerinaFunction(
-        orgName = "ballerina", packageName = "lang.xml",
+        orgName = "ballerina", packageName = "lang.xml", version = XML_VERSION,
         functionName = "setName",
         args = {@Argument(name = "xmlValue", type = TypeKind.XML),
                 @Argument(name = "newName", type = TypeKind.STRING)},
@@ -44,13 +50,26 @@ public class SetName {
     private static final String OPERATION = "set element name in xml";
 
 
-    public static void setName(Strand strand, XMLValue<?> xmlVal, String newName) {
+    public static void setName(Strand strand, XMLValue xmlVal, BString newNameBStr) {
+        String newName = newNameBStr.getValue();
         if (!IsElement.isElement(strand, xmlVal)) {
             throw BLangExceptionHelper.getRuntimeException(RuntimeErrors.XML_FUNC_TYPE_ERROR, "setName", "element");
         }
 
         try {
-            XMLValueUtil.setElementName(xmlVal, newName);
+            if (xmlVal.getNodeType() == XMLNodeType.ELEMENT) {
+                QName newQName;
+                if (newName.startsWith("{")) {
+                    int endCurly = newName.indexOf('}');
+                    String nsUri = newName.substring(0, endCurly);
+                    String localPart = newName.substring(endCurly + 1, newName.length() - 1);
+                    newQName = new QName(nsUri, localPart);
+                } else {
+                    newQName = new QName(newName);
+                }
+
+                ((XMLItem) xmlVal).setQName(newQName);
+            }
         } catch (Throwable e) {
             BLangExceptionHelper.handleXMLException(OPERATION, e);
         }

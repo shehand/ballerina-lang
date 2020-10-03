@@ -15,14 +15,14 @@
  */
 package org.ballerinalang.langserver.compiler;
 
-import org.ballerinalang.langserver.compiler.common.LSDocument;
+import org.ballerinalang.langserver.commons.LSContext;
+import org.ballerinalang.langserver.commons.workspace.LSDocumentIdentifier;
 import org.ballerinalang.langserver.compiler.common.modal.BallerinaPackage;
 import org.ballerinalang.model.elements.PackageID;
 import org.wso2.ballerinalang.compiler.PackageLoader;
 import org.wso2.ballerinalang.compiler.semantics.model.symbols.BPackageSymbol;
 import org.wso2.ballerinalang.compiler.tree.BLangPackage;
 import org.wso2.ballerinalang.compiler.util.CompilerContext;
-import org.wso2.ballerinalang.compiler.util.Name;
 import org.wso2.ballerinalang.compiler.util.ProjectDirConstants;
 import org.wso2.ballerinalang.util.RepoUtils;
 
@@ -31,7 +31,6 @@ import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
-import java.util.stream.Collectors;
 
 /**
  * Loads the Ballerina builtin core and builtin packages.
@@ -39,8 +38,10 @@ import java.util.stream.Collectors;
 public class LSPackageLoader {
 
     private static final String LIB_REPO_DIR = "lib/repo";
+    private static final String BALO_CACHE_DIR = "cache/balo";
     private static final String DOT = ".";
     private static final String BALLERINA_HOME = "ballerina.home";
+    private static List<String> visibleOrgs = new ArrayList<>();
     private static List<BallerinaPackage> sdkPackages = getSDKPackagesFromSrcDir();
     private static List<BallerinaPackage> homeRepoPackages = getPackagesFromHomeRepo();
 
@@ -74,9 +75,6 @@ public class LSPackageLoader {
      * @return {@link BLangPackage} Resolved BLang Package
      */
     public static Optional<BPackageSymbol> getPackageSymbolById(CompilerContext context, PackageID packageID) {
-        if (isLangLib(packageID)) {
-            return Optional.empty();
-        }
         BPackageSymbol packageSymbol;
         synchronized (LSPackageLoader.class) {
             PackageLoader pkgLoader = PackageLoader.getInstance(context);
@@ -94,27 +92,45 @@ public class LSPackageLoader {
         List<BallerinaPackage> ballerinaPackages = new ArrayList<>();
         String ballerinaSDKHome = System.getProperty(BALLERINA_HOME);
         if (ballerinaSDKHome != null) {
-            String ballerinaLibRepoDir = Paths.get(ballerinaSDKHome, LIB_REPO_DIR).toString();
-            File reposDir = new File(ballerinaLibRepoDir);
-            String[] repos = reposDir.list((dir, name) -> !name.startsWith(DOT));
-            if (repos != null) {
-                for (String repo : repos) {
-                    String repoDir = Paths.get(ballerinaLibRepoDir, repo).toString();
-                    File packageDir = new File(repoDir);
-                    String[] packageNames = packageDir.list(((dir, name) -> !name.startsWith(DOT)));
-                    if (packageNames != null) {
-                        for (String name : packageNames) {
-                            if (name == null || ("ballerina".equals(repo) && name.contains("__internal"))
-                                    || name.contains(".balx") || name.equals("lang.annotations")) {
-                                continue;
+            String libRepoDir = Paths.get(ballerinaSDKHome, LIB_REPO_DIR).toString();
+            String baloCacheDir = Paths.get(ballerinaSDKHome, BALO_CACHE_DIR).toString();
+            ballerinaPackages.addAll(getPackageNamesFromDirectory(libRepoDir));
+            ballerinaPackages.addAll(getPackageNamesFromDirectory(baloCacheDir));
+        }
+        return ballerinaPackages;
+    }
+    
+    private static List<BallerinaPackage> getPackageNamesFromDirectory(String dirName) {
+        List<BallerinaPackage> ballerinaPackages = new ArrayList<>();
+        File directory = new File(dirName);
+        String[] repos = directory.list((dir, name) -> !name.startsWith(DOT));
+        if (repos != null) {
+            for (String repo : repos) {
+                String repoDir = Paths.get(dirName, repo).toString();
+                File packageDir = new File(repoDir);
+                String[] packageNames = packageDir.list(((dir, name) -> !name.startsWith(DOT)));
+                if (packageNames != null) {
+                    for (String name : packageNames) {
+                        if (name == null || ("ballerina".equals(repo) && name.contains("__internal"))
+                                || name.contains(".balx")) {
+                            continue;
+                        }
+                        File versionDir = Paths.get(packageDir.getAbsolutePath(), name).toFile();
+                        String[] versions = versionDir.list();
+                        if (versions != null) {
+                            for (String version : versions) {
+                                BallerinaPackage ballerinaPackage = new BallerinaPackage(repo, name, version);
+                                ballerinaPackages.add(ballerinaPackage);
+                                if (!visibleOrgs.contains(repo)) {
+                                    visibleOrgs.add(repo);
+                                }
                             }
-                            BallerinaPackage ballerinaPackage = new BallerinaPackage(repo, name, null);
-                            ballerinaPackages.add(ballerinaPackage);
                         }
                     }
                 }
             }
         }
+        
         return ballerinaPackages;
     }
 
@@ -145,6 +161,9 @@ public class LSPackageLoader {
                                             if (versionDir.isDirectory()) {
                                                 String version = versionDir.getName();
                                                 ballerinaPackages.add(new BallerinaPackage(orgName, pkgName, version));
+                                                if (!visibleOrgs.contains(orgName)) {
+                                                    visibleOrgs.add(orgName);
+                                                }
                                             }
                                         }
                                     }
@@ -182,7 +201,7 @@ public class LSPackageLoader {
      */
     public static List<BallerinaPackage> getCurrentProjectModules(BLangPackage pkg, LSContext context) {
         List<BallerinaPackage> packageList = new ArrayList<>();
-        LSDocument lsDocument = context.get(DocumentServiceKeys.LS_DOCUMENT_KEY);
+        LSDocumentIdentifier lsDocument = context.get(DocumentServiceKeys.LS_DOCUMENT_KEY);
         
         /*
         If the lsDocument instance is null or not within a project, we skip processing
@@ -198,18 +217,5 @@ public class LSPackageLoader {
             packageList.add(new BallerinaPackage(pkg.packageID.orgName.value, moduleName, pkg.packageID.version.value));
         }
         return packageList;
-    }
-
-    /**
-     * Whether the given package is a lang lib.
-     *
-     * @param packageID Package ID to evaluate
-     * @return {@link Boolean} whether package is a lang lib
-     */
-    private static boolean isLangLib(PackageID packageID) {
-        String orgName = packageID.orgName.value;
-        List<String> nameComps = packageID.nameComps.stream().map(Name::getValue).collect(Collectors.toList());
-
-        return orgName.equals("ballerina") && nameComps.get(0).equals("lang");
     }
 }

@@ -14,6 +14,8 @@
 // specific language governing permissions and limitations
 // under the License.
 
+import ballerina/java;
+
 final StatisticConfig[] DEFAULT_GAUGE_STATS_CONFIG = [{ timeWindow: 600000, buckets: 5,
     percentiles: [0.33, 0.5, 0.66, 0.75, 0.95, 0.99, 0.999] }];
 
@@ -41,7 +43,7 @@ public function startSpan(string spanName, map<string>? tags = (), int parentSpa
 # + tagKey - Key of the tag
 # + tagValue - Value of the tag
 # + return - An error if an error occurred while attaching tag to the span
-public function addTagToSpan(string tagKey, string tagValue, int spanId = -1) returns error? = external;
+public isolated function addTagToSpan(string tagKey, string tagValue, int spanId = -1) returns error? = external;
 
 # Finish the current span.
 #
@@ -61,12 +63,20 @@ public function getAllMetrics() returns Metric[] = external;
 # + return - The metric instance.
 public function lookupMetric(string name, map<string>? tags = ()) returns Counter|Gauge? = external;
 
+# Checks of either metrics or tracing had been enabled.
+#
+# + return - True if observability had been enabled.
+public isolated function isObservabilityEnabled() returns boolean = @java:Method {
+    name: "isObservabilityEnabled",
+    'class: "org.ballerinalang.jvm.observability.ObserveUtils"
+} external;
+
 # This represents the metric type - counter, that can be only increased by an integer number.
 #
 # + name - Name of the counter metric.
 # + description - Description of the counter metric.
 # + metricTags - Tags associated with the counter metric.
-public type Counter object {
+public  class Counter {
 
     public string name;
     public string description;
@@ -79,7 +89,7 @@ public type Counter object {
     # + desc - Description of the Counter instance. If no description is provided, the the default empty string
     #          will be used.
     # + tags - The key/value pair of Tags. If no tags are provided, the default nil value will be used.
-    public function __init(string name, public string? desc = "", public map<string>? tags = ()) {
+    public function init(string name, string? desc = "", map<string>? tags = ()) {
         self.name = name;
         if (desc is string) {
             self.description = desc;
@@ -120,7 +130,7 @@ public type Counter object {
     # + return - The current value of the counter.
     public function getValue() returns int = external;
 
-};
+}
 
 # This represents the metric type - gauge, that can hold instantaneous, increased or decreased value
 # during the usage.
@@ -130,7 +140,7 @@ public type Counter object {
 # + metricTags - Tags associated with the counter metric.
 # + statisticConfigs - Array of StatisticConfig objects which defines about the statistical calculation
 #                      of the gauge during its usage.
-public type Gauge object {
+public  class Gauge {
 
     public string name;
     public string description;
@@ -148,7 +158,7 @@ public type Gauge object {
     #                     statistics configurations array is passed, then statistics calculation will be disabled.
     #                     If nil () is passed, then default statistics configs will be used for the statitics
     #                     calculation.
-    public function __init(string name, string? desc = "", map<string>? tags = (),
+    public function init(string name, string? desc = "", map<string>? tags = (),
                StatisticConfig[]? statisticConfig = ()) {
         self.name = name;
         self.description = desc ?: "";
@@ -197,7 +207,7 @@ public type Gauge object {
     #            If there is no statisticsConfigs provided, then it will be nil.
     public function getSnapshot() returns Snapshot[]? = external;
 
-};
+}
 
 # This represents the generic metric record that can represent both counter and gauge.
 #

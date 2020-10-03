@@ -19,10 +19,10 @@ type Person record {
     int age;
 };
 
-type PersonObj object {
+class PersonObj {
     string name = "";
     int age = 0;
-};
+}
 
 type Student record {
     *PersonObj;
@@ -49,16 +49,6 @@ type Foo3 record {
     *byte;
     *json;
     *xml;
-};
-
-type Person1 record {
-    string name;
-    int age;
-};
-
-type Student1 record {
-    *Person1;
-    string name;
 };
 
 type Gender "male"|"female";

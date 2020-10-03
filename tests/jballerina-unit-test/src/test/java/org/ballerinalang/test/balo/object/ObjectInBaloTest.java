@@ -31,6 +31,7 @@ import org.ballerinalang.test.utils.ByteArrayUtils;
 import org.testng.Assert;
 import org.testng.annotations.AfterClass;
 import org.testng.annotations.BeforeClass;
+import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 /**
@@ -42,7 +43,10 @@ public class ObjectInBaloTest {
 
     @BeforeClass
     public void setup() {
+        BaloCreator.cleanCacheDirectories();
         BaloCreator.createAndSetupBalo("test-src/balo/test_projects/test_project", "testorg", "foo");
+        BaloCreator.createAndSetupBalo("test-src/balo/test_projects/test_project", "testorg", "utils");
+        BaloCreator.createAndSetupBalo("test-src/balo/test_projects/test_project_two", "testorgtwo", "foo");
         result = BCompileUtil.compile("test-src/balo/test_balo/object/test_objects.bal");
     }
 
@@ -390,7 +394,7 @@ public class ObjectInBaloTest {
         CompileResult result = BCompileUtil.compile("test-src/balo/test_balo/object" +
                 "/object_with_non_defaultable_semantic_negative.bal");
         Assert.assertEquals(result.getErrorCount(), 1);
-        BAssertUtil.validateError(result, 0, "undefined function 'attachInterface' in object " +
+        BAssertUtil.validateError(result, 0, "undefined method 'attachInterface' in object " +
                 "'testorg/foo:1.0.0:Architect'", 7, 15);
     }
 
@@ -563,18 +567,65 @@ public class ObjectInBaloTest {
     }
 
     @Test
+    public void testObjectReferingNonAbstractObjFromBalo() {
+        BRunUtil.invoke(result, "testObjectReferingNonAbstractObjFromBalo");
+    }
+
+    @Test
+    public void testObjectReferingNonAbstractObjLoadedFromBalo() {
+        BRunUtil.invoke(result, "testObjectReferingNonAbstractObjLoadedFromBalo");
+    }
+
+    @Test(dataProvider = "objectSubTypingTests")
+    public void testObjectSubTyping(String function) {
+        BRunUtil.invoke(result, function);
+    }
+
+    @DataProvider(name = "objectSubTypingTests")
+    public static Object[][] objectSubTypingTests() {
+        return new Object[][]{
+                {"testSubTypingWithModuleLevelVisibleFields"},
+                {"testSubTypingWithModuleLevelVisibleMethods"},
+                {"testSubTypingWithAllPublicFields"},
+                {"testSubTypingNegativeForDifferentOrgNameAndVersionWithModuleLevelVisibleFields"},
+                {"testSubTypingNegativeForDifferentOrgNameAndVersionWithModuleLevelVisibleMethods"},
+                {"testSubTypingForDifferentOrgNameAndVersionWithAllPublicFields"}
+        };
+    }
+
+    @Test
+    public void testDistinctAssignability() {
+        CompileResult compile =
+                BCompileUtil.compile("test-src/balo/test_balo/object/test_distinct_class_assignability.bal");
+        BRunUtil.invoke(compile, "testDistinctAssignability");
+    }
+
+    @Test(enabled = false) // disabled as with the class change objects would not have implementations.
     public void testObjectReferingTypeFromBaloNegative() {
         CompileResult result =
                 BCompileUtil.compile("test-src/balo/test_balo/object/test_objects_type_reference_negative.bal");
-        Assert.assertEquals(result.getErrorCount(), 3);
+        Assert.assertEquals(result.getErrorCount(), 5);
         int i = 0;
         BAssertUtil.validateError(result, i++, "undefined field 'name' in object 'Manager1'", 25, 13);
         BAssertUtil.validateError(result, i++, "undefined field 'age' in object 'Manager1'", 26, 13);
-        BAssertUtil.validateError(result, i++, "incompatible types: 'foo:Manager1' is not an abstract object", 38, 6);
+        BAssertUtil.validateError(result, i++,
+                                  "no implementation found for the function 'getBonus' of non-abstract object " +
+                                          "'Manager2'",
+                                  36, 5);
+        BAssertUtil.validateError(result, i++,
+                                  "no implementation found for the function 'getName' of non-abstract object " +
+                                          "'Manager2'",
+                                  36, 5);
+        BAssertUtil.validateError(result, i,
+                                  "incompatible type reference 'foo:NormalPerson': a referenced object cannot have " +
+                                          "non-public fields or methods",
+                                  42, 6);
     }
 
     @AfterClass
     public void tearDown() {
         BaloCreator.clearPackageFromRepository("test-src/balo/test_projects/test_project", "testorg", "foo");
+        BaloCreator.clearPackageFromRepository("test-src/balo/test_projects/test_project", "testorg", "utils");
+        BaloCreator.clearPackageFromRepository("test-src/balo/test_projects/test_project_two", "testorgtwo", "foo");
     }
 }

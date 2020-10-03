@@ -19,11 +19,13 @@
 package org.wso2.ballerinalang.compiler.packaging.converters;
 
 import org.ballerinalang.jvm.JSONParser;
+import org.ballerinalang.jvm.api.BStringUtils;
 import org.ballerinalang.jvm.values.MapValue;
 import org.ballerinalang.model.elements.PackageID;
 import org.ballerinalang.repository.CompilerInput;
 import org.ballerinalang.toml.model.Manifest;
 import org.wso2.ballerinalang.compiler.util.Name;
+import org.wso2.ballerinalang.util.RepoUtils;
 import org.wso2.ballerinalang.util.TomlParserUtils;
 
 import java.io.BufferedReader;
@@ -109,6 +111,7 @@ public class URIDryConverter extends URIConverter {
                     conn = (HttpURLConnection) remoteURI.toURL().openConnection(this.proxy);
                 }
                 conn.setInstanceFollowRedirects(false);
+                conn.setRequestProperty("User-Agent", RepoUtils.getBallerinaVersion());
                 conn.setRequestMethod("GET");
 
                 // status code and meaning
@@ -126,8 +129,8 @@ public class URIDryConverter extends URIConverter {
                         }
                         Object payload = JSONParser.parse(result.toString());
                         if (payload instanceof MapValue) {
-                            MapValue moduleInfo = ((MapValue) payload).getMapValue("module");
-                            String version = moduleInfo.getStringValue("version");
+                            MapValue moduleInfo = ((MapValue) payload).getMapValue(BStringUtils.fromString("module"));
+                            String version = moduleInfo.getStringValue(BStringUtils.fromString("version")).getValue();
                             moduleID.version = new Name(version);
                         }
                     }

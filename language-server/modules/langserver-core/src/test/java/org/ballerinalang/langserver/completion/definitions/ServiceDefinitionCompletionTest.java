@@ -17,7 +17,7 @@
 */
 package org.ballerinalang.langserver.completion.definitions;
 
-import org.ballerinalang.langserver.compiler.workspace.WorkspaceDocumentException;
+import org.ballerinalang.langserver.commons.workspace.WorkspaceDocumentException;
 import org.ballerinalang.langserver.completion.CompletionTest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -51,7 +51,7 @@ public class ServiceDefinitionCompletionTest extends CompletionTest {
             {"serviceEndpointBind5.json", "service"},
             {"serviceBodyCompletion1.json", "service"},
             {"serviceBodyCompletion2.json", "service"},
-            {"serviceBodyCompletion6.json", "service"},
+//            {"serviceBodyCompletion6.json", "service"},
             {"serviceBodyCompletion7.json", "service"},
             {"serviceBodyCompletion8.json", "service"},
             {"serviceVariableAndFieldsCompletion1.json", "service"},

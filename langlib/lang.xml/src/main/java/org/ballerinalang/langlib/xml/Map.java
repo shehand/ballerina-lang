@@ -18,13 +18,12 @@
 
 package org.ballerinalang.langlib.xml;
 
+import org.ballerinalang.jvm.api.values.BXML;
+import org.ballerinalang.jvm.runtime.AsyncUtils;
+import org.ballerinalang.jvm.scheduling.Scheduler;
 import org.ballerinalang.jvm.scheduling.Strand;
-import org.ballerinalang.jvm.types.BArrayType;
-import org.ballerinalang.jvm.types.BTypes;
-import org.ballerinalang.jvm.values.ArrayValue;
-import org.ballerinalang.jvm.values.ArrayValueImpl;
+import org.ballerinalang.jvm.scheduling.StrandMetadata;
 import org.ballerinalang.jvm.values.FPValue;
-import org.ballerinalang.jvm.values.IteratorValue;
 import org.ballerinalang.jvm.values.XMLSequence;
 import org.ballerinalang.jvm.values.XMLValue;
 import org.ballerinalang.model.types.TypeKind;
@@ -34,6 +33,11 @@ import org.ballerinalang.natives.annotations.ReturnType;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
+
+import static org.ballerinalang.jvm.util.BLangConstants.BALLERINA_BUILTIN_PKG_PREFIX;
+import static org.ballerinalang.jvm.util.BLangConstants.XML_LANG_LIB;
+import static org.ballerinalang.util.BLangCompilerConstants.XML_VERSION;
 
 /**
  * Native implementation of lang.xml:map(map&lt;Type&gt;, function).
@@ -41,7 +45,7 @@ import java.util.List;
  * @since 1.0
  */
 @BallerinaFunction(
-        orgName = "ballerina", packageName = "lang.xml", functionName = "map",
+        orgName = "ballerina", packageName = "lang.xml", version = XML_VERSION, functionName = "map",
         args = {
                 @Argument(name = "x", type = TypeKind.XML),
                 @Argument(name = "func", type = TypeKind.FUNCTION)},
@@ -50,19 +54,23 @@ import java.util.List;
 )
 public class Map {
 
-    public static XMLValue<?> map(Strand strand, XMLValue<?> x, FPValue<Object, Object> func) {
+    private static final StrandMetadata METADATA = new StrandMetadata(BALLERINA_BUILTIN_PKG_PREFIX, XML_LANG_LIB,
+                                                                      XML_VERSION, "filter");
+
+    public static XMLValue map(Strand strand, XMLValue x, FPValue<Object, Object> func) {
         if (x.isSingleton()) {
-            return (XMLValue<?>) func.apply(new Object[]{strand, x, true});
+            func.asyncCall(new Object[]{strand, x, true}, METADATA);
+            return null;
         }
-
-        IteratorValue iterator = ((XMLSequence) x).getIterator();
-        List<XMLValue<?>> elements = new ArrayList<>();
-        while (iterator.hasNext()) {
-            XMLValue<?> next = (XMLValue<?>) iterator.next();
-            elements.add((XMLValue<?>) func.apply(new Object[]{strand, next, true}));
-        }
-
-        ArrayValue elemArray = new ArrayValueImpl(elements.toArray(), new BArrayType(BTypes.typeXML));
-        return new XMLSequence(elemArray);
+        List<BXML> elements = new ArrayList<>();
+        AtomicInteger index = new AtomicInteger(-1);
+        AsyncUtils
+                .invokeFunctionPointerAsyncIteratively(func, null, METADATA, x.size(),
+                                                       () -> new Object[]{strand, x.getItem(index.incrementAndGet()),
+                                                               true},
+                                                       result -> elements.add((XMLValue) result),
+                                                       () -> new XMLSequence(elements),
+                                                       Scheduler.getStrand().scheduler);
+        return new XMLSequence(elements);
     }
 }

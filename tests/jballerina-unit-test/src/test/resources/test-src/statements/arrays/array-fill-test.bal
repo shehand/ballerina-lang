@@ -56,7 +56,7 @@ type Person record {
 };
 
 function testArrayOfArraysFill(int index) returns Person[][] {
-    Person p = {name:"John", age:25};
+    Person p = {name: "John", age: 25};
     Person[] personArr = [p, p];
     Person[][] ar = [];
     ar[index] = personArr;
@@ -70,6 +70,13 @@ function testTupleArrayFill(int index) returns [string, int][] {
     return ar;
 }
 
+function testTupleSealedArrayFill(int index) returns [string, int][] {
+    [string, int] tup = ["Hello World!", 100];
+    [string, int][251] ar = []; // 251 == index + 1
+    ar[index] = tup;
+    return ar;
+}
+
 function testMapArrayFill(int index, map<any> value) returns map<any>[] {
     map<any>[] ar = [];
     ar[index] = value;
@@ -77,13 +84,16 @@ function testMapArrayFill(int index, map<any> value) returns map<any>[] {
 }
 
 type Employee record {
-    int id;
+    readonly int id;
     string name;
     float salary;
 };
 
-function testTableArrayFill(int index) returns [table<Employee>[], string] {
-    table<Employee> tbEmployee = table { { key id, name, salary }, [{1, "John", 50000}] };
+function testTableArrayFill(int index) {
+    table<Employee> tbEmployee = table key(id) [
+                    {id: 1, name: "John", salary: 50000}
+        ];
+
     table<Employee>[] ar = [];
     ar[index] = tbEmployee;
 
@@ -94,7 +104,8 @@ function testTableArrayFill(int index) returns [table<Employee>[], string] {
         }
     }
 
-    return [ar, name];
+    assertEquality("[{\"id\":1,\"name\":\"John\",\"salary\":50000.0}]", ar[index].toString());
+    assertEquality("John", name.trim());
 }
 
 function testXMLArrayFill(int index) returns xml[] {
@@ -119,21 +130,21 @@ function testUnionArrayFill2(int index) returns (string|string)[] {
 }
 
 function testUnionArrayFill3(int index) returns (Person|Person|())[] {
-    (Person|Person) value = {name:"John", age:25};
+    (Person|Person) value = {name: "John", age: 25};
     (Person|Person|())[] ar = [];
     ar[index] = value;
     return ar;
 }
 
 // disabled due to https://github.com/ballerina-platform/ballerina-lang/issues/13612
-//type LiteralsAndType 1|2|int;
+type LiteralsAndType 1|2|int;
 
-//function testUnionArrayFill4(int index) returns LiteralsAndType[] {
-//    LiteralsAndType value = 1;
-//    LiteralsAndType[] ar = [];
-//    ar[index] = value;
-//    return ar;
-//}
+function testUnionArrayFill4(int index) returns LiteralsAndType[] {
+    LiteralsAndType value = 1;
+    LiteralsAndType[] ar = [];
+    ar[index] = value;
+    return ar;
+}
 
 function testOptionalTypeArrayFill(int index) returns string?[] {
     string? value = "Hello World!";
@@ -143,17 +154,33 @@ function testOptionalTypeArrayFill(int index) returns string?[] {
 }
 
 function testAnyArrayFill(int index) returns any[] {
-    Person p = {name:"John", age:25};
+    Person p = {name: "John", age: 25};
     any value = p;
     any[] ar = [];
     ar[index] = value;
     return ar;
 }
 
+function testAnySealedArrayFill(int index) returns any[] {
+    Person p = {name: "John", age: 25};
+    any value = p;
+    any[251] ar = []; // 251 == index + 1
+    ar[index] = value;
+    return ar;
+}
+
 function testAnydataArrayFill(int index) returns anydata[] {
-    Person p = {name:"John", age:25};
+    Person p = {name: "John", age: 25};
     anydata value = p;
     anydata[] ar = [];
+    ar[index] = value;
+    return ar;
+}
+
+function testAnydataSealedArrayFill(int index) returns anydata[] {
+    Person p = {name: "John", age: 25};
+    anydata value = p;
+    anydata[251] ar = []; // 251 == index + 1
     ar[index] = value;
     return ar;
 }
@@ -165,7 +192,7 @@ function testByteArrayFill(int index, byte value) returns byte[] {
 }
 
 function testJSONArrayFill(int index) returns json[] {
-    json value = {name:"John", age:25};
+    json value = {name: "John", age: 25};
     json[] ar = [];
     ar[index] = value;
     return ar;
@@ -205,20 +232,18 @@ function testFiniteTypeArrayFill4(int index) returns state[] {
     return ar;
 }
 
-// disabled due to https://github.com/ballerina-platform/ballerina-lang/issues/13612
+const decimal ZERO = 0.0;
+const decimal ONE_TWO = 1.2;
+const decimal TWO_THREE = 2.3;
 
-//const decimal ZERO = 0.0;
-//const decimal ONE_TWO = 1.2;
-//const decimal TWO_THREE = 2.3;
+type DEC ZERO|ONE_TWO|TWO_THREE;
 
-//type DEC ZERO|ONE_TWO|TWO_THREE;
-
-//function testFiniteTypeArrayFill5(int index) returns DEC[] {
-//    DEC value = 1.2;
-//    DEC[] ar = [];
-//    ar[index] = value;
-//    return ar;
-//}
+function testFiniteTypeArrayFill5(int index) returns DEC[] {
+    DEC value = 1.2;
+    DEC[] ar = [];
+    ar[index] = value;
+    return ar;
+}
 
 type One 1;
 
@@ -236,15 +261,21 @@ function testSingletonTypeArrayFill1() returns bTrue[] {
     return bTrueAr1;
 }
 
-type Student object {
+function testSingletonTypeArrayStaticFill() returns bTrue[] {
+    bTrue[2] bTrueAr1 = [];
+    bTrueAr1[1] = true;
+    return bTrueAr1;
+}
+
+class Student {
     public string name;
     public int age;
 
-    public function __init(string name, int age) {
+    public function init(string name, int age) {
         self.name = name;
         self.age = age;
     }
-};
+}
 
 function testSequentialArrayInsertion() returns Student[] {
     Student s = new("Grainier", 28);
@@ -263,13 +294,13 @@ function testTwoDimensionalArrayFill() returns int[][] {
     return x;
 }
 
-type Obj object {
+class Obj {
     int i;
 
-    function __init() {
+    function init() {
         self.i = 1;
     }
-};
+}
 
 function testArrayFillWithObjs() returns Obj[][] {
     Obj o = new;
@@ -281,24 +312,6 @@ function testArrayFillWithObjs() returns Obj[][] {
     return multiDimObjArray;
 }
 
-type Rec record {
-    int i?;
-    int j = 10;
-};
-
-function testRecordTypeWithOptionalFieldsArrayFill() returns Rec[] {
-    Rec[] x = [];
-    x[1] = {i: 1, j: 2};
-    return x;
-}
-
-const decimal ZERO = 0.0;
-const decimal ONE_TWO = 1.2;
-const decimal TWO_THREE = 2.3;
-
-type DEC ZERO|ONE_TWO|TWO_THREE;
-type LiteralsAndType 1|2|int;
-
 function testFiniteTypeArrayFill() returns DEC[] {
     DEC value = 1.2;
     DEC[] ar = [];
@@ -308,4 +321,20 @@ function testFiniteTypeArrayFill() returns DEC[] {
     LiteralsAndType[] ar2 = [];
     ar2[5] = value2;
     return ar;
+}
+
+type AssertionError distinct error;
+
+const ASSERTION_ERROR_REASON = "AssertionError";
+
+function assertEquality(any|error expected, any|error actual) {
+    if expected is anydata && actual is anydata && expected == actual {
+        return;
+    }
+
+    if expected === actual {
+        return;
+    }
+
+    panic AssertionError(ASSERTION_ERROR_REASON, message = "expected '" + expected.toString() + "', found '" + actual.toString () + "'");
 }

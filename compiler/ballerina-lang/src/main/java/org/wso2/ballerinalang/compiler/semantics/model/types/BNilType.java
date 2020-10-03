@@ -20,8 +20,8 @@ package org.wso2.ballerinalang.compiler.semantics.model.types;
 import org.ballerinalang.model.types.NullType;
 import org.wso2.ballerinalang.compiler.semantics.model.TypeVisitor;
 import org.wso2.ballerinalang.compiler.util.Names;
-import org.wso2.ballerinalang.compiler.util.TypeDescriptor;
 import org.wso2.ballerinalang.compiler.util.TypeTags;
+import org.wso2.ballerinalang.util.Flags;
 
 /**
  * {@code BNilType} represents the singleton type returns by functions with no declared value.
@@ -32,17 +32,12 @@ import org.wso2.ballerinalang.compiler.util.TypeTags;
 public class BNilType extends BType implements NullType {
 
     public BNilType() {
-        super(TypeTags.NIL, null);
+        super(TypeTags.NIL, null, Flags.READONLY);
     }
 
     @Override
     public boolean isNullable() {
         return true;
-    }
-
-    @Override
-    public String getDesc() {
-        return TypeDescriptor.SIG_NULL;
     }
 
     @Override

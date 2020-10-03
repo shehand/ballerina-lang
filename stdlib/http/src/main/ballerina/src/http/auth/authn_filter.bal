@@ -16,12 +16,17 @@
 
 # Representation of the Authentication filter.
 #
-# + authHandlers - An array of authentication handlers
-public type AuthnFilter object {
+# + authHandlers - An array of authentication handlers or an array consisting of arrays of authentication handlers
+public class AuthnFilter {
 
-    public InboundAuthHandler[]|InboundAuthHandler[][] authHandlers;
+    *RequestFilter;
 
-    public function __init(InboundAuthHandler[]|InboundAuthHandler[][] authHandlers) {
+    public InboundAuthHandlers authHandlers;
+
+    # Initializes the `AuthnFilter` object.
+    #
+    # + authHandlers - An array of authentication handlers or an array consisting of arrays of authentication handlers
+    public function init(InboundAuthHandlers authHandlers) {
         self.authHandlers = authHandlers;
     }
 
@@ -29,35 +34,32 @@ public type AuthnFilter object {
     #
     # + caller - Caller for outbound HTTP responses
     # + request - An inbound HTTP request message
-    # + context - A filter context
-    # + return - Returns `true` if the filter succeeds. Else, returns `false`.
+    # + context - The `http:FilterContext` instance
+    # + return - A flag to indicate if the request flow should be continued(true) or aborted(false)
     public function filterRequest(Caller caller, Request request, FilterContext context) returns boolean {
-        boolean|AuthenticationError authenticated;
-        var authHandlers = getAuthHandlers(context);
-        if (authHandlers is InboundAuthHandler[]|InboundAuthHandler[][]) {
+        boolean|AuthenticationError authenticated = true;
+        InboundAuthHandlers|boolean authHandlers = getAuthHandlers(context);
+        if (authHandlers is InboundAuthHandlers) {
             authenticated = handleAuthRequest(authHandlers, request);
         } else {
             if (authHandlers) {
                 authenticated = handleAuthRequest(self.authHandlers, request);
-            } else {
-                authenticated = true;
             }
         }
-        return isAuthnSuccessful(caller, authenticated);
+        if (authenticated is boolean && authenticated) {
+            return true;
+        }
+        send401(caller, context);
+        return false;
     }
+}
 
-    public function filterResponse(Response response, FilterContext context) returns boolean {
-        return true;
-    }
-};
-
-function handleAuthRequest(InboundAuthHandler[]|InboundAuthHandler[][] authHandlers, Request request)
-                           returns boolean|AuthenticationError {
+function handleAuthRequest(InboundAuthHandlers authHandlers, Request request) returns boolean|AuthenticationError {
     if (authHandlers is InboundAuthHandler[]) {
         return checkForAuthHandlers(authHandlers, request);
     } else {
         foreach InboundAuthHandler[] authHandler in authHandlers {
-            var response = checkForAuthHandlers(authHandler, request);
+            boolean|AuthenticationError response = checkForAuthHandlers(authHandler, request);
             if (response is boolean) {
                 if (!response) {
                     return response;
@@ -75,7 +77,7 @@ function checkForAuthHandlers(InboundAuthHandler[] authHandlers, Request request
     foreach InboundAuthHandler authHandler in authHandlers {
         boolean canProcessResponse = authHandler.canProcess(request);
         if (canProcessResponse) {
-            var handleResponse = authHandler.process(request);
+            boolean|AuthenticationError handleResponse = authHandler.process(request);
             if (handleResponse is boolean) {
                 if (handleResponse) {
                     // If one of the authenticators from the chain could successfully authenticate the user,
@@ -94,21 +96,19 @@ function checkForAuthHandlers(InboundAuthHandler[] authHandlers, Request request
     return false;
 }
 
-# Verifies if the authentication is successful. If not responds to the user.
-#
-# + caller - Caller for outbound HTTP response
-# + authenticated - Authentication status for the request, or `AuthenticationError` if error occurred
-# + return - Authentication result to indicate if the filter can proceed(true) or not(false)
-function isAuthnSuccessful(Caller caller, boolean|AuthenticationError authenticated) returns boolean {
-    Response response = new;
-    response.statusCode = 401;
-    if (authenticated is boolean && authenticated) {
-        return authenticated;
+function send401(Caller caller, FilterContext context) {
+    if (isWebSocketUpgradeRequest(context)) {
+        error? err = caller->cancelWebSocketUpgrade(401, "Authentication failure.");
+        if (err is error) {
+            panic <error> err;
+        }
+    } else {
+        Response response = new;
+        response.statusCode = 401;
+        response.setTextPayload("Authentication failure.");
+        error? err = caller->respond(response);
+        if (err is error) {
+            panic <error> err;
+        }
     }
-    response.setTextPayload("Authentication failure.");
-    var err = caller->respond(response);
-    if (err is error) {
-        panic <error> err;
-    }
-    return false;
 }

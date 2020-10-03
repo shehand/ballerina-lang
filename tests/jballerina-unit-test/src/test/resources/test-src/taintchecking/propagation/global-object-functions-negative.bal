@@ -1,13 +1,13 @@
-type TestObject object {
-    string field = "";
+class TestObject {
+    string 'field = "";
     function testFunction (string input) returns string {
         return input;
     }
 
     function setField(string newVal) {
-        self.field = newVal;
+        self.'field = newVal;
     }
-};
+}
 
 function secureFunction(@untainted string secureIn, string insecureIn) {
 

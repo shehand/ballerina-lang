@@ -254,7 +254,7 @@ public class LengthOperationTest {
         Assert.assertSame(returns[0].getClass(), BInteger.class);
 
         int actual = (int) ((BInteger) returns[0]).intValue();
-        int expected = 16;
+        int expected = 4;
         Assert.assertEquals(actual, expected);
     }
 
@@ -333,7 +333,7 @@ public class LengthOperationTest {
     public void testNegativeTests() {
         Assert.assertEquals(resNegative.getErrorCount(), 2);
         BAssertUtil.validateError(resNegative, 0, "incompatible types: expected 'string', found 'int'", 31, 21);
-        BAssertUtil.validateError(resNegative, 1, "undefined function 'length' in object 'Person'", 36, 21);
+        BAssertUtil.validateError(resNegative, 1, "undefined method 'length' in object 'Person'", 36, 21);
     }
 
 }

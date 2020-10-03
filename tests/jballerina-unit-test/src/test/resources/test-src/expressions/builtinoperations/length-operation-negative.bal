@@ -14,17 +14,17 @@
 // specific language governing permissions and limitations
 // under the License.
 
-type Person object {
+class Person {
     public int age;
     public string firstName;
     public string lastName;
 
-    function __init(int age, string firstName, string lastName) {
+    function init(int age, string firstName, string lastName) {
         self.age = age;
         self.firstName = firstName;
         self.lastName = lastName;
     }
-};
+}
 
 function assignLengthToInvalidType() {
     int [] intArr = [1, 2];

@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright (c) 2017, WSO2 Inc. (http://www.wso2.org) All Rights Reserved.
  *
  * WSO2 Inc. licenses this file to you under the Apache License,
@@ -25,13 +25,19 @@ import org.ballerinalang.model.types.TypeKind;
 import org.ballerinalang.natives.annotations.BallerinaFunction;
 import org.ballerinalang.natives.annotations.ReturnType;
 
+import static org.ballerinalang.util.BLangCompilerConstants.XML_VERSION;
+
 /**
- * Strips any text items from an XML sequence that are all whitespace.
+ * Strips the insignificant parts of the an xml value.
+ * Comment items, processing instruction items are considered insignificant.
+ * After removal of comments and processing instructions, the text is grouped into
+ * the biggest possible chunks (i.e. only elements cause division into multiple chunks)
+ * and a chunk is considered insignificant if the entire chunk is whitespace.
  * 
  * @since 0.88
  */
 @BallerinaFunction(
-        orgName = "ballerina", packageName = "lang.xml",
+        orgName = "ballerina", packageName = "lang.xml", version = XML_VERSION,
         functionName = "strip",
         returnType = {@ReturnType(type = TypeKind.XML)},
         isPublic = true
@@ -40,9 +46,9 @@ public class Strip {
 
     private static final String OPERATION = "strip xml";
 
-    public static XMLValue<?> strip(Strand strand, XMLValue<?> xml) {
+    public static XMLValue strip(Strand strand, XMLValue xml) {
         try {
-            return xml.strip();
+            return (XMLValue) xml.strip();
         } catch (Throwable e) {
             BLangExceptionHelper.handleXMLException(OPERATION, e);
         }

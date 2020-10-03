@@ -300,7 +300,7 @@ public class CompoundAssignmentTest {
         BValue[] returns = BRunUtil.invoke(result, "testStringIntCompoundAssignmentAddition");
         Assert.assertEquals(returns.length, 1);
         Assert.assertTrue(returns[0] instanceof BString);
-        Assert.assertEquals(((BString) returns[0]).stringValue(), "test5");
+        Assert.assertEquals(returns[0].stringValue(), "test5");
     }
 
     @Test(description = "Test compound assignment with addition of int and float.")
@@ -316,7 +316,7 @@ public class CompoundAssignmentTest {
         BValue[] returns = BRunUtil.invoke(result, "testXMLAttributeWithCompoundAssignment");
         Assert.assertEquals(returns.length, 1);
         Assert.assertTrue(returns[0] instanceof BString);
-        Assert.assertEquals(((BString) returns[0]).stringValue(), "bar1bar2");
+        Assert.assertEquals(returns[0].stringValue(), "bar1bar2");
     }
 
     @Test(description = "Test compound assignment with addition recursive integer reference.")
@@ -388,9 +388,9 @@ public class CompoundAssignmentTest {
         BValue[] returns = BRunUtil.invoke(result, "xmlCompoundAssignment");
         Assert.assertTrue(returns[0] instanceof BXMLSequence);
         BXMLSequence sequence = (BXMLSequence) returns[0];
-        Assert.assertEquals(sequence.size(), 13);
+        Assert.assertEquals(sequence.size(), 3);
         Assert.assertEquals(sequence.stringValue(),
-                "hello<hello xmlns:ns0=\"http://sample.com/wso2/a1\">hi</hello>hahblah");
+                "hello<hello>hi</hello>hahblah");
     }
 
     @Test
@@ -417,7 +417,7 @@ public class CompoundAssignmentTest {
         Assert.assertEquals(((BInteger) returns[0]).intValue(), 305);
     }
 
-    @Test(description = "Test compound operator negative cases.")
+    @Test(description = "Test compound operator negative cases.", groups = "disableOnOldParser")
     public void testCompoundAssignmentNegative() {
         CompileResult compileResult = BCompileUtil.compile(
                 "test-src/statements/compoundassignment/compound_assignment_negative.bal");
@@ -425,15 +425,12 @@ public class CompoundAssignmentTest {
         Assert.assertEquals(compileResult.getErrorCount(), 22);
         BAssertUtil.validateError(compileResult, i++, "operator '+' not defined for 'any' and 'int'", 5, 5);
         BAssertUtil.validateError(compileResult, i++, "operator '-' not defined for 'any' and 'int'", 13, 5);
-        BAssertUtil.validateError(compileResult, i++, "invocations are not supported on the left hand side of an " +
-                "assignment", 20, 5);
-        BAssertUtil.validateError(compileResult, i++, "invocations are not supported on the left hand side of an " +
-                "assignment", 25, 5);
+        BAssertUtil.validateError(compileResult, i++, "invalid expr in compound assignment lhs", 20, 14);
+        BAssertUtil.validateError(compileResult, i++, "invalid expr in compound assignment lhs", 25, 14);
         BAssertUtil.validateError(compileResult, i++, "operator '+' not defined for 'string' and 'int'", 35, 5);
         BAssertUtil.validateError(compileResult, i++, "operator '-' not defined for 'string' and 'int'", 41, 5);
         BAssertUtil.validateError(compileResult, i++, "operator '+' not defined for 'int' and '(int|error)'", 47, 5);
-        BAssertUtil.validateError(compileResult, i++, "invocations are not supported on the left hand side of an " +
-                "assignment", 53, 5);
+        BAssertUtil.validateError(compileResult, i++, "invalid expr in compound assignment lhs", 53, 14);
         BAssertUtil.validateError(compileResult, i++, "operator '+' not defined for 'json' and 'string'", 59, 5);
         BAssertUtil.validateError(compileResult, i++, "operator '+' not defined for 'int' and 'string'", 65, 5);
         BAssertUtil.validateError(compileResult, i++, "incompatible types: expected 'int', found 'float'", 72, 10);
@@ -447,7 +444,6 @@ public class CompoundAssignmentTest {
         BAssertUtil.validateError(compileResult, i++, "operator '+' not defined for 'int?' and 'int?'", 132, 5);
         BAssertUtil.validateError(compileResult, i++, "operator '+' not defined for 'int?' and 'int?'", 140, 5);
         BAssertUtil.validateError(compileResult, i++, "operator '+' not defined for 'int?' and 'int'", 150, 11);
-        BAssertUtil.validateError(compileResult, i, "invocations are not supported on the left hand side of an " +
-                "assignment", 156, 5);
+        BAssertUtil.validateError(compileResult, i, "invalid expr in compound assignment lhs", 156, 18);
     }
 }

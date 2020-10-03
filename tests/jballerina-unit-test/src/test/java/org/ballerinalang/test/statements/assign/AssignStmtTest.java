@@ -34,6 +34,7 @@ import org.testng.annotations.Test;
 /**
  * Class to test functionality of assignment operation.
  */
+@Test(groups = { "brokenOnNewParser" })
 public class AssignStmtTest {
 
     private CompileResult result;
@@ -75,7 +76,7 @@ public class AssignStmtTest {
         Assert.assertSame(returns[0].getClass(), BBoolean.class);
 
         boolean actualBoolean = ((BBoolean) returns[0]).booleanValue();
-        Assert.assertEquals(actualBoolean, true);
+        Assert.assertTrue(actualBoolean);
 
         // String assignment test
         args = new BValue[] { new BString("Test Value") };
@@ -207,22 +208,38 @@ public class AssignStmtTest {
                 "invalid record binding pattern with type 'error'", 92, 9);
         BAssertUtil.validateError(resultNegative, i++,
                 "invalid record variable; expecting a record type but found 'error' in type definition", 92, 20);
+        BAssertUtil.validateError(resultNegative, i++,
+                                  "incompatible types: expected 'any[]', found 'error[]'", 98, 15);
+        BAssertUtil.validateError(resultNegative, i++,
+                                  "incompatible types: expected 'error[]', found 'any[]'", 100, 26);
+        BAssertUtil.validateError(resultNegative, i++,
+                                  "incompatible types: expected '(CError|LError)?[]', found 'error?[]'", 118, 19);
+        BAssertUtil.validateError(resultNegative, i++,
+                                  "incompatible types: expected '(CError|LError)?[]', found 'error?[]'", 119, 11);
+        BAssertUtil.validateError(resultNegative, i++,
+                                  "incompatible types: expected '(error|int[])', found 'error[]'", 127, 21);
+        BAssertUtil.validateError(resultNegative, i++,
+                                  "incompatible types: expected '(int|error[])', found 'error'", 132, 21);
+        BAssertUtil.validateError(resultNegative, i++,
+                                  "incompatible types: expected 'function ((any|error)...) returns ()', found " +
+                                          "'function (any...) returns ()'", 136, 47);
         Assert.assertEquals(resultNegative.getErrorCount(), i);
     }
 
     @Test(description = "Test negative assignment statement with cast and conversion with var.")
     public void testCastAndConversionWithVar() {
         CompileResult result = BCompileUtil.compile("test-src/statements/assign/var-negative.bal");
-
-        Assert.assertEquals(result.getErrorCount(), 25);
+        Assert.assertEquals(result.getErrorCount(), 31);
         int i = 0;
         BAssertUtil.validateError(result, i++, "unknown type 'Foo'", 4, 5);
         BAssertUtil.validateError(result, i++, "unknown type 'Foo'", 4, 20);
         BAssertUtil.validateError(result, i++, "undefined symbol 'bar'", 4, 25);
         BAssertUtil.validateError(result, i++, "unknown type 'Foo'", 5, 13);
+        BAssertUtil.validateError(result, i++, "operator '+' not defined for 'error' and 'error'", 8, 26);
         BAssertUtil.validateError(result, i++, "unknown type 'Float'", 14, 5);
         BAssertUtil.validateError(result, i++, "unknown type 'Float'", 14, 22);
         BAssertUtil.validateError(result, i++, "unknown type 'Float'", 15, 13);
+        BAssertUtil.validateError(result, i++, "operator '+' not defined for 'error' and 'error'", 18, 26);
         BAssertUtil.validateError(result, i++, "undefined symbol 'foo'", 23, 31);
         BAssertUtil.validateError(result, i++, "operator '+' not defined for 'string' and 'error'", 25, 26);
         BAssertUtil.validateError(result, i++, "operator '+' not defined for 'error' and 'error'", 27, 26);
@@ -230,9 +247,11 @@ public class AssignStmtTest {
         BAssertUtil.validateError(result, i++, "unknown type 'Foo'", 32, 20);
         BAssertUtil.validateError(result, i++, "undefined symbol 'bar'", 32, 25);
         BAssertUtil.validateError(result, i++, "unknown type 'Foo'", 33, 13);
+        BAssertUtil.validateError(result, i++, "operator '+' not defined for 'error' and 'error'", 36, 26);
         BAssertUtil.validateError(result, i++, "unknown type 'Float'", 42, 5);
         BAssertUtil.validateError(result, i++, "unknown type 'Float'", 42, 22);
         BAssertUtil.validateError(result, i++, "unknown type 'Float'", 43, 13);
+        BAssertUtil.validateError(result, i++, "operator '+' not defined for 'error' and 'error'", 46, 26);
         BAssertUtil.validateError(result, i++, "undefined symbol 'foo'", 51, 31);
         BAssertUtil.validateError(result, i++, "operator '+' not defined for 'string' and 'error'", 53, 26);
         BAssertUtil.validateError(result, i++, "operator '+' not defined for 'error' and 'error'", 55, 26);
@@ -241,5 +260,27 @@ public class AssignStmtTest {
         BAssertUtil.validateError(result, i++, "undefined symbol 'fooo'", 60, 32);
         BAssertUtil.validateError(result, i++, "unknown type 'Foo'", 73, 14);
         BAssertUtil.validateError(result, i++, "undefined symbol 'bar'", 73, 19);
+        BAssertUtil.validateError(result, i++, "unknown type 'X'", 79, 5);
+        BAssertUtil.validateError(result, i, "unknown type 'V'", 81, 5);
+    }
+
+    @Test()
+    public void testAssignErrorArrayToAny() {
+        BRunUtil.invoke(result, "testAssignErrorArrayToAny");
+    }
+
+    @Test()
+    public void testAssignIntArrayToJson() {
+        BRunUtil.invoke(result, "testAssignIntArrayToJson");
+    }
+
+    @Test()
+    public void testAssignIntOrStringArrayIntOrFloatOrStringUnionArray() {
+        BRunUtil.invoke(result, "testAssignIntOrStringArrayIntOrFloatOrStringUnionArray");
+    }
+
+    @Test()
+    public void assignAnyToUnionWithErrorAndAny() {
+        BRunUtil.invoke(result, "assignAnyToUnionWithErrorAndAny");
     }
 }

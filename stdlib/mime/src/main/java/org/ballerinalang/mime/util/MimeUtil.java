@@ -18,23 +18,23 @@
 
 package org.ballerinalang.mime.util;
 
-import io.netty.handler.codec.http.HttpHeaderNames;
-import io.netty.util.internal.PlatformDependent;
-import org.ballerinalang.jvm.BallerinaErrors;
-import org.ballerinalang.jvm.BallerinaValues;
 import org.ballerinalang.jvm.TypeChecker;
+import org.ballerinalang.jvm.api.BErrorCreator;
+import org.ballerinalang.jvm.api.BStringUtils;
+import org.ballerinalang.jvm.api.BValueCreator;
+import org.ballerinalang.jvm.api.values.BError;
+import org.ballerinalang.jvm.api.values.BMap;
+import org.ballerinalang.jvm.api.values.BObject;
+import org.ballerinalang.jvm.api.values.BString;
 import org.ballerinalang.jvm.types.BTypes;
 import org.ballerinalang.jvm.types.TypeTags;
 import org.ballerinalang.jvm.values.ArrayValue;
 import org.ballerinalang.jvm.values.ErrorValue;
 import org.ballerinalang.jvm.values.MapValue;
-import org.ballerinalang.jvm.values.MapValueImpl;
 import org.ballerinalang.jvm.values.ObjectValue;
 import org.ballerinalang.jvm.values.StreamingJsonValue;
-import org.ballerinalang.jvm.values.utils.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.wso2.transport.http.netty.message.HttpCarbonMessage;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -42,6 +42,7 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.Enumeration;
+import java.util.Random;
 
 import javax.activation.MimeType;
 import javax.activation.MimeTypeParameterList;
@@ -55,19 +56,17 @@ import static org.ballerinalang.mime.util.MimeConstants.CONTENT_DISPOSITION_FILE
 import static org.ballerinalang.mime.util.MimeConstants.CONTENT_DISPOSITION_NAME;
 import static org.ballerinalang.mime.util.MimeConstants.CONTENT_DISPOSITION_NAME_FIELD;
 import static org.ballerinalang.mime.util.MimeConstants.CONTENT_DISPOSITION_PARA_MAP_FIELD;
+import static org.ballerinalang.mime.util.MimeConstants.CONTENT_TYPE;
 import static org.ballerinalang.mime.util.MimeConstants.DEFAULT_PRIMARY_TYPE;
 import static org.ballerinalang.mime.util.MimeConstants.DEFAULT_SUB_TYPE;
 import static org.ballerinalang.mime.util.MimeConstants.DISPOSITION_FIELD;
 import static org.ballerinalang.mime.util.MimeConstants.DOUBLE_QUOTE;
 import static org.ballerinalang.mime.util.MimeConstants.FORM_DATA_PARAM;
-import static org.ballerinalang.mime.util.MimeConstants.INVALID_CONTENT_LENGTH;
-import static org.ballerinalang.mime.util.MimeConstants.INVALID_CONTENT_TYPE;
+import static org.ballerinalang.mime.util.MimeConstants.INVALID_CONTENT_TYPE_ERROR;
 import static org.ballerinalang.mime.util.MimeConstants.MEDIA_TYPE;
 import static org.ballerinalang.mime.util.MimeConstants.MEDIA_TYPE_FIELD;
 import static org.ballerinalang.mime.util.MimeConstants.MULTIPART_AS_PRIMARY_TYPE;
 import static org.ballerinalang.mime.util.MimeConstants.MULTIPART_FORM_DATA;
-import static org.ballerinalang.mime.util.MimeConstants.NO_CONTENT_LENGTH_FOUND;
-import static org.ballerinalang.mime.util.MimeConstants.ONE_BYTE;
 import static org.ballerinalang.mime.util.MimeConstants.PARAMETER_MAP_FIELD;
 import static org.ballerinalang.mime.util.MimeConstants.PRIMARY_TYPE_FIELD;
 import static org.ballerinalang.mime.util.MimeConstants.PROTOCOL_MIME_PKG_ID;
@@ -77,7 +76,6 @@ import static org.ballerinalang.mime.util.MimeConstants.SIZE_FIELD;
 import static org.ballerinalang.mime.util.MimeConstants.SUBTYPE_FIELD;
 import static org.ballerinalang.mime.util.MimeConstants.SUFFIX_ATTACHMENT;
 import static org.ballerinalang.mime.util.MimeConstants.SUFFIX_FIELD;
-import static org.ballerinalang.stdlib.io.utils.Utils.populateMimeErrorRecord;
 
 /**
  * Mime utility functions are included in here.
@@ -93,9 +91,9 @@ public class MimeUtil {
      * @param entity Represent an 'Entity'
      * @return content-type in 'primarytype/subtype' format
      */
-    public static String getBaseType(ObjectValue entity) {
+    public static String getBaseType(BObject entity) {
         if (entity.get(MEDIA_TYPE_FIELD) != null) {
-            ObjectValue mediaType = (ObjectValue) entity.get(MEDIA_TYPE_FIELD);
+            BObject mediaType = (ObjectValue) entity.get(MEDIA_TYPE_FIELD);
             if (mediaType != null) {
                 return mediaType.get(PRIMARY_TYPE_FIELD).toString() + "/" +
                         mediaType.get(SUBTYPE_FIELD).toString();
@@ -110,19 +108,19 @@ public class MimeUtil {
      * @param entity Represent an 'Entity'
      * @return content-type in 'primarytype/subtype; key=value;' format
      */
-    public static String getContentTypeWithParameters(ObjectValue entity) {
+    public static String getContentTypeWithParameters(BObject entity) {
         if (entity.get(MEDIA_TYPE_FIELD) == null) {
-            return HeaderUtil.getHeaderValue(entity, HttpHeaderNames.CONTENT_TYPE.toString());
+            return EntityHeaderHandler.getHeaderValue(entity, CONTENT_TYPE);
         }
-        ObjectValue mediaType = (ObjectValue) entity.get(MEDIA_TYPE_FIELD);
+        BObject mediaType = (ObjectValue) entity.get(MEDIA_TYPE_FIELD);
         String primaryType = String.valueOf(mediaType.get(PRIMARY_TYPE_FIELD));
         String subType = String.valueOf(mediaType.get(SUBTYPE_FIELD));
         String contentType = null;
         if (!primaryType.isEmpty() && !subType.isEmpty()) {
             contentType = primaryType + "/" + subType;
             if (mediaType.get(PARAMETER_MAP_FIELD) != null) {
-                MapValue map = mediaType.get(PARAMETER_MAP_FIELD) != null ?
-                        (MapValue) mediaType.get(PARAMETER_MAP_FIELD) : null;
+                MapValue<BString, BString> map = mediaType.get(PARAMETER_MAP_FIELD) != null ?
+                        (MapValue<BString, BString>) mediaType.get(PARAMETER_MAP_FIELD) : null;
                 if (map != null && !map.isEmpty()) {
                     contentType = contentType + SEMICOLON;
                     return HeaderUtil.appendHeaderParams(new StringBuilder(contentType), map);
@@ -145,7 +143,7 @@ public class MimeUtil {
             MimeTypeParameterList parameterList = mimeType.getParameters();
             return parameterList.get(parameterName);
         } catch (MimeTypeParseException e) {
-            throw MimeUtil.createError(INVALID_CONTENT_TYPE, e.getMessage());
+            throw MimeUtil.createError(INVALID_CONTENT_TYPE_ERROR, e.getMessage());
         }
     }
 
@@ -162,7 +160,7 @@ public class MimeUtil {
             MimeTypeParameterList parameterList = mimeType.getParameters();
             return parameterList.get(parameterName);
         } catch (MimeTypeParseException e) {
-            throw MimeUtil.createError(INVALID_CONTENT_TYPE, e.getMessage());
+            throw MimeUtil.createError(INVALID_CONTENT_TYPE_ERROR, e.getMessage());
         }
     }
 
@@ -173,9 +171,9 @@ public class MimeUtil {
      * @param entityStruct Represent 'Entity' struct
      * @param contentType  Content-Type value in string
      */
-    public static void setContentType(ObjectValue mediaType, ObjectValue entityStruct,
+    public static void setContentType(BObject mediaType, BObject entityStruct,
                                       String contentType) {
-        ObjectValue mimeType = parseMediaType(mediaType, contentType);
+        BObject mimeType = parseMediaType(mediaType, contentType);
         if (contentType == null) {
             mimeType.set(PRIMARY_TYPE_FIELD, DEFAULT_PRIMARY_TYPE);
             mimeType.set(SUBTYPE_FIELD, DEFAULT_SUB_TYPE);
@@ -190,20 +188,21 @@ public class MimeUtil {
      * @param contentType Content-Type value in string
      * @return 'MediaType' struct populated with values
      */
-    public static ObjectValue parseMediaType(ObjectValue mediaType, String contentType) {
+    public static BObject parseMediaType(BObject mediaType, String contentType) {
         try {
-            MapValueImpl<String, String> parameterMap =
-                    new MapValueImpl<>(new org.ballerinalang.jvm.types.BMapType(BTypes.typeString));
-            String suffix, primaryType, subType;
+            BMap<BString, Object> parameterMap =
+                   BValueCreator.createMapValue(new org.ballerinalang.jvm.types.BMapType(BTypes.typeString));
+            BString suffix, primaryType, subType;
 
             if (contentType != null) {
                 MimeType mimeType = new MimeType(contentType);
-                primaryType = mimeType.getPrimaryType();
+                primaryType = BStringUtils.fromString(mimeType.getPrimaryType());
 
                 String subTypeStr = mimeType.getSubType();
-                subType = subTypeStr;
+                subType = BStringUtils.fromString(subTypeStr);
                 if (subTypeStr != null && subTypeStr.contains(SUFFIX_ATTACHMENT)) {
-                    suffix = subTypeStr.substring(subTypeStr.lastIndexOf(SUFFIX_ATTACHMENT) + 1);
+                    suffix = BStringUtils.fromString(
+                            subTypeStr.substring(subTypeStr.lastIndexOf(SUFFIX_ATTACHMENT) + 1));
                 } else {
                     suffix = BTypes.typeString.getZeroValue();
                 }
@@ -213,8 +212,8 @@ public class MimeUtil {
 
                 while (keys.hasMoreElements()) {
                     String key = (String) keys.nextElement();
-                    String value = parameterList.get(key);
-                    parameterMap.put(key, value);
+                    BString value = BStringUtils.fromString(parameterList.get(key));
+                    parameterMap.put(BStringUtils.fromString(key), value);
                 }
             } else {
                 primaryType = suffix = subType = BTypes.typeString.getZeroValue();
@@ -225,15 +224,15 @@ public class MimeUtil {
             mediaType.set(SUFFIX_FIELD, suffix);
             mediaType.set(PARAMETER_MAP_FIELD, parameterMap);
         } catch (MimeTypeParseException e) {
-            throw new ErrorValue(INVALID_CONTENT_TYPE, e.getMessage());
+            throw MimeUtil.createError(INVALID_CONTENT_TYPE_ERROR, e.getMessage());
         }
         return mediaType;
     }
 
-    public static void setMediaTypeToEntity(ObjectValue entityStruct, String contentType) {
-        ObjectValue mediaType = BallerinaValues.createObjectValue(PROTOCOL_MIME_PKG_ID, MEDIA_TYPE);
+    public static void setMediaTypeToEntity(BObject entityStruct, String contentType) {
+        BObject mediaType = BValueCreator.createObjectValue(PROTOCOL_MIME_PKG_ID, MEDIA_TYPE);
         MimeUtil.setContentType(mediaType, entityStruct, contentType);
-        HeaderUtil.setHeaderToEntity(entityStruct, HttpHeaderNames.CONTENT_TYPE.toString(), contentType);
+        HeaderUtil.setHeaderToEntity(entityStruct, CONTENT_TYPE, contentType);
     }
 
     /**
@@ -243,13 +242,13 @@ public class MimeUtil {
      * @param bodyPart                           Represent a body part
      * @param contentDispositionHeaderWithParams Represent Content-Disposition header value with parameters
      */
-    public static void setContentDisposition(ObjectValue contentDisposition, ObjectValue bodyPart,
+    public static void setContentDisposition(BObject contentDisposition, BObject bodyPart,
                                              String contentDispositionHeaderWithParams) {
         populateContentDispositionObject(contentDisposition, contentDispositionHeaderWithParams);
         bodyPart.set(CONTENT_DISPOSITION_FIELD, contentDisposition);
     }
 
-    public static void populateContentDispositionObject(ObjectValue contentDisposition,
+    public static void populateContentDispositionObject(BObject contentDisposition,
                                                         String contentDispositionHeaderWithParams) {
         String dispositionValue;
         if (isNotNullAndEmpty(contentDispositionHeaderWithParams)) {
@@ -258,11 +257,12 @@ public class MimeUtil {
             } else {
                 dispositionValue = contentDispositionHeaderWithParams;
             }
-            contentDisposition.set(DISPOSITION_FIELD, dispositionValue);
-            MapValue paramMap = HeaderUtil.getParamMap(contentDispositionHeaderWithParams);
-            for (Object key : paramMap.getKeys()) {
-                String paramValue = (String) paramMap.get(key);
-                switch (key.toString()) {
+            contentDisposition.set(DISPOSITION_FIELD, BStringUtils
+                    .fromString(dispositionValue));
+            BMap<BString, Object> paramMap = HeaderUtil.getParamMap(contentDispositionHeaderWithParams);
+            for (BString key : paramMap.getKeys()) {
+                BString paramValue = (BString) paramMap.get(key);
+                switch (key.getValue()) {
                     case CONTENT_DISPOSITION_FILE_NAME:
                         contentDisposition.set(CONTENT_DISPOSITION_FILENAME_FIELD, stripQuotes(paramValue));
                         break;
@@ -272,8 +272,8 @@ public class MimeUtil {
                     default:
                 }
             }
-            paramMap.remove(CONTENT_DISPOSITION_FILE_NAME);
-            paramMap.remove(CONTENT_DISPOSITION_NAME);
+            paramMap.remove(BStringUtils.fromString(CONTENT_DISPOSITION_FILE_NAME));
+            paramMap.remove(BStringUtils.fromString(CONTENT_DISPOSITION_NAME));
             contentDisposition.set(CONTENT_DISPOSITION_PARA_MAP_FIELD, paramMap);
         }
     }
@@ -284,10 +284,10 @@ public class MimeUtil {
      * @param entity Represent an 'Entity'
      * @return content-type in 'primarytype/subtype; key=value;' format
      */
-    public static String getContentDisposition(ObjectValue entity) {
+    public static String getContentDisposition(BObject entity) {
         StringBuilder dispositionBuilder = new StringBuilder();
         if (entity.get(CONTENT_DISPOSITION_FIELD) != null) {
-            ObjectValue contentDispositionStruct =
+            BObject contentDispositionStruct =
                     (ObjectValue) entity.get(CONTENT_DISPOSITION_FIELD);
             if (contentDispositionStruct != null) {
                 Object disposition = contentDispositionStruct.get(DISPOSITION_FIELD);
@@ -308,7 +308,7 @@ public class MimeUtil {
     }
 
     public static StringBuilder convertDispositionObjectToString(StringBuilder dispositionBuilder,
-                                                                 ObjectValue contentDispositionStruct) {
+                                                                 BObject contentDispositionStruct) {
         Object nameBVal = contentDispositionStruct.get(CONTENT_DISPOSITION_NAME_FIELD);
         String name = nameBVal != null ? nameBVal.toString() : null;
 
@@ -324,7 +324,8 @@ public class MimeUtil {
                     .append(includeQuotes(fileName)).append(SEMICOLON);
         }
         if (contentDispositionStruct.get(CONTENT_DISPOSITION_PARA_MAP_FIELD) != null) {
-            MapValue map = (MapValue) contentDispositionStruct.get(CONTENT_DISPOSITION_PARA_MAP_FIELD);
+            MapValue<BString, BString> map =
+                    (MapValue<BString, BString>) contentDispositionStruct.get(CONTENT_DISPOSITION_PARA_MAP_FIELD);
             HeaderUtil.appendHeaderParams(appendSemiColon(dispositionBuilder), map);
         }
 
@@ -347,7 +348,7 @@ public class MimeUtil {
      * @param entityStruct Represent 'Entity'
      * @param length       Size of the entity body
      */
-    public static void setContentLength(ObjectValue entityStruct, long length) {
+    public static void setContentLength(BObject entityStruct, long length) {
         entityStruct.set(SIZE_FIELD, length);
     }
 
@@ -416,11 +417,11 @@ public class MimeUtil {
      * @param textValue Represent a text value
      * @return a String surrounded by quotes
      */
-    public static String stripQuotes(String textValue) {
-        if (textValue.startsWith(DOUBLE_QUOTE)) {
-            textValue = textValue.substring(1);
+    public static BString stripQuotes(BString textValue) {
+        if (textValue.getValue().startsWith(DOUBLE_QUOTE)) {
+            textValue = textValue.substring(1, textValue.length());
         }
-        if (textValue.endsWith(DOUBLE_QUOTE)) {
+        if (textValue.getValue().endsWith(DOUBLE_QUOTE)) {
             textValue = textValue.substring(0, textValue.length() - 1);
         }
         return textValue;
@@ -432,7 +433,8 @@ public class MimeUtil {
      * @return a boundary string
      */
     public static String getNewMultipartDelimiter() {
-        return Long.toHexString(PlatformDependent.threadLocalRandom().nextLong());
+        Random random = new Random();
+        return Long.toHexString(random.nextLong());
     }
 
     /**
@@ -441,26 +443,35 @@ public class MimeUtil {
      * @param bodyPart Represent a ballerina body part
      * @return A boolean indicating nested parts availability
      */
-    static boolean isNestedPartsAvailable(ObjectValue bodyPart) {
+    static boolean isNestedPartsAvailable(BObject bodyPart) {
         String contentTypeOfChildPart = MimeUtil.getBaseType(bodyPart);
         return contentTypeOfChildPart != null && contentTypeOfChildPart.startsWith(MULTIPART_AS_PRIMARY_TYPE) &&
                 bodyPart.getNativeData(BODY_PARTS) != null;
     }
 
     /**
-     * Create mime specific error record with '{ballerina/mime}MIMEError' as error code.
+     * Create mime specific error with the error message.
      *
-     *
-     * @param reason Error reason
-     * @param errMsg  Actual error message
+     * @param errorTypeName The error type
+     * @param errMsg  The actual error message
      * @return Ballerina error value
      */
-    public static ErrorValue createError(String reason, String errMsg) {
-        return BallerinaErrors.createError(reason, populateMimeErrorRecord(null, errMsg));
+    public static BError createError(String errorTypeName, String errMsg) {
+        return BErrorCreator.createDistinctError(errorTypeName, PROTOCOL_MIME_PKG_ID, BStringUtils
+                .fromString(errMsg));
     }
 
-    public static ErrorValue createError(String reason, String errMsg, ErrorValue errorValue) {
-        return BallerinaErrors.createError(reason, populateMimeErrorRecord(errorValue, errMsg));
+    /**
+     * Create mime specific error with the error message and cause.
+     *
+     * @param errorTypeName The error type
+     * @param errMsg  The actual error message
+     * @param errorValue  The error cause
+     * @return Ballerina error value
+     */
+    public static BError createError(String errorTypeName, String errMsg, ErrorValue errorValue) {
+        return BErrorCreator.createDistinctError(errorTypeName, PROTOCOL_MIME_PKG_ID, BStringUtils
+                .fromString(errMsg), errorValue);
     }
 
     public static boolean isJSONCompatible(org.ballerinalang.jvm.types.BType type) {
@@ -484,13 +495,16 @@ public class MimeUtil {
         org.ballerinalang.jvm.types.BType type = TypeChecker.getType(dataSource);
 //        if (TypeChecker.checkIsType(dataSource, BTypes.typeString)) {
         if (type.getTag() == TypeTags.STRING_TAG) {
+            if (dataSource instanceof BString) {
+                return ((BString) dataSource).getValue();
+            }
             return (String) dataSource;
         } else if (type.getTag() == TypeTags.ARRAY_TAG &&
                 ((org.ballerinalang.jvm.types.BArrayType) type).getElementType().getTag() == TypeTags.BYTE_TAG) {
             return new String(((ArrayValue) dataSource).getBytes(), StandardCharsets.UTF_8);
         }
 
-        return StringUtils.getJsonString(dataSource);
+        return BStringUtils.getJsonString(dataSource);
     }
 
     /**
@@ -500,7 +514,7 @@ public class MimeUtil {
      * @param entity Entity record
      * @return flag indicating whether the given value should be serialized specifically as a JSON
      */
-    public static boolean generateAsJSON(Object value, ObjectValue entity) {
+    public static boolean generateAsJSON(Object value, BObject entity) {
         if (value instanceof StreamingJsonValue) {
             /* Streaming JSON should be serialized using the serialize() method. This is because there are two types
             of JSON in Ballerina namely internally built and custom built. The custom built needs to be parsed
@@ -514,7 +528,7 @@ public class MimeUtil {
                 TypeChecker.getType(value));
     }
 
-    private static boolean parseAsJson(ObjectValue entity) {
+    private static boolean parseAsJson(BObject entity) {
         Object parseAsJson = entity.getNativeData(MimeConstants.PARSE_AS_JSON);
         // A data source might not exist for multipart and byteChannel. Hence the null check. If PARSE_AS_JSON is
         // true then it indicates that the data source need to be parsed as JSON.
@@ -534,27 +548,6 @@ public class MimeUtil {
             return false;
         }
         return true;
-    }
-
-    /**
-     * Given a {@link HttpCarbonMessage}, returns the content length extracting from headers.
-     *
-     * @param httpCarbonMessage Represent the message
-     * @return length of the content
-     */
-    public static long extractContentLength(HttpCarbonMessage httpCarbonMessage) {
-        long contentLength = NO_CONTENT_LENGTH_FOUND;
-        String lengthStr = httpCarbonMessage.getHeader(HttpHeaderNames.CONTENT_LENGTH.toString());
-        try {
-            contentLength = lengthStr != null ? Long.parseLong(lengthStr) : contentLength;
-            if (contentLength == NO_CONTENT_LENGTH_FOUND) {
-                //Read one byte to make sure the incoming stream has data
-                contentLength = httpCarbonMessage.countMessageLengthTill(ONE_BYTE);
-            }
-        } catch (NumberFormatException e) {
-            throw MimeUtil.createError(INVALID_CONTENT_LENGTH, "Invalid content length");
-        }
-        return contentLength;
     }
 
     public static void closeOutputStream(OutputStream outputStream) throws IOException {

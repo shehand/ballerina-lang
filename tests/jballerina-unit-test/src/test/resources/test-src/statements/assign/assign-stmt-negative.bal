@@ -71,7 +71,7 @@ function constantAssignment () {
     aa = "mad";
 }
 
-public type Client client object {
+public client class Client {
     public remote function foo() returns [int, int] {
         return [0, 0];
     }
@@ -83,11 +83,55 @@ public type Client client object {
     public remote function foo2() returns error {
         return error("the error reason");
     }
-};
+}
 
 public function restActionResultAssignment() {
     Client c = new();
     int a = c->foo();
     map<string> sm = c->foo1();
     var { a: d } = c->foo2();
+}
+
+
+function assignErrorArrayToAnyTypeArrayViseVersa() {
+    error[] ea = [];
+    any[] j = ea;
+    any[] anyArray = [];
+    error[] errorArray = anyArray;
+}
+
+public const C_ERROR = "CError";
+public const L_ERROR = "LError";
+
+public type Detail record {
+    string message;
+    error cause?;
+};
+
+type CError distinct error<Detail>;
+type LError distinct error<Detail>;
+type CLError CError|LError;
+
+function nonAssingableErrorTypeArrayAssign() {
+    CLError?[] err = [];
+    error?[] errs = err;
+    ProcessErrors(errs);
+    err = errs;
+}
+
+function ProcessErrors(CLError?[] errors) {}
+
+function assignErrorArrayToUnionWithError() {
+    error e1 = error("E1");
+    error[] x = [e1];
+    error|int[] y = x;
+}
+
+function assignErrorToUnionWithErrorArray() {
+    error e1 = error("E1");
+    int|error[] y = e1;
+}
+
+function assignFunctionParameterAnyToParameterUnionWithErrorAndAny() {
+    function (any|error...) returns () func = function (any... y) {};
 }

@@ -18,6 +18,7 @@
 
 package org.ballerinalang.packerina.task;
 
+import org.ballerinalang.compiler.BLangCompilerException;
 import org.ballerinalang.model.elements.PackageID;
 import org.ballerinalang.packerina.buildcontext.BuildContext;
 import org.ballerinalang.packerina.buildcontext.BuildContextField;
@@ -30,7 +31,11 @@ import org.wso2.ballerinalang.compiler.util.ProjectDirs;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.List;
+
+import static org.wso2.ballerinalang.compiler.util.ProjectDirConstants.BLANG_PKG_DEFAULT_VERSION;
+import static org.wso2.ballerinalang.compiler.util.ProjectDirConstants.DIST_BIR_CACHE_DIR_NAME;
 
 /**
  * Task for creating bir.
@@ -42,7 +47,7 @@ public class CreateBirTask implements Task {
         PackageCache packageCache = PackageCache.getInstance(context);
         boolean skipTests = buildContext.skipTests();
         Path sourceRootPath = buildContext.get(BuildContextField.SOURCE_ROOT);
-
+        String balHomePath = buildContext.get(BuildContextField.HOME_REPO).toString();
         // generate bir for modules
         BirFileWriter birFileWriter = BirFileWriter.getInstance(context);
         List<BLangPackage> modules = buildContext.getModules();
@@ -57,21 +62,26 @@ public class CreateBirTask implements Task {
             if (bLangPackage == null) {
                 continue;
             }
-            writeImportBir(buildContext, bLangPackage.symbol.imports, sourceRootPath, birFileWriter);
+            writeImportBir(buildContext, bLangPackage.symbol.imports, sourceRootPath, birFileWriter, balHomePath);
             if (!skipTests && bLangPackage.hasTestablePackage()) {
                 bLangPackage.getTestablePkgs().forEach(testablePackage -> writeImportBir(buildContext,
-                        testablePackage.symbol.imports, sourceRootPath, birFileWriter));
+                        testablePackage.symbol.imports, sourceRootPath, birFileWriter, balHomePath));
             }
         }
     }
 
     private void writeImportBir(BuildContext buildContext, List<BPackageSymbol> importz, Path project,
-                                BirFileWriter birWriter) {
+                                BirFileWriter birWriter, String balHomePath) {
         for (BPackageSymbol bPackageSymbol : importz) {
             // Get the jar paths
             PackageID id = bPackageSymbol.pkgID;
-            // Skip ballerina and ballerinax
-            if (id.orgName.value.equals("ballerina") || id.orgName.value.equals("ballerinax")) {
+            String version = BLANG_PKG_DEFAULT_VERSION;
+            if (!id.version.value.equals("")) {
+                version = id.version.value;
+            }
+            // Skip ballerina and ballerinax for cached modules
+            if (Paths.get(balHomePath, DIST_BIR_CACHE_DIR_NAME, id.orgName.value,
+                          id.name.value, version).toFile().exists()) {
                 continue;
             }
     
@@ -79,6 +89,9 @@ public class CreateBirTask implements Task {
             // Look if it is a project module.
             if (ProjectDirs.isModuleExist(project, id.name.value) ||
                     buildContext.getImportPathDependency(id).isPresent()) {
+                if (null == bPackageSymbol.birPackageFile) {
+                    throw new BLangCompilerException("compilation contains errors");
+                }
                 // If so fetch from project bir cache
                 importBir = buildContext.getBirPathFromTargetCache(id);
                 birWriter.writeBIRToPath(bPackageSymbol.birPackageFile, id, importBir);
@@ -87,12 +100,16 @@ public class CreateBirTask implements Task {
                 importBir = buildContext.getBirPathFromHomeCache(id);
                 // Write only if bir does not exists. No need to overwrite.
                 if (Files.notExists(importBir)) {
+                    // This is a check to see if any imported modules have errors
+                    if (null == bPackageSymbol.birPackageFile) {
+                        throw new BLangCompilerException("compilation contains errors");
+                    }
                     birWriter.writeBIRToPath(bPackageSymbol.birPackageFile, id, importBir);
                 }
             }
     
             // write child import bir(s)
-            writeImportBir(buildContext, bPackageSymbol.imports, project, birWriter);
+            writeImportBir(buildContext, bPackageSymbol.imports, project, birWriter, balHomePath);
         }
     }
 }

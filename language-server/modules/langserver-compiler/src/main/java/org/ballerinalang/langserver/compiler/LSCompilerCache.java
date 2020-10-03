@@ -17,7 +17,7 @@ package org.ballerinalang.langserver.compiler;
 
 import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
-import org.antlr.v4.runtime.DefaultErrorStrategy;
+import org.ballerinalang.langserver.commons.LSContext;
 import org.ballerinalang.langserver.compiler.common.modal.BallerinaFile;
 import org.wso2.ballerinalang.compiler.SourceDirectory;
 import org.wso2.ballerinalang.compiler.tree.BLangPackage;
@@ -64,11 +64,35 @@ public class LSCompilerCache {
      * @param context {@link LSContext}
      * @return {@link BallerinaFile}
      */
-    public static CacheEntry get(Key key, LSContext context) {
+    public static CacheEntry getPackage(Key key, LSContext context) {
+        return get(key, context, true);
+    }
+
+    /**
+     * Returns cached BLangPackages.
+     *
+     * @param key     unique {@link Key}
+     * @param context {@link LSContext}
+     * @return {@link BallerinaFile}
+     */
+    public static CacheEntry getPackages(Key key, LSContext context) {
+        return get(key, context, false);
+    }
+
+    /**
+     * Returns cached BLangPackages.
+     *
+     * @param key     unique {@link Key}
+     * @param context {@link LSContext}
+     * @return {@link BallerinaFile}
+     */
+    private static CacheEntry get(Key key, LSContext context, boolean isSinglePkg) {
         CacheEntry cacheEntry = packageMap.get(key);
-        if (cacheEntry == null) {
+        if (cacheEntry == null || cacheEntry.get() == null ||
+                ((isSinglePkg) ? !cacheEntry.get().isLeft() : !cacheEntry.get().isRight())) {
             return null;
         }
+
         context.put(DocumentServiceKeys.COMPILER_CONTEXT_KEY, cacheEntry.compilerContext);
         return cacheEntry;
     }
@@ -76,22 +100,44 @@ public class LSCompilerCache {
     /**
      * Adds BLangPackage into cache.
      *
+     * @param key          unique {@link Key}
+     * @param bLangPackage {@link org.wso2.ballerinalang.compiler.tree.BLangPackage}
+     * @param context      {@link LSContext}
+     */
+    public static void putPackage(Key key, BLangPackage bLangPackage, LSContext context) {
+        put(key, EitherPair.forLeft(bLangPackage), context);
+    }
+
+    /**
+     * Adds BLangPackage into cache.
+     *
      * @param key           unique {@link Key}
-     * @param bLangPackages {@link org.wso2.ballerinalang.compiler.tree.BLangPackage}
+     * @param bLangPackages a list of {@link org.wso2.ballerinalang.compiler.tree.BLangPackage}
      * @param context       {@link LSContext}
      */
-    public static void put(Key key, EitherPair<BLangPackage, List<BLangPackage>> bLangPackages, LSContext context) {
+    public static void putPackages(Key key, List<BLangPackage> bLangPackages, LSContext context) {
+        put(key, EitherPair.forRight(bLangPackages), context);
+    }
+
+    /**
+     * Adds BLangPackage into cache.
+     *
+     * @param key           unique {@link Key}
+     * @param bLangPackages either a list or a single {@link org.wso2.ballerinalang.compiler.tree.BLangPackage}
+     * @param context       {@link LSContext}
+     */
+    private static void put(Key key, EitherPair<BLangPackage, List<BLangPackage>> bLangPackages, LSContext context) {
         CompilerContext compilerContext = context.get(DocumentServiceKeys.COMPILER_CONTEXT_KEY);
         String sourceRoot = key.sourceRoot;
         packageMap.put(key, new CacheEntry(bLangPackages, compilerContext));
         LSClientLogger.logTrace("Operation '" + context.getOperation().getName() + "' {projectRoot: '" + sourceRoot +
-                                        "'} added cache entry with {key: " + key + "}");
+                "'} added cache entry with {key: " + key + "}");
     }
 
     /**
      * Clears all cache entries with this source root.
      *
-     * @param context   {@link LSContext}
+     * @param context    {@link LSContext}
      * @param sourceRoot source root
      */
     public static synchronized void clear(LSContext context, String sourceRoot) {
@@ -102,7 +148,7 @@ public class LSCompilerCache {
             count.getAndIncrement();
         });
         LSClientLogger.logTrace("Operation '" + context.getOperation().getName() + "' {projectRoot: '" + sourceRoot +
-                                        "'} cleared " + count + " cached entries for the project");
+                "'} cleared " + count + " cached entries for the project");
     }
 
     /**
@@ -125,8 +171,6 @@ public class LSCompilerCache {
      */
     public static class Key {
         private final String sourceRoot;
-        private final String errorStrategy;
-
         private final String compilerPhase;
         private final String preserveWhitespace;
         private final String testEnabled;
@@ -141,8 +185,6 @@ public class LSCompilerCache {
             this.preserveWhitespace = options.get(PRESERVE_WHITESPACE);
             this.testEnabled = options.get(TEST_ENABLED);
             this.skipTests = options.get(SKIP_TESTS);
-            DefaultErrorStrategy defaultErrorStrategy = compilerContext.get(DefaultErrorStrategy.class);
-            this.errorStrategy = defaultErrorStrategy != null ? defaultErrorStrategy.getClass().getName() : null;
             SourceDirectory sourceDirectory = compilerContext.get(SourceDirectory.class);
             this.sourceDirectory = sourceDirectory != null ? sourceDirectory.getClass().getName() : null;
         }
@@ -154,7 +196,6 @@ public class LSCompilerCache {
             }
             Key key = (Key) o;
             return (key.sourceRoot.equals(sourceRoot)
-                    && errorStrategy != null && errorStrategy.equals(key.errorStrategy)
                     && compilerPhase != null && compilerPhase.equals(key.compilerPhase)
                     && preserveWhitespace != null && preserveWhitespace.equals(key.preserveWhitespace)
                     && testEnabled != null && testEnabled.equals(key.testEnabled)
@@ -165,17 +206,16 @@ public class LSCompilerCache {
         @Override
         public int hashCode() {
             return Arrays.hashCode(
-                    new String[]{sourceRoot, errorStrategy, compilerPhase, preserveWhitespace, testEnabled, skipTests,
+                    new String[]{sourceRoot, compilerPhase, preserveWhitespace, testEnabled, skipTests,
                             sourceDirectory});
         }
 
         @Override
         public String toString() {
             return String.format(
-                    "sourceRoot %s, errorStrategy: %s, compilerPhase: %s, preserveWS: %s, testEnabled: %s, " +
+                    "sourceRoot %s, compilerPhase: %s, preserveWS: %s, testEnabled: %s, " +
                             "skipTests: %s, sourceDirectory: %s",
                     sourceRoot,
-                    errorStrategy != null ? errorStrategy.substring(errorStrategy.lastIndexOf(".") + 1) : "",
                     compilerPhase != null ? compilerPhase : "",
                     preserveWhitespace != null ? preserveWhitespace : "",
                     testEnabled != null ? testEnabled : "",

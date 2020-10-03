@@ -17,14 +17,15 @@
  */
 package org.ballerinalang.stdlib.io.utils;
 
-import org.ballerinalang.jvm.BallerinaErrors;
-import org.ballerinalang.jvm.BallerinaValues;
 import org.ballerinalang.jvm.TypeChecker;
+import org.ballerinalang.jvm.api.BErrorCreator;
+import org.ballerinalang.jvm.api.BStringUtils;
+import org.ballerinalang.jvm.api.BValueCreator;
+import org.ballerinalang.jvm.api.values.BError;
+import org.ballerinalang.jvm.api.values.BObject;
 import org.ballerinalang.jvm.types.BPackage;
 import org.ballerinalang.jvm.values.ArrayValue;
 import org.ballerinalang.jvm.values.ArrayValueImpl;
-import org.ballerinalang.jvm.values.ErrorValue;
-import org.ballerinalang.jvm.values.MapValue;
 import org.ballerinalang.jvm.values.ObjectValue;
 import org.ballerinalang.stdlib.io.channels.base.Channel;
 
@@ -35,8 +36,6 @@ import java.io.InputStream;
 import java.io.UnsupportedEncodingException;
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
-import java.util.HashMap;
-import java.util.Map;
 
 import static org.ballerinalang.jvm.util.BLangConstants.BALLERINA_BUILTIN_PKG_PREFIX;
 
@@ -48,31 +47,17 @@ import static org.ballerinalang.jvm.util.BLangConstants.BALLERINA_BUILTIN_PKG_PR
 public class Utils {
 
     private static final int READABLE_BUFFER_SIZE = 8192; //8KB
-    private static final BPackage PACKAGE_ID_MIME = new BPackage(BALLERINA_BUILTIN_PKG_PREFIX, "mime");
-    private static final String MIME_ERROR_MESSAGE = "message";
-    private static final String ERROR_RECORD_TYPE = "Detail";
+    private static final BPackage PACKAGE_ID_MIME = new BPackage(BALLERINA_BUILTIN_PKG_PREFIX, "mime", "1.0.0");
     private static final String STRUCT_TYPE = "ReadableByteChannel";
-    private static final String ERROR_CAUSE_FIELD = "cause";
-    private static final String ENCODING_ERROR = "{ballerina/mime}EncodingFailed";
-    private static final String DECODING_ERROR = "{ballerina/mime}DecodingFailed";
+    private static final String ENCODING_ERROR = "EncodeError";
+    private static final String DECODING_ERROR = "DecodeError";
 
 
-    private static ErrorValue createBase64Error(String reason, String msg, boolean isMimeSpecific) {
+    private static BError createBase64Error(String errorType, String msg, boolean isMimeSpecific) {
         if (isMimeSpecific) {
-            return BallerinaErrors.createError(reason, populateMimeErrorRecord(null, msg));
+            return BErrorCreator.createDistinctError(errorType, PACKAGE_ID_MIME, BStringUtils.fromString(msg));
         }
-        return BallerinaErrors.createError(IOConstants.ErrorCode.GenericError.errorCode(), msg);
-    }
-
-    public static MapValue populateMimeErrorRecord(ErrorValue errorValue, String msg) {
-        Map<String, Object> valueMap = new HashMap<>();
-        if (errorValue != null) {
-            valueMap.put(ERROR_CAUSE_FIELD, errorValue);
-        }
-        if (msg != null) {
-            valueMap.put(MIME_ERROR_MESSAGE, msg);
-        }
-        return BallerinaValues.createRecordValue(PACKAGE_ID_MIME, ERROR_RECORD_TYPE, valueMap);
+        return IOUtils.createError(IOConstants.ErrorCode.GenericError, msg);
     }
 
     /**
@@ -109,7 +94,7 @@ public class Utils {
             case org.ballerinalang.jvm.types.TypeTags.OBJECT_TYPE_TAG:
             case org.ballerinalang.jvm.types.TypeTags.RECORD_TYPE_TAG:
                 //TODO : recheck following casing
-                ObjectValue byteChannel = (ObjectValue) input;
+                BObject byteChannel = (ObjectValue) input;
                 if (STRUCT_TYPE.equals(byteChannel.getType().getName())) {
                     return encodeByteChannel(byteChannel, isMimeSpecific);
                 }
@@ -195,9 +180,9 @@ public class Utils {
      * @param isMimeSpecific A boolean indicating whether the encoder should be mime specific or not
      * @return encoded ReadableByteChannel or an error
      */
-    public static Object encodeByteChannel(ObjectValue byteChannel, boolean isMimeSpecific) {
+    public static Object encodeByteChannel(BObject byteChannel, boolean isMimeSpecific) {
         Channel channel = (Channel) byteChannel.getNativeData(IOConstants.BYTE_CHANNEL_NAME);
-        ObjectValue byteChannelObj;
+        BObject byteChannelObj;
         try {
             byte[] encodedByteArray;
             if (isMimeSpecific) {
@@ -207,7 +192,7 @@ public class Utils {
             }
             InputStream encodedStream = new ByteArrayInputStream(encodedByteArray);
             Base64ByteChannel decodedByteChannel = new Base64ByteChannel(encodedStream);
-            byteChannelObj = BallerinaValues.createObjectValue(IOConstants.IO_PACKAGE_ID, STRUCT_TYPE);
+            byteChannelObj = BValueCreator.createObjectValue(IOConstants.IO_PACKAGE_ID, STRUCT_TYPE);
             byteChannelObj.addNativeData(IOConstants.BYTE_CHANNEL_NAME, new Base64Wrapper(decodedByteChannel));
             return byteChannelObj;
         } catch (IOException e) {
@@ -222,9 +207,9 @@ public class Utils {
      * @param isMimeSpecific A boolean indicating whether the encoder should be mime specific or not
      * @return decoded ReadableByteChannel or an error
      */
-    public static Object decodeByteChannel(ObjectValue byteChannel, boolean isMimeSpecific) {
+    public static Object decodeByteChannel(BObject byteChannel, boolean isMimeSpecific) {
         Channel channel = (Channel) byteChannel.getNativeData(IOConstants.BYTE_CHANNEL_NAME);
-        ObjectValue byteChannelObj;
+        BObject byteChannelObj;
         byte[] decodedByteArray;
         try {
             if (isMimeSpecific) {
@@ -234,7 +219,7 @@ public class Utils {
             }
             InputStream decodedStream = new ByteArrayInputStream(decodedByteArray);
             Base64ByteChannel decodedByteChannel = new Base64ByteChannel(decodedStream);
-            byteChannelObj = BallerinaValues.createObjectValue(IOConstants.IO_PACKAGE_ID, STRUCT_TYPE);
+            byteChannelObj = BValueCreator.createObjectValue(IOConstants.IO_PACKAGE_ID, STRUCT_TYPE);
             byteChannelObj.addNativeData(IOConstants.BYTE_CHANNEL_NAME, new Base64Wrapper(decodedByteChannel));
             return byteChannelObj;
         } catch (IOException e) {

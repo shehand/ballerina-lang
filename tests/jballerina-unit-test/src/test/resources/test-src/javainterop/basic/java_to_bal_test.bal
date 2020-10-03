@@ -1,5 +1,5 @@
 import ballerina/runtime;
-import ballerinax/java;
+import ballerina/java;
 
 int i = 0;
 
@@ -10,14 +10,14 @@ function timerTest() returns int {
     return i;
 }
 
-public type Callback object {
+public class Callback {
 
     public function exec() {
         i = i + 1;
     }
-};
+}
 
 // Interop functions
 public function startTimer(int interval, int count, Callback c) = @java:Method {
-    class:"org/ballerinalang/nativeimpl/jvm/tests/Timer"
+    'class:"org/ballerinalang/nativeimpl/jvm/tests/Timer"
 } external;

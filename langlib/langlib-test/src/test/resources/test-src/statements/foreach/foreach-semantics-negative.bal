@@ -17,20 +17,22 @@ type Detail record {
     boolean fatal;
 };
 
+type Error error<Detail>;
+
 type Employee record {
     int id;
     string name;
     float salary;
 };
 
-table<Employee> data = table {
-    { key id, name, salary },
-    [
-        { 1, "Mary",  300.5 },
-        { 2, "John",  200.5 },
-        { 3, "Jim", 330.5 }
-    ]
-};
+//table<Employee> data = table {
+//    { key id, name, salary },
+//    [
+//        { 1, "Mary",  300.5 },
+//        { 2, "John",  200.5 },
+//        { 3, "Jim", 330.5 }
+//    ]
+//};
 
 function test1(){
     string[] data = ["mon", "tue", "wed", "thu", "fri"];
@@ -136,10 +138,10 @@ function test11() {
 }
 
 function test12() {
-    error<string, Detail> err1 = error("Error One", message = "msgOne", fatal = true);
-    error<string, Detail> err2 = error("Error Two", message = "msgTwo", fatal = false);
-    error<string, Detail> err3 = error("Error Three", message = "msgThree", fatal = true);
-    error<string, Detail>[3] errorArray = [err1, err2, err3];
+    Error err1 = Error("Error One", message = "msgOne", fatal = true);
+    Error err2 = Error("Error Two", message = "msgTwo", fatal = false);
+    Error err3 = Error("Error Three", message = "msgThree", fatal = true);
+    Error[3] errorArray = [err1, err2, err3];
 
     string result1 = "";
     foreach var error(reason, message = message, fatal = fatal) in errorArray {
@@ -149,15 +151,15 @@ function test12() {
     }
 }
 
-function test13() {
-    output = "";
-    int i = 0;
-    foreach var {id, name, salary} in data {
-        id = 2;
-        name = "John";
-        salary = 250.5;
-    }
-}
+//function test13() {
+//    output = "";
+//    int i = 0;
+//    foreach var {id, name, salary} in data {
+//        id = 2;
+//        name = "John";
+//        salary = 250.5;
+//    }
+//}
 
 function test14() returns string {
     output = "";

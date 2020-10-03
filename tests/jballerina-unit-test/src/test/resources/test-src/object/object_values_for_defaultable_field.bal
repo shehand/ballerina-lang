@@ -7,15 +7,15 @@ public function passValueForDefaultableObjectField () returns [int, string] {
     return [resValue, stringResVal];
 }
 
-type Person object {
+class Person {
     public int age;
     public string name;
 
-    function __init (int age = 10, string name = "sample result") {
+    function init (int age = 10, string name = "sample result") {
         self.age = age;
         self.name = name;
         resValue = age;
         stringResVal = name;
     }
-};
+}
 

@@ -101,26 +101,26 @@ function testAnyToFuncPointerConversion_1() returns (int|error) {
     return sumFunction(3, 2);
 }
 
-type Person object {
+class Person {
     int age;
 
-    function __init (int age) {
+    function init (int age) {
         self.age = age;
     }
 
     function getAge() returns (int) {
         return self.age;
     }
-};
+}
 
-type Student object {
+class Student {
     int age = 40;
     private int marks;
 
     function getAge() returns (int) {
         return self.age;
     }
-};
+}
 
 function testFuncPointerConversion() returns (int) {
     function (Person) returns (int) personFunc = function (Person p) returns (int) {
@@ -187,4 +187,24 @@ public function testVoidFunctionAsUnionReturnFunction() returns string {
 
 function xyz(function() returns any|error func) {
     var result = func();
+}
+
+function getName(string n) returns string {
+    return n;
+}
+
+function getDetails(string n, function (string) returns string fn = (x) => "John") returns string {
+    return fn(n);
+}
+
+public function testDefaultParams() {
+    string name = getDetails("Anne", getName);
+    if (name != "Anne") {
+        panic error("Returned string should equal 'Anne'");
+    }
+
+    name = getDetails("Bobby");
+    if (name != "John") {
+        panic error("Returned string should equal 'Anne'");
+    }
 }

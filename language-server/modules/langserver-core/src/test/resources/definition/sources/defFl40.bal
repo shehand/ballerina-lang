@@ -5,7 +5,7 @@ type Object1 object {
     public SimpleTypeDesc field1 = getObjectFieldDefaultValue();
     private int field2;
 
-    public function __init(int arg) {
+    public function init(int arg) {
         self.field2 = arg;
     }
 
@@ -17,16 +17,16 @@ type Object1 object {
     }
 };
 
-type ClientObject client object {
+client class ClientObject {
     public remote function remoteFunc(SimpleTypeDesc param1, SimpleTypeDesc param2 = 1, SimpleTypeDesc2 ...param3) returns SimpleTypeDesc {
         int funcField = param1;
         int funcField2 = param2;
         float[] funcField3 = param3;
         return 1;
     }
-};
+}
 
-type AbstractObject abstract object {
+type AbstractObject object {
     int field1;
     function abstractFunc1(SimpleTypeDesc param1, SimpleTypeDesc param2 = 1, SimpleTypeDesc2 ...param3) returns SimpleTypeDesc;
 };
@@ -34,7 +34,7 @@ type AbstractObject abstract object {
 type Object2 object {
     *AbstractObject;
     
-    public function __init(int arg) {
+    public function init(int arg) {
         self.field1 = arg;
     }
 

@@ -20,7 +20,7 @@ import org.ballerinalang.langserver.command.testgen.renderer.RendererOutput;
 import org.ballerinalang.langserver.command.testgen.renderer.TemplateBasedRendererOutput;
 import org.ballerinalang.langserver.command.testgen.template.AbstractTestTemplate;
 import org.ballerinalang.langserver.command.testgen.template.PlaceHolder;
-import org.ballerinalang.net.http.HttpConstants;
+import org.ballerinalang.langserver.commons.LSContext;
 import org.wso2.ballerinalang.compiler.tree.BLangAnnotationAttachment;
 import org.wso2.ballerinalang.compiler.tree.BLangFunction;
 
@@ -44,8 +44,8 @@ public class HttpResourceTemplate extends AbstractTestTemplate {
     private final String httpEndpoint;
 
     public HttpResourceTemplate(String serviceUriStrName, String basePath, BLangFunction resource,
-                                String httpEndpoint) {
-        super(null, null);
+                                String httpEndpoint, LSContext context) {
+        super(null, null, context);
         this.httpEndpoint = httpEndpoint;
         this.serviceUriStrName = serviceUriStrName;
         this.resourceMethods = new ArrayList<>();
@@ -61,13 +61,13 @@ public class HttpResourceTemplate extends AbstractTestTemplate {
         List<BLangAnnotationAttachment> annAttachments = resource.annAttachments;
         if (annAttachments.size() > 0) {
             for (BLangAnnotationAttachment annotation : annAttachments) {
-                List<String> methods = searchArrayField(HttpConstants.ANN_RESOURCE_ATTR_METHODS, annotation);
+                List<String> methods = searchArrayField("methods", annotation);
                 if (!methods.isEmpty()) {
                     // has method annotation
                     resourceMethods.clear();
                     methods.forEach(resourceMethod -> resourceMethods.add(new String[]{resourceName, resourceMethod}));
                 }
-                Optional<String> annotPath = searchStringField(HttpConstants.ANN_RESOURCE_ATTR_PATH, annotation);
+                Optional<String> annotPath = searchStringField("path", annotation);
                 tempResourcePath = basePath + annotPath.filter(path -> (!"/".equals(path))).orElse("");
             }
         }

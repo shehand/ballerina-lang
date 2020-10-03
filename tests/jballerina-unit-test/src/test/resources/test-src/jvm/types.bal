@@ -119,13 +119,18 @@ public type Grades record {|
    int chemistry?;
 |};
 
-function tableFunc() returns table<Grades> {
-    table<Grades> gradesTable = table {
-             { key name, physics, chemistry },
-              [ {  "Mary",  90, 87 }]
-           };
-    return gradesTable;
+public type StudentGrade record {|
+   readonly string name;
+   int physics;
+   int chemistry?;
+|};
 
+function tableFunc(){
+    table<StudentGrade> gradesTable = table key(name)[
+            { name: "Mary", physics: 90, chemistry: 87 }
+        ];
+
+    assertEquality("[{\"name\":\"Mary\",\"physics\":90,\"chemistry\":87}]", gradesTable.toString());
 }
 
 function arrayFunc(string[] strs) returns Grades[] {
@@ -150,6 +155,29 @@ function tupleTest() returns int {
    // var (_, r1) = ret;
 
    return 10;
+}
+
+public function testRestType() {
+    [int...] x = [1, 2];
+    any y = x;
+    assertEquality(y is string[], false);
+}
+
+public function testEmptyArrayType() {
+    var x = [];
+    any a = x;
+    assertEquality(a is int[2], false);
+    assertEquality(a is int[], true);
+
+    string[] sa = [];
+    any arr = sa;
+    assertEquality(arr is string[], true);
+    assertEquality(arr is int[], false);
+
+    int[0] ia = [];
+    any iarr = ia;
+    assertEquality(iarr is int[0], true);
+    assertEquality(iarr is int[], true);
 }
 
 function divideBy([int,int] d) returns [int, int] {
@@ -731,4 +759,20 @@ function testTypeDescValuePrint() {
 	map<int|string> m1 = { one: 1, two: 2 };
     typedesc<map<anydata>> t1 = typeof m1;
     io:print(t1);
+}
+
+type AssertionError error;
+
+const ASSERTION_ERROR_REASON = "AssertionError";
+
+function assertEquality(any|error expected, any|error actual) {
+    if expected is anydata && actual is anydata && expected == actual {
+        return;
+    }
+
+    if expected === actual {
+        return;
+    }
+
+    panic AssertionError(ASSERTION_ERROR_REASON, message = "expected '" + expected.toString() + "', found '" + actual.toString () + "'");
 }

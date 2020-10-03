@@ -1,22 +1,22 @@
 Person? p1 = new;
 Person? p2 = new ();
 
-type Person object {
+class Person {
     public int age = 0;
-};
+}
 
-type Employee object {
+class Employee {
 
     public Person? p3 = new;
     public Person? p4 = new ();
     public Person? p5 = ();
     public Person? p6 = ();
 
-    function __init () {
+    function init () {
         self.p5 = new;
         self.p6 = new();
     }
-};
+}
 
 function getEmployeeInstance() returns Employee {
     return new Employee();

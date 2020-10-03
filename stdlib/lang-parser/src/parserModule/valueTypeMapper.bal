@@ -14,10 +14,10 @@
 // specific language governing permissions and limitations
 // under the License.
 
-type ValueTypeMapper object {
-    map<ValueKind> valueKindMap = {};
+class ValueTypeMapper {
+    map<ValueKind> valueKindMap = {}
 
-    public function __init() {
+    public function init() {
         self.fillValueMapper();
     }
 

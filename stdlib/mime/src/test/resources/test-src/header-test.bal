@@ -27,7 +27,7 @@ function testAddingMultipleValuesToSameHeader () returns @tainted [string[], str
 function testSetHeader () returns @tainted [string[], string] {
     mime:Entity entity = new;
     entity.setHeader("HeADEr2", "totally different value");
-    return [entity.getHeaders("header1"), entity.getHeader("header2")];
+    return [entity.getHeaders("header2"), entity.getHeader("header2")];
 }
 
 function testSetHeaderAfterAddHeader () returns @tainted [string[], string] {

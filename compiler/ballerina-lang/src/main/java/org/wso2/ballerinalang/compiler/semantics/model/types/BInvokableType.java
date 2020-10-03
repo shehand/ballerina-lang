@@ -21,8 +21,9 @@ import org.ballerinalang.model.types.InvokableType;
 import org.ballerinalang.model.types.TypeKind;
 import org.wso2.ballerinalang.compiler.semantics.model.TypeVisitor;
 import org.wso2.ballerinalang.compiler.semantics.model.symbols.BTypeSymbol;
-import org.wso2.ballerinalang.compiler.util.TypeDescriptor;
+import org.wso2.ballerinalang.compiler.semantics.model.symbols.Symbols;
 import org.wso2.ballerinalang.compiler.util.TypeTags;
+import org.wso2.ballerinalang.util.Flags;
 
 import java.util.List;
 
@@ -36,7 +37,7 @@ public class BInvokableType extends BType implements InvokableType {
     public BType retType;
 
     public BInvokableType(List<BType> paramTypes, BType restType, BType retType, BTypeSymbol tsymbol) {
-        super(TypeTags.INVOKABLE, tsymbol);
+        super(TypeTags.INVOKABLE, tsymbol, Flags.READONLY);
         this.paramTypes = paramTypes;
         this.restType = restType;
         this.retType = retType;
@@ -56,10 +57,6 @@ public class BInvokableType extends BType implements InvokableType {
         return retType;
     }
 
-    @Override
-    public String getDesc() {
-        return TypeDescriptor.SIG_FUNCTION + "(" + getDescriptors(paramTypes) + ")(" + retType.getDesc() + ")";
-    }
 
     @Override
     public <T, R> R accept(BTypeVisitor<T, R> visitor, T t) {
@@ -68,6 +65,9 @@ public class BInvokableType extends BType implements InvokableType {
 
     @Override
     public String toString() {
+        if (Symbols.isFlagOn(flags, Flags.ISOLATED)) {
+            return "isolated function " + getTypeSignature();
+        }
 
         return "function " + getTypeSignature();
     }
@@ -125,12 +125,6 @@ public class BInvokableType extends BType implements InvokableType {
                 br.append(",");
             }
         }
-        return br.toString();
-    }
-
-    private static String getDescriptors(List<BType> types) {
-        StringBuffer br = new StringBuffer();
-        types.forEach(type -> br.append(type.getDesc()));
         return br.toString();
     }
 

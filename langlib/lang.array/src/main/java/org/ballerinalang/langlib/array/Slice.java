@@ -28,14 +28,16 @@ import org.ballerinalang.jvm.util.exceptions.BLangExceptionHelper;
 import org.ballerinalang.jvm.util.exceptions.RuntimeErrors;
 import org.ballerinalang.jvm.values.ArrayValue;
 import org.ballerinalang.jvm.values.ArrayValueImpl;
-import org.ballerinalang.jvm.values.utils.GetFunction;
 import org.ballerinalang.model.types.TypeKind;
 import org.ballerinalang.natives.annotations.Argument;
 import org.ballerinalang.natives.annotations.BallerinaFunction;
 import org.ballerinalang.natives.annotations.ReturnType;
 
-import static org.ballerinalang.jvm.values.utils.ArrayUtils.add;
+import java.util.ArrayList;
+import java.util.List;
+
 import static org.ballerinalang.jvm.values.utils.ArrayUtils.createOpNotSupportedError;
+import static org.ballerinalang.util.BLangCompilerConstants.ARRAY_VERSION;
 
 /**
  * Native implementation of lang.array:slice((any|error)[]).
@@ -43,7 +45,7 @@ import static org.ballerinalang.jvm.values.utils.ArrayUtils.createOpNotSupported
  * @since 1.0
  */
 @BallerinaFunction(
-        orgName = "ballerina", packageName = "lang.array", functionName = "slice",
+        orgName = "ballerina", packageName = "lang.array", version = ARRAY_VERSION, functionName = "slice",
         args = {@Argument(name = "arr", type = TypeKind.ARRAY), @Argument(name = "startIndex", type = TypeKind.INT),
                 @Argument(name = "endIndex", type = TypeKind.INT)},
         returnType = {@ReturnType(type = TypeKind.ARRAY)},
@@ -72,29 +74,31 @@ public class Slice {
 
         BType arrType = arr.getType();
         ArrayValue slicedArr;
-        int elemTypeTag;
-        GetFunction getFn;
 
         switch (arrType.getTag()) {
             case TypeTags.ARRAY_TAG:
-                slicedArr = new ArrayValueImpl((BArrayType) arrType);
-                elemTypeTag = ((BArrayType) arrType).getElementType().getTag();
-                getFn = ArrayValue::get;
+                slicedArr = ((ArrayValueImpl) arr).slice(startIndex, endIndex);
                 break;
             case TypeTags.TUPLE_TAG:
                 BTupleType tupleType = (BTupleType) arrType;
-                BUnionType unionType = new BUnionType(tupleType.getTupleTypes(), tupleType.getTypeFlags());
+
+                List<BType> memTypes = new ArrayList<>(tupleType.getTupleTypes());
+
+                BType restType = tupleType.getRestType();
+                if (restType != null) {
+                    memTypes.add(restType);
+                }
+
+                BUnionType unionType = new BUnionType(memTypes);
                 BArrayType slicedArrType = new BArrayType(unionType, (int) (endIndex - startIndex));
                 slicedArr = new ArrayValueImpl(slicedArrType);
-                elemTypeTag = -1; // To ensure additions go to ref value array in ArrayValue
-                getFn = ArrayValue::getRefValue;
+
+                for (long i = startIndex, j = 0; i < endIndex; i++, j++) {
+                    slicedArr.add(j, arr.getRefValue(i));
+                }
                 break;
             default:
                 throw createOpNotSupportedError(arrType, "slice()");
-        }
-
-        for (long i = startIndex, j = 0; i < endIndex; i++, j++) {
-            add(slicedArr, elemTypeTag, j, getFn.get(arr, i));
         }
 
         return slicedArr;

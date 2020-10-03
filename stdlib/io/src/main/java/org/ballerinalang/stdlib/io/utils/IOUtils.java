@@ -18,10 +18,10 @@
 
 package org.ballerinalang.stdlib.io.utils;
 
-import org.ballerinalang.jvm.BallerinaErrors;
-import org.ballerinalang.jvm.BallerinaValues;
+import org.ballerinalang.jvm.api.BErrorCreator;
+import org.ballerinalang.jvm.api.BStringUtils;
+import org.ballerinalang.jvm.api.values.BError;
 import org.ballerinalang.jvm.values.ErrorValue;
-import org.ballerinalang.jvm.values.MapValue;
 import org.ballerinalang.stdlib.io.channels.FileIOChannel;
 import org.ballerinalang.stdlib.io.channels.base.Channel;
 import org.ballerinalang.stdlib.io.channels.base.CharacterChannel;
@@ -62,8 +62,9 @@ public class IOUtils {
      * @param errorMsg  the error message
      * @return an error which will be propagated to ballerina user
      */
-    public static ErrorValue createError(String errorMsg) {
-        return BallerinaErrors.createError(GenericError.errorCode(), createDetailRecord(errorMsg, null));
+    public static BError createError(String errorMsg) {
+        return BErrorCreator.createDistinctError(GenericError.errorCode(), IO_PACKAGE_ID,
+                                                 BStringUtils.fromString(errorMsg));
     }
 
     /**
@@ -72,19 +73,19 @@ public class IOUtils {
      * @param error Java throwable instance
      * @return an error which will be propagated to ballerina user
      */
-    public static ErrorValue createError(Throwable error) {
+    public static BError createError(Throwable error) {
         return createError(error.getMessage());
     }
 
     /**
-     * Creates an error message with given error code.
+     * Creates an error message with given error type.
      *
      * @param code     the error code which represent the error type
      * @param errorMsg the error message
      * @return an error which will be propagated to ballerina user
      */
-    public static ErrorValue createError(IOConstants.ErrorCode code, String errorMsg) {
-        return BallerinaErrors.createError(code.errorCode(), createDetailRecord(errorMsg, null));
+    public static BError createError(IOConstants.ErrorCode code, String errorMsg) {
+        return BErrorCreator.createDistinctError(code.errorCode(), IO_PACKAGE_ID, BStringUtils.fromString(errorMsg));
     }
 
     /**
@@ -92,14 +93,8 @@ public class IOUtils {
      *
      * @return EoF Error
      */
-    public static ErrorValue createEoFError() {
+    public static BError createEoFError() {
         return IOUtils.createError(EoF, "EoF when reading from the channel");
-    }
-
-    private static MapValue<String, Object> createDetailRecord(Object... values) {
-        MapValue<String, Object> detail = BallerinaValues.
-                createRecordValue(IO_PACKAGE_ID, IOConstants.DETAIL_RECORD_TYPE_NAME);
-        return BallerinaValues.createRecord(detail, values);
     }
 
     /**

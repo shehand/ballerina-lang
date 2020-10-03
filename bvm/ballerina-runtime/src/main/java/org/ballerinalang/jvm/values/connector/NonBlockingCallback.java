@@ -18,10 +18,10 @@
 
 package org.ballerinalang.jvm.values.connector;
 
+import org.ballerinalang.jvm.api.values.BError;
 import org.ballerinalang.jvm.scheduling.Scheduler;
 import org.ballerinalang.jvm.scheduling.State;
 import org.ballerinalang.jvm.scheduling.Strand;
-import org.ballerinalang.jvm.values.ErrorValue;
 
 /**
  * The callback implementation to handle non-blocking function behaviour.
@@ -33,23 +33,25 @@ public class NonBlockingCallback {
     private final Strand strand;
     private final Scheduler scheduler;
 
+    @Deprecated // replace with org.ballerinalang.jvm.api.BalEnv#markAsync
     public NonBlockingCallback(Strand strand) {
         strand.blockedOnExtern = true;
         strand.setState(State.BLOCK_AND_YIELD);
         this.strand = strand;
         this.scheduler = strand.scheduler;
+        this.strand.returnValue = null;
     }
 
     public void notifySuccess() {
         this.scheduler.unblockStrand(strand);
     }
 
-    public void notifyFailure(ErrorValue error) {
-        this.strand.setReturnValues(error);
+    public void notifyFailure(BError error) {
+        this.strand.returnValue = error;
         this.scheduler.unblockStrand(strand);
     }
 
     public void setReturnValues(Object returnValue) {
-        this.strand.setReturnValues(returnValue);
+        this.strand.returnValue = returnValue;
     }
 }

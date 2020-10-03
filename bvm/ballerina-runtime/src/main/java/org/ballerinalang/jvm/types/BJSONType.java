@@ -27,18 +27,35 @@ import org.ballerinalang.jvm.values.MapValueImpl;
 @SuppressWarnings("unchecked")
 public class BJSONType extends BType {
 
+    private final boolean readonly;
+    private BIntersectionType immutableType;
+
     /**
      * Create a {@code BJSONType} which represents the JSON type.
      *
      * @param typeName string name of the type
      * @param pkg of the type
+     * @param readonly whether immutable
      */
-    public BJSONType(String typeName, BPackage pkg) {
+    public BJSONType(String typeName, BPackage pkg, boolean readonly) {
         super(typeName, pkg, MapValueImpl.class);
+        this.readonly = readonly;
+
+        if (!readonly) {
+            BJSONType immutableJsonType = new BJSONType(TypeConstants.READONLY_JSON_TNAME, pkg, true);
+            this.immutableType = new BIntersectionType(pkg, new BType[]{ this, BTypes.typeReadonly }, immutableJsonType,
+                                                       TypeFlags.asMask(TypeFlags.NILABLE, TypeFlags.ANYDATA,
+                                                                        TypeFlags.PURETYPE), true);
+        }
     }
 
     public BJSONType() {
         super(TypeConstants.JSON_TNAME, null, MapValueImpl.class);
+        this.readonly = false;
+        BJSONType immutableJsonType = new BJSONType(TypeConstants.READONLY_JSON_TNAME, pkg, true);
+        this.immutableType = new BIntersectionType(pkg, new BType[]{ this, BTypes.typeReadonly }, immutableJsonType,
+                                                   TypeFlags.asMask(TypeFlags.NILABLE, TypeFlags.ANYDATA,
+                                                                    TypeFlags.PURETYPE), true);
     }
 
     @Override
@@ -58,10 +75,29 @@ public class BJSONType extends BType {
 
     @Override
     public boolean equals(Object obj) {
-        return super.equals(obj) && obj instanceof BJSONType;
+        if (!(obj instanceof BJSONType)) {
+            return false;
+        }
+
+        return super.equals(obj) && this.readonly == ((BJSONType) obj).readonly;
     }
 
     public boolean isNilable() {
         return true;
+    }
+
+    @Override
+    public boolean isReadOnly() {
+        return this.readonly;
+    }
+
+    @Override
+    public BType getImmutableType() {
+        return this.immutableType;
+    }
+
+    @Override
+    public void setImmutableType(BIntersectionType immutableType) {
+        this.immutableType = immutableType;
     }
 }

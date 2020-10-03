@@ -30,7 +30,7 @@ public remote function test2(string value) {
 public remote function test3(string value) returns int = external;
 
 
-type Foo client object {
+client class Foo {
 
     function abc (string value) returns int {
         return 10;
@@ -43,13 +43,13 @@ type Foo client object {
     remote function xyz (string value) returns float {
         return 10.0;
     }
-};
+}
 
 function testFunc1() {
     Foo x = new;
-    // invalid remote function invocation syntax, use '->' operator
+    // invalid remote method call '.pqr()': use '->pqr()' for remote method calls
     var y = x.pqr("test");
-    // undefined remote function 'abc' in endpoint Foo
+    // invalid method call '->abc()': '->' can only be used with remote methods
     var z = x->abc("test");
 }
 
@@ -69,11 +69,11 @@ function testFunc2() {
     _ = b->action1("value");
 }
 
-type Bar object {
+class Bar {
    function action1 (string x) returns int {
        return 10;
    }
-};
+}
 
 // valid.
 Foo gep = new;
@@ -81,7 +81,7 @@ Foo gep = new;
 function testFunc5() {
     var y = gep->pqr("test");
 
-    // invalid remote function invocation syntax, use '->' operator
+    // invalid remote method call '.pqr()': use '->pqr()' for remote method calls
     var z = gep.pqr("test");
 }
 
@@ -89,7 +89,7 @@ function testFunc5() {
 function testFunc6(Foo ep, string b) {
     var y = ep->pqr("test");
 
-    // invalid remote function invocation syntax, use '->' operator
+    // invalid remote method call '.pqr()': use '->pqr()' for remote method calls
     var z = ep.pqr("test");
 }
 
@@ -107,7 +107,7 @@ function testFunc10 (string s) {
     var y = ep->pqr("test");
 }
 
-type Baz object {
+class Baz {
     //a remote function in a non client object
     remote function action1(string s) returns int {
         return 10;
@@ -120,9 +120,9 @@ type Baz object {
     //a remote function in a non client object
     remote function action2(int i) {
     }
-};
+}
 
-type dummy object {
+class dummy {
 
     Foo ff = new;
 
@@ -131,4 +131,4 @@ type dummy object {
         return "done";
     }
 
-};
+}

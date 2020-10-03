@@ -39,7 +39,6 @@ dependencies {
     implementation project(':ballerina-file')
     implementation project(':ballerina-io')
     implementation project(':ballerina-log-api')
-    implementation project(':ballerina-math')
     implementation project(':ballerina-reflect')
     implementation project(':ballerina-time')
     implementation project(':ballerina-cache')
@@ -52,6 +51,7 @@ dependencies {
     implementation project(':ballerina-system')
     implementation project(':ballerina-task')
     implementation project(':ballerina-stringutils')
+    implementation project(':ballerina-observability')
     testCompile project(':ballerina-tool')
     testCompile 'org.slf4j:slf4j-simple'
 
@@ -64,7 +64,6 @@ dependencies {
     baloImplementation project(path: ':ballerina-io', configuration: 'baloImplementation')
     baloImplementation project(path: ':ballerina-java', configuration: 'baloImplementation')
     baloImplementation project(path: ':ballerina-log-api', configuration: 'baloImplementation')
-    baloImplementation project(path: ':ballerina-math', configuration: 'baloImplementation')
     baloImplementation project(path: ':ballerina-mime', configuration: 'baloImplementation')
     baloImplementation project(path: ':ballerina-reflect', configuration: 'baloImplementation')
     baloImplementation project(path: ':ballerina-runtime-api', configuration: 'baloImplementation')
@@ -72,11 +71,11 @@ dependencies {
     baloImplementation project(path: ':ballerina-time', configuration: 'baloImplementation')
     baloImplementation project(path: ':ballerina-stringutils', configuration: 'baloImplementation')
     baloImplementation project(path: ':ballerina-java', configuration: 'baloImplementation')
+    baloImplementation project(path: ':ballerina-observability', configuration: 'baloImplementation')
 
     interopImports project(':ballerina-config-api')
     interopImports project(':ballerina-io')
     interopImports project(':ballerina-log-api')
-    interopImports project(':ballerina-math')
     interopImports project(':ballerina-system')
     interopImports project(':ballerina-task')
     interopImports project(':ballerina-time')
@@ -103,6 +102,7 @@ dependencies {
     testCompile project(':ballerina-core')
     testCompile 'org.apache.ws.commons.axiom:axiom-api'
     testCompile 'org.testng:testng'
+    testCompile 'com.h2database:h2'
 
     interopImports project(':ballerina-crypto')
 }

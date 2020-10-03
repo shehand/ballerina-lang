@@ -14,9 +14,10 @@
 // specific language governing permissions and limitations
 // under the License.
 
-import ballerinax/java;
+import ballerina/java;
 import ballerina/crypto;
 import ballerina/time;
+import ballerina/observe;
 
 ////////////////////////////////
 ///// HTTP Client Endpoint /////
@@ -31,27 +32,26 @@ import ballerina/time;
 # + httpClient - Chain of different HTTP clients which provides the capability for initiating contact with a remote
 #                HTTP service in resilient manner
 # + cookieStore - Stores the cookies of the client
-public type Client client object {
+public client class Client {
 
     public string url;
     public ClientConfiguration config = {};
     public HttpClient httpClient;
     public CookieStore? cookieStore = ();
 
-    # Gets invoked to initialize the client. During initialization, the configurations provided through the `config`
+    # Gets invoked to initialize the `client`. During initialization, the configurations provided through the `config`
     # record is used to determine which type of additional behaviours are added to the endpoint (e.g., caching,
     # security, circuit breaking).
     #
     # + url - URL of the target service
-    # + config - The configurations to be used when initializing the client
-    # + cookieStore - Stores the cookies of the client
-    public function __init(string url, public ClientConfiguration? config = ()) {
+    # + config - The configurations to be used when initializing the `client`
+    public function init(string url, ClientConfiguration? config = ()) {
         self.config = config ?: {};
         self.url = url;
         var cookieConfigVal = self.config.cookieConfig;
         if (cookieConfigVal is CookieConfig) {
             if (cookieConfigVal.enabled) {
-                self.cookieStore = new;
+                self.cookieStore = new(cookieConfigVal?.persistentCookieHandler);
             }
         }
         var result = initialize(url, self.config, self.cookieStore);
@@ -70,7 +70,11 @@ public type Client client object {
     # + return - The response for the request or an `http:ClientError` if failed to establish communication with the upstream server
     public remote function post(@untainted string path, RequestMessage message) returns Response|ClientError {
         Request req = buildRequest(message);
-        return self.httpClient->post(path, req);
+        Response|ClientError response = self.httpClient->post(path, req);
+        if (observabilityEnabled && response is Response) {
+            addObservabilityInformation(path, HTTP_POST, response.statusCode, self.url);
+        }
+        return response;
     }
 
     # The `Client.head()` function can be used to send HTTP HEAD requests to HTTP endpoints.
@@ -79,9 +83,13 @@ public type Client client object {
     # + message - An HTTP outbound request message or any payload of type `string`, `xml`, `json`, `byte[]`,
     #             `io:ReadableByteChannel` or `mime:Entity[]`
     # + return - The response for the request or an `http:ClientError` if failed to establish communication with the upstream server
-    public remote function head(@untainted string path, public RequestMessage message = ()) returns Response|ClientError {
+    public remote function head(@untainted string path, RequestMessage message = ()) returns Response|ClientError {
         Request req = buildRequest(message);
-        return self.httpClient->head(path, message = req);
+        Response|ClientError response = self.httpClient->head(path, message = req);
+        if (observabilityEnabled && response is Response) {
+            addObservabilityInformation(path, HTTP_HEAD, response.statusCode, self.url);
+        }
+        return response;
     }
 
     # The `Client.put()` function can be used to send HTTP PUT requests to HTTP endpoints.
@@ -92,7 +100,11 @@ public type Client client object {
     # + return - The response for the request or an `http:ClientError` if failed to establish communication with the upstream server
     public remote function put(@untainted string path, RequestMessage message) returns Response|ClientError {
         Request req = buildRequest(message);
-        return self.httpClient->put(path, req);
+        Response|ClientError response = self.httpClient->put(path, req);
+        if (observabilityEnabled && response is Response) {
+            addObservabilityInformation(path, HTTP_PUT, response.statusCode, self.url);
+        }
+        return response;
     }
 
     # Invokes an HTTP call with the specified HTTP verb.
@@ -104,7 +116,11 @@ public type Client client object {
     # + return - The response for the request or an `http:ClientError` if failed to establish communication with the upstream server
     public remote function execute(@untainted string httpVerb, @untainted string path, RequestMessage message) returns Response|ClientError {
         Request req = buildRequest(message);
-        return self.httpClient->execute(httpVerb, path, req);
+        Response|ClientError response = self.httpClient->execute(httpVerb, path, req);
+        if (observabilityEnabled && response is Response) {
+            addObservabilityInformation(path, httpVerb, response.statusCode, self.url);
+        }
+        return response;
     }
 
     # The `Client.patch()` function can be used to send HTTP PATCH requests to HTTP endpoints.
@@ -115,7 +131,11 @@ public type Client client object {
     # + return - The response for the request or an `http:ClientError` if failed to establish communication with the upstream server
     public remote function patch(@untainted string path, RequestMessage message) returns Response|ClientError {
         Request req = buildRequest(message);
-        return self.httpClient->patch(path, req);
+        Response|ClientError response = self.httpClient->patch(path, req);
+        if (observabilityEnabled && response is Response) {
+            addObservabilityInformation(path, HTTP_PATCH, response.statusCode, self.url);
+        }
+        return response;
     }
 
     # The `Client.delete()` function can be used to send HTTP DELETE requests to HTTP endpoints.
@@ -124,9 +144,13 @@ public type Client client object {
     # + message - An optional HTTP outbound request message or any payload of type `string`, `xml`, `json`, `byte[]`,
     #             `io:ReadableByteChannel` or `mime:Entity[]`
     # + return - The response for the request or an `http:ClientError` if failed to establish communication with the upstream server
-    public remote function delete(@untainted string path, public RequestMessage message = ()) returns Response|ClientError {
+    public remote function delete(@untainted string path, RequestMessage message = ()) returns Response|ClientError {
         Request req = buildRequest(message);
-        return self.httpClient->delete(path, req);
+        Response|ClientError response = self.httpClient->delete(path, req);
+        if (observabilityEnabled && response is Response) {
+            addObservabilityInformation(path, HTTP_DELETE, response.statusCode, self.url);
+        }
+        return response;
     }
 
     # The `Client.get()` function can be used to send HTTP GET requests to HTTP endpoints.
@@ -135,9 +159,13 @@ public type Client client object {
     # + message - An optional HTTP outbound request message or any payload of type `string`, `xml`, `json`, `byte[]`,
     #             `io:ReadableByteChannel` or `mime:Entity[]`
     # + return - The response for the request or an `http:ClientError` if failed to establish communication with the upstream server
-    public remote function get(@untainted string path, public RequestMessage message = ()) returns Response|ClientError {
+    public remote function get(@untainted string path, RequestMessage message = ()) returns Response|ClientError {
         Request req = buildRequest(message);
-        return self.httpClient->get(path, message = req);
+        Response|ClientError response = self.httpClient->get(path, message = req);
+        if (observabilityEnabled && response is Response) {
+            addObservabilityInformation(path, HTTP_GET, response.statusCode, self.url);
+        }
+        return response;
     }
 
     # The `Client.options()` function can be used to send HTTP OPTIONS requests to HTTP endpoints.
@@ -146,9 +174,13 @@ public type Client client object {
     # + message - An optional HTTP outbound request message or any payload of type `string`, `xml`, `json`, `byte[]`,
     #             `io:ReadableByteChannel` or `mime:Entity[]`
     # + return - The response for the request or an `http:ClientError` if failed to establish communication with the upstream server
-    public remote function options(@untainted string path, public RequestMessage message = ()) returns Response|ClientError {
+    public remote function options(@untainted string path, RequestMessage message = ()) returns Response|ClientError {
         Request req = buildRequest(message);
-        return self.httpClient->options(path, message = req);
+        Response|ClientError response = self.httpClient->options(path, message = req);
+        if (observabilityEnabled && response is Response) {
+            addObservabilityInformation(path, HTTP_OPTIONS, response.statusCode, self.url);
+        }
+        return response;
     }
 
     # The `Client.forward()` function can be used to invoke an HTTP call with inbound request's HTTP verb
@@ -157,18 +189,22 @@ public type Client client object {
     # + request - An HTTP inbound request message
     # + return - The response for the request or an `http:ClientError` if failed to establish communication with the upstream server
     public remote function forward(@untainted string path, Request request) returns Response|ClientError {
-        return self.httpClient->forward(path, request);
+        Response|ClientError response = self.httpClient->forward(path, request);
+        if (observabilityEnabled && response is Response) {
+            addObservabilityInformation(path, request.method, response.statusCode, self.url);
+        }
+        return response;
     }
 
     # Submits an HTTP request to a service with the specified HTTP verb.
-    # The `Client.submit()` function does not give out a `Response` as the result,
-    # rather it returns an `HttpFuture` which can be used to do further interactions with the endpoint.
+    # The `Client->submit()` function does not give out a `http:Response` as the result.
+    # Rather it returns an `http:HttpFuture` which can be used to do further interactions with the endpoint.
     #
     # + httpVerb - The HTTP verb value
     # + path - The resource path
     # + message - An HTTP outbound request message or any payload of type `string`, `xml`, `json`, `byte[]`,
     #             `io:ReadableByteChannel` or `mime:Entity[]`
-    # + return - An `HttpFuture` that represents an asynchronous service invocation, or an `http:ClientError` if the submission fails
+    # + return - An `http:HttpFuture` that represents an asynchronous service invocation or else an `http:ClientError` if the submission fails
     public remote function submit(@untainted string httpVerb, string path, RequestMessage message) returns HttpFuture|ClientError {
         Request req = buildRequest(message);
         return self.httpClient->submit(httpVerb, path, req);
@@ -177,34 +213,42 @@ public type Client client object {
 
     # This just pass the request to actual network call.
     #
-    # + httpFuture - The `HttpFuture` relates to a previous asynchronous invocation
-    # + return - An HTTP response message, or an error if the invocation fails
+    # + httpFuture - The `http:HttpFuture` related to a previous asynchronous invocation
+    # + return - An `http:Response` message or else an `http: ClientError` if the invocation fails
     public remote function getResponse(HttpFuture httpFuture) returns Response|ClientError {
-        return self.httpClient->getResponse(httpFuture);
+        Response|ClientError response = self.httpClient->getResponse(httpFuture);
+        if (response is Response) {
+            error? err = observe:addTagToSpan(HTTP_STATUS_CODE_GROUP, getStatusCodeRange(response.statusCode));
+        }
+        return response;
     }
 
     # This just pass the request to actual network call.
     #
-    # + httpFuture - The `HttpFuture` relates to a previous asynchronous invocation
-    # + return - A `boolean` that represents whether a `PushPromise` exists
+    # + httpFuture - The `http:HttpFuture` relates to a previous asynchronous invocation
+    # + return - A `boolean`, which represents whether an `http:PushPromise` exists
     public remote function hasPromise(HttpFuture httpFuture) returns boolean {
         return self.httpClient->hasPromise(httpFuture);
     }
 
     # This just pass the request to actual network call.
     #
-    # + httpFuture - The `HttpFuture` relates to a previous asynchronous invocation
-    # + return - An HTTP Push Promise message, or an error if the invocation fails
+    # + httpFuture - The `http:HttpFuture` related to a previous asynchronous invocation
+    # + return - An `http:PushPromise` message or else an `http:ClientError` if the invocation fails
     public remote function getNextPromise(HttpFuture httpFuture) returns PushPromise|ClientError {
         return self.httpClient->getNextPromise(httpFuture);
     }
 
-    # This just pass the request to actual network call.
+    # Passes the request to an actual network call.
     #
-    # + promise - The related `PushPromise`
-    # + return - A promised HTTP `Response` message, or an error if the invocation fails
+    # + promise - The related `http:PushPromise`
+    # + return - A promised `http:Response` message or else an `http:ClientError` if the invocation fails
     public remote function getPromisedResponse(PushPromise promise) returns Response|ClientError {
-        return self.httpClient->getPromisedResponse(promise);
+        Response|ClientError response = self.httpClient->getPromisedResponse(promise);
+        if (observabilityEnabled && response is Response) {
+            addObservabilityInformation(promise.path, promise.method, response.statusCode, self.url);
+        }
+        return response;
     }
 
     # This just pass the request to actual network call.
@@ -220,7 +264,7 @@ public type Client client object {
     public function getCookieStore() returns CookieStore? {
         return self.cookieStore;
     }
-};
+}
 
 # Represents a single service and its related configurations.
 #
@@ -232,36 +276,28 @@ public type TargetService record {|
 |};
 
 # Provides a set of configurations for controlling the behaviours when communicating with a remote HTTP endpoint.
+# Following fields are inherited from the other configuration records in addition to the Client specific
+# configs.
 #
-# + httpVersion - The HTTP version understood by the client
-# + http1Settings - Configurations related to HTTP/1.x protocol
-# + http2Settings - Configurations related to HTTP/2 protocol
-# + timeoutInMillis - The maximum time to wait (in milliseconds) for a response before closing the connection
-# + forwarded - The choice of setting `forwarded`/`x-forwarded` header
-# + followRedirects - Configurations associated with Redirection
-# + poolConfig - Configurations associated with request pooling
+# |                                                         |
+# |:------------------------------------------------------- |
+# | httpVersion - Copied from CommonClientConfiguration     |
+# | http1Settings - Copied from CommonClientConfiguration   |
+# | http2Settings - Copied from CommonClientConfiguration   |
+# | timeoutInMillis - Copied from CommonClientConfiguration |
+# | forwarded - Copied from CommonClientConfiguration       |
+# | followRedirects - Copied from CommonClientConfiguration |
+# | poolConfig - Copied from CommonClientConfiguration      |
+# | cache - Copied from CommonClientConfiguration           |
+# | compression - Copied from CommonClientConfiguration     |
+# | auth - Copied from CommonClientConfiguration            |
+# | circuitBreaker - Copied from CommonClientConfiguration  |
+# | retryConfig - Copied from CommonClientConfiguration     |
+# | cookieConfig - Copied from CommonClientConfiguration    |
 # + secureSocket - SSL/TLS related options
-# + cache - HTTP caching related configurations
-# + compression - Specifies the way of handling compression (`accept-encoding`) header
-# + auth - HTTP authentication-related configurations
-# + circuitBreaker - Configurations associated with the behaviour of the Circuit Breaker
-# + retryConfig - Configurations associated with retrying
-# + cookieConfig - Configurations associated with cookies
 public type ClientConfiguration record {|
-    string httpVersion = HTTP_1_1;
-    ClientHttp1Settings http1Settings = {};
-    ClientHttp2Settings http2Settings = {};
-    int timeoutInMillis = 60000;
-    string forwarded = "disable";
-    FollowRedirects? followRedirects = ();
-    PoolConfiguration? poolConfig = ();
+    *CommonClientConfiguration;
     ClientSecureSocket? secureSocket = ();
-    CacheConfig cache = {};
-    Compression compression = COMPRESSION_AUTO;
-    OutboundAuthConfig? auth = ();
-    CircuitBreakerConfig? circuitBreaker = ();
-    RetryConfig? retryConfig = ();
-    CookieConfig? cookieConfig = ();
 |};
 
 # Provides settings related to HTTP/1.x protocol.
@@ -276,7 +312,7 @@ public type ClientHttp1Settings record {|
 |};
 
 function createSimpleHttpClient(HttpClient caller, PoolConfiguration globalPoolConfig) = @java:Method {
-   class: "org.ballerinalang.net.http.clientendpoint.CreateSimpleHttpClient",
+   'class: "org.ballerinalang.net.http.clientendpoint.CreateSimpleHttpClient",
    name: "createSimpleHttpClient"
 } external;
 
@@ -339,12 +375,17 @@ public type ClientSecureSocket record {|
 |};
 
 # Provides configurations for controlling the endpoint's behaviour in response to HTTP redirect related responses.
+# The response status codes of 301, 302, and 303 are redirected using a GET request while 300, 305, 307, and 308
+# status codes use the original request HTTP method during redirection.
 #
 # + enabled - Enable/disable redirection
 # + maxCount - Maximum number of redirects to follow
+# + allowAuthHeaders - By default Authorization and Proxy-Authorization headers are removed from the redirect requests.
+#                      Set it to true if Auth headers are needed to be sent during the redirection
 public type FollowRedirects record {|
     boolean enabled = false;
     int maxCount = 5;
+    boolean allowAuthHeaders = false;
 |};
 
 # Proxy server configurations to be used with the HTTP client endpoint.
@@ -370,19 +411,17 @@ public type OutboundAuthConfig record {|
 # Client configuration for cookies.
 #
 # + enabled - User agents provide users with a mechanism for disabling or enabling cookies
-# + maxSizePerCookie -  Maximum number of bytes per cookie (as measured by the sum of the length of the cookie’s name, value, and  attributes), which is 4096 bytes
 # + maxCookiesPerDomain - Maximum number of cookies per domain, which is 50
 # + maxTotalCookieCount - Maximum number of total cookies allowed to be stored in cookie store, which is 3000
 # + blockThirdPartyCookies - User can block cookies from third party responses and refuse to send cookies for third party requests, if needed
-# + enablePersistence - Users are provided with a mechanism for enabling or disabling persistent cookies, which are stored until a specific expiration date.
-#                     If false, only session cookies are used
+# + persistentCookieHandler - To manage persistent cookies, users are provided with a mechanism for specifying a persistent cookie store with their own mechanism
+#                             which references the persistent cookie handler or specifying the CSV persistent cookie handler. If not specified any, only the session cookies are used
 public type CookieConfig record {|
      boolean enabled = false;
-     int maxSizePerCookie = 4096;
      int maxCookiesPerDomain = 50;
      int maxTotalCookieCount = 3000;
      boolean blockThirdPartyCookies = true;
-     boolean enablePersistence = false;
+     PersistentCookieHandler persistentCookieHandler?;
 |};
 
 function initialize(string serviceUrl, ClientConfiguration config, CookieStore? cookieStore) returns HttpClient|error {

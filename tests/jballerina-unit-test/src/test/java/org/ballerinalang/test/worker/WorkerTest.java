@@ -20,6 +20,7 @@ import org.ballerinalang.model.values.BError;
 import org.ballerinalang.model.values.BInteger;
 import org.ballerinalang.model.values.BMap;
 import org.ballerinalang.model.values.BValue;
+import org.ballerinalang.test.util.BAssertUtil;
 import org.ballerinalang.test.util.BCompileUtil;
 import org.ballerinalang.test.util.BRunUtil;
 import org.ballerinalang.test.util.CompileResult;
@@ -109,13 +110,13 @@ public class WorkerTest {
     }
 
     @Test(expectedExceptions = BLangRuntimeException.class,
-            expectedExceptionsMessageRegExp = ".*error: err message=err msg.*")
+            expectedExceptionsMessageRegExp = ".*error: err \\{\"message\":\"err msg.*")
     public void receiveWithCheckpanic() {
         BRunUtil.invoke(result, "receiveWithCheckpanic");
     }
 
     @Test(expectedExceptions = BLangRuntimeException.class,
-            expectedExceptionsMessageRegExp = ".*error: err message=sync send err msg.*")
+            expectedExceptionsMessageRegExp = ".*error: err \\{\"message\":\"sync send err msg.*")
     public void syncSendReceiveWithCheckpanic() {
         BRunUtil.invoke(result, "syncSendReceiveWithCheckpanic");
     }
@@ -129,7 +130,7 @@ public class WorkerTest {
             actualException = e;
         }
         Assert.assertNotNull(actualException);
-        String expected = "error: error: err from panic \n\tat workers:$lambda$";
+        String expected = "error: error: err from panic\n\tat workers:$lambda$";
         Assert.assertTrue(actualException.getMessage().contains(expected), actualException.getMessage());
     }
 
@@ -142,7 +143,7 @@ public class WorkerTest {
             actualException = e;
         }
         Assert.assertNotNull(actualException);
-        String expected = "error: error: err from panic \n" + "\tat " +
+        String expected = "error: error: err from panic\n" + "\tat " +
                                     "workers:sendToDefaultWithPanicBeforeSendInDefault(workers.bal:";
         Assert.assertTrue(actualException.getMessage().contains(expected), actualException.getMessage());
     }
@@ -156,7 +157,7 @@ public class WorkerTest {
             actualException = e;
         }
         Assert.assertNotNull(actualException);
-        String expected = "error: error: err from panic \n" + "\tat workers:$lambda$";
+        String expected = "error: error: err from panic\n" + "\tat workers:$lambda$";
         Assert.assertTrue(actualException.getMessage().contains(expected), actualException.getMessage());
     }
 
@@ -169,7 +170,7 @@ public class WorkerTest {
             actualException = e;
         }
         Assert.assertNotNull(actualException);
-        String expected = "error: error: err from panic \n" +
+        String expected = "error: error: err from panic\n" +
                                 "\tat workers:sendToDefaultWithPanicAfterSendInDefault(workers.bal:";
         Assert.assertTrue(actualException.getMessage().contains(expected), actualException.getMessage());
     }
@@ -183,7 +184,7 @@ public class WorkerTest {
             actualException = e;
         }
         Assert.assertNotNull(actualException);
-        String expectedResult = "error: error: err from panic \n" +
+        String expectedResult = "error: error: err from panic\n" +
                 "\tat workers:receiveFromDefaultWithPanicAfterSendInDefault(workers.bal:";
         Assert.assertTrue(actualException.getMessage().contains(expectedResult),
                 actualException.getMessage());
@@ -198,7 +199,7 @@ public class WorkerTest {
             actualException = e;
         }
         Assert.assertNotNull(actualException);
-        String expected = "error: error: err from panic \n" +
+        String expected = "error: error: err from panic\n" +
                 "\tat workers:receiveFromDefaultWithPanicBeforeSendInDefault(workers.bal:";
         Assert.assertTrue(actualException.getMessage().contains(expected), actualException.getMessage());
     }
@@ -212,7 +213,7 @@ public class WorkerTest {
             actualException = e;
         }
         Assert.assertNotNull(actualException);
-        String expected = "error: error: err from panic \n" + "\tat workers:$lambda$";
+        String expected = "error: error: err from panic\n" + "\tat workers:$lambda$";
         Assert.assertTrue(actualException.getMessage().contains(expected), actualException.getMessage());
     }
 
@@ -225,7 +226,7 @@ public class WorkerTest {
             actualException = e;
         }
         Assert.assertNotNull(actualException);
-        String expectedMessage = "error: error: err from panic \n\tat";
+        String expectedMessage = "error: error: err from panic\n\tat";
         String actualMessage = actualException.getMessage();
         Assert.assertTrue(actualMessage.contains(expectedMessage), actualMessage);
     }
@@ -273,7 +274,7 @@ public class WorkerTest {
     }
 
     @Test(expectedExceptions = BLangRuntimeException.class,
-            expectedExceptionsMessageRegExp = ".*error: \\{ballerina/lang.future\\}FutureAlreadyCancelled.*")
+          expectedExceptionsMessageRegExp = ".*error: \\{ballerina/lang.future\\}FutureAlreadyCancelled.*")
     public void workerWithFutureTest1() {
         BValue[] returns = BRunUtil.invoke(result, "workerWithFutureTest1");
         Assert.assertEquals(returns.length, 1);
@@ -346,5 +347,36 @@ public class WorkerTest {
         BMap mapResult = (BMap) returns[0];
         Assert.assertEquals(mapResult.get("w1").stringValue(), "w1");
         Assert.assertEquals(mapResult.get("w2").stringValue(), "w2");
+    }
+
+    @Test(expectedExceptions = BLangRuntimeException.class)
+    public void testFunctionWithWorkerInsideLock() {
+        BValue[] returns = BRunUtil.invoke(result, "testPanicWorkerInsideLock");
+    }
+
+    @Test(expectedExceptions = BLangRuntimeException.class)
+    public void testFunctionWithWorkerInsideLockWithDepth3() {
+        BValue[] returns = BRunUtil.invoke(result, "testPanicWorkerInsideLockWithDepth3");
+    }
+
+    @Test(expectedExceptions = BLangRuntimeException.class)
+    public void testFunctionWithStartInsideLock() {
+        BValue[] returns = BRunUtil.invoke(result, "testPanicStartInsideLock");
+    }
+
+    @Test(expectedExceptions = BLangRuntimeException.class)
+    public void testFunctionWithStartInsideLockWithDepth3() {
+        BValue[] returns = BRunUtil.invoke(result, "testPanicStartInsideLockWithDepth3");
+    }
+
+    @Test
+    public void testWorkerInsideLock() {
+        CompileResult result = BCompileUtil.compile("test-src/workers/worker-in-lock.bal");
+        int index = 0;
+        BAssertUtil.validateError(result, index++, "cannot use a named worker inside a lock statement", 4, 20);
+        BAssertUtil.validateError(result, index++, "cannot use an async call inside a lock statement", 13, 19);
+        BAssertUtil.validateError(result, index++, "cannot use a named worker inside a lock statement", 25, 20);
+        BAssertUtil.validateError(result, index++, "cannot use a named worker inside a lock statement", 27, 28);
+        BAssertUtil.validateError(result, index++, "cannot use a named worker inside a lock statement", 42, 20);
     }
 }

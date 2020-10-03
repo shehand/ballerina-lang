@@ -3,33 +3,33 @@ function test () returns int {
     return p.emp.age;
 }
 
-type Person object {
+class Person {
     public int age = 0;
     public Employee emp;
 
-    function __init (int age, Employee emp) {
+    function init (int age, Employee emp) {
         self.age = age;
         self.emp = emp;
     }
-};
+}
 
-type Employee object {
+class Employee {
     public int age = 0;
     public Foo foo;
     public Bar bar = {};
 
-    function __init (int age) {
+    function init (int age) {
         self.age = age;
     }
-};
+}
 
-type Foo object {
+class Foo {
     public int calc;
 
-    function __init (int calc) {
+    function init (int calc) {
         self.calc = calc;
     }
-};
+}
 
 type Bar record {
     int barVal = 0;

@@ -17,6 +17,7 @@
 */
 package org.ballerinalang.model.tree.statements;
 
+import org.ballerinalang.model.clauses.OnFailClauseNode;
 import org.ballerinalang.model.tree.expressions.ExpressionNode;
 
 /**
@@ -28,9 +29,13 @@ import org.ballerinalang.model.tree.expressions.ExpressionNode;
 public interface WhileNode extends StatementNode {
     ExpressionNode getCondition();
 
-    BlockNode getBody();
+    BlockStatementNode getBody();
 
     void setCondition(ExpressionNode condition);
 
-    void setBody(BlockNode body);
+    void setBody(BlockStatementNode body);
+
+    OnFailClauseNode getOnFailClause();
+
+    void setOnFailClause(OnFailClauseNode onFailClause);
 }

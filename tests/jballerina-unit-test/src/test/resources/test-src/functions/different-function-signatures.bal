@@ -1,3 +1,5 @@
+const ASSERTION_ERROR_REASON = "AssertionError";
+
 //------------ Testing a function with all types of parameters ---------
 
 function functionWithAllTypesParams(int a, float b, string c = "John", int d = 5, string e = "Doe", int... z)
@@ -136,12 +138,12 @@ function testFuncWithNilDefaultParamExpr() returns [any, any] {
 
 // ------------------- Test function signature for attached functions ------------------
 
-public type Employee object {
+public class Employee {
 
     public string name = "";
     public int salary = 0;
 
-    function __init(string name = "supun", int salary = 100) {
+    function init(string name = "supun", int salary = 100) {
         self.name = name;
         self.salary = salary;
     }
@@ -149,7 +151,7 @@ public type Employee object {
     public function getSalary (string n, int b = 0) returns int {
         return self.salary + b;
     }
-};
+}
 
 function testAttachedFunction() returns [int, int] {
     Employee emp = new;
@@ -162,7 +164,7 @@ function testDefaultableParamInnerFunc () returns [int, string] {
     return p.test1(a = 50);
 }
 
-type Person object {
+class Person {
     public int age = 0;
 
     function test1(int a = 77, string n = "inner default") returns [int, string] {
@@ -176,4 +178,45 @@ type Person object {
         int intVal = a + 10;
         return [intVal, val];
     }
-};
+}
+
+// ------------------- Test function signature which has a function typed param with only rest param ------------------
+
+function functionOfFunctionTypedParamWithRest(int[] x, function (int...) returns int bar) returns [int, int] {
+    return [x[0], bar(x[0])] ;
+}
+
+function sampleFunctionTypedParam(int... a) returns int {
+    if (a.length() > 0) {
+        return a[0];
+    } else {
+        return 0;
+    }
+}
+
+function testFunctionOfFunctionTypedParamWithRest1() {
+    int[] x = [4];
+    int[] y = functionOfFunctionTypedParamWithRest(x, sampleFunctionTypedParam);
+    assertEquality(x[0], y[0]);
+    assertEquality(x[0], y[1]);
+}
+
+function testFunctionOfFunctionTypedParamWithRest2() {
+    int[] x = [10, 20, 30];
+    int[] y = functionOfFunctionTypedParamWithRest(x, sampleFunctionTypedParam);
+    assertEquality(x[0], y[0]);
+    assertEquality(x[0], y[1]);
+}
+
+function assertEquality(any|error expected, any|error actual) {
+    if expected is anydata && actual is anydata && expected == actual {
+        return;
+    }
+
+    if expected === actual {
+        return;
+    }
+
+    panic error(ASSERTION_ERROR_REASON,
+                message = "expected '" + expected.toString() + "', found '" + actual.toString () + "'");
+}

@@ -7,11 +7,11 @@ public function getStartAndAttachCount() returns string {
     return attachCount.toString() + "_" + startCount.toString();
 }
 
-public type ABC object {
+public class ABC {
 
     *'object:Listener;
 
-    public function __init(){
+    public function init(){
     }
 
     public function __start() returns error? {
@@ -32,7 +32,7 @@ public type ABC object {
 
     public function __detach(service s) returns error? {
     }
-};
+}
 
 public listener ABC ep = new ABC();
 

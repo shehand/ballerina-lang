@@ -19,9 +19,11 @@ package org.wso2.ballerinalang.compiler.semantics.model.types;
 
 import org.wso2.ballerinalang.compiler.semantics.model.TypeVisitor;
 import org.wso2.ballerinalang.compiler.semantics.model.symbols.BTypeSymbol;
+import org.wso2.ballerinalang.compiler.semantics.model.symbols.Symbols;
+import org.wso2.ballerinalang.compiler.util.Name;
+import org.wso2.ballerinalang.util.Flags;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.util.LinkedHashMap;
 
 /**
  * {@code BStructureType} represents structure type in Ballerina.
@@ -30,19 +32,44 @@ import java.util.List;
  */
 public abstract class BStructureType extends BType {
 
-    public List<BField> fields;
+    private static final String DOLLAR = "$";
+
+    public LinkedHashMap<String, BField> fields;
 
     public BStructureType(int tag, BTypeSymbol tSymbol) {
         super(tag, tSymbol);
-        this.fields = new ArrayList<>();
+        this.fields = new LinkedHashMap<>();
     }
 
-    public List<BField> getFields() {
+    public BStructureType(int tag, BTypeSymbol tSymbol, int flags) {
+        super(tag, tSymbol, flags);
+        this.fields = new LinkedHashMap<>();
+    }
+
+    public LinkedHashMap<String, BField> getFields() {
         return fields;
     }
 
     @Override
     public void accept(TypeVisitor visitor) {
         visitor.visit(this);
+    }
+
+    protected boolean shouldPrintShape(Name name) {
+        if (name == null) {
+            return false;
+        }
+
+        String value = name.value;
+
+        if (value.isEmpty() || value.startsWith(DOLLAR)) {
+            return true;
+        }
+
+        if (!(Symbols.isFlagOn(this.tsymbol.flags, Flags.READONLY))) {
+            return false;
+        }
+
+        return value.startsWith("($");
     }
 }

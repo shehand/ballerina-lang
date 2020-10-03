@@ -71,7 +71,8 @@ function testResourceAnnotAccess() returns boolean {
     }
 
     http:HttpResourceConfig? resourceAnnot =
-            <http:HttpResourceConfig?> reflect:getResourceAnnotations(ser, "res", "ResourceConfig", "ballerina/http");
+            <http:HttpResourceConfig?> reflect:getResourceAnnotations(ser, "res", "ResourceConfig",
+                                                                      "ballerina/http:1.0.0");
     if (resourceAnnot is http:HttpResourceConfig) {
         if (resourceAnnot.path != "testPath") {
             return false;
@@ -106,10 +107,10 @@ function testResourceAnnotAccess() returns boolean {
     return false;
 }
 
-type Listener object {
+class Listener {
     *lang:Listener;
 
-    public function __init() {
+    public function init() {
     }
 
     public function __attach(service s, string? name = ()) returns error? {
@@ -128,4 +129,4 @@ type Listener object {
     public function __immediateStop() returns error? {
         return ();
     }
-};
+}

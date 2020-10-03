@@ -18,6 +18,11 @@
 package org.ballerinalang.net.http;
 
 import io.netty.handler.codec.http.HttpHeaderNames;
+import org.ballerinalang.jvm.api.BStringUtils;
+import org.ballerinalang.jvm.api.values.BError;
+import org.ballerinalang.jvm.api.values.BMap;
+import org.ballerinalang.jvm.api.values.BObject;
+import org.ballerinalang.jvm.api.values.BString;
 import org.ballerinalang.jvm.types.BArrayType;
 import org.ballerinalang.jvm.types.BType;
 import org.ballerinalang.jvm.types.TypeTags;
@@ -25,9 +30,8 @@ import org.ballerinalang.jvm.util.exceptions.BallerinaConnectorException;
 import org.ballerinalang.jvm.values.ArrayValue;
 import org.ballerinalang.jvm.values.ErrorValue;
 import org.ballerinalang.jvm.values.MapValue;
-import org.ballerinalang.jvm.values.ObjectValue;
 import org.ballerinalang.jvm.values.XMLValue;
-import org.ballerinalang.langlib.typedesc.ConstructFrom;
+import org.ballerinalang.langlib.value.CloneWithType;
 import org.ballerinalang.mime.util.EntityBodyHandler;
 import org.ballerinalang.net.uri.URIUtil;
 import org.wso2.transport.http.netty.message.HttpCarbonMessage;
@@ -55,12 +59,17 @@ public class HttpDispatcher {
             Map<String, HttpService> servicesOnInterface;
             List<String> sortedServiceURIs;
             String hostName = inboundReqMsg.getHeader(HttpHeaderNames.HOST.toString());
+
             if (hostName != null && servicesRegistry.getServicesMapHolder(hostName) != null) {
                 servicesOnInterface = servicesRegistry.getServicesByHost(hostName);
                 sortedServiceURIs = servicesRegistry.getSortedServiceURIsByHost(hostName);
-            } else {
+            } else if (servicesRegistry.getServicesMapHolder(DEFAULT_HOST) != null) {
                 servicesOnInterface = servicesRegistry.getServicesByHost(DEFAULT_HOST);
                 sortedServiceURIs = servicesRegistry.getSortedServiceURIsByHost(DEFAULT_HOST);
+            } else {
+                inboundReqMsg.setHttpStatusCode(404);
+                String localAddress = inboundReqMsg.getProperty(HttpConstants.LOCAL_ADDRESS).toString();
+                throw new BallerinaConnectorException("no service has registered for listener : " + localAddress);
             }
 
             String rawUri = (String) inboundReqMsg.getProperty(HttpConstants.TO);
@@ -138,10 +147,10 @@ public class HttpDispatcher {
     }
 
     public static Object[] getSignatureParameters(HttpResource httpResource, HttpCarbonMessage httpCarbonMessage,
-                                                  MapValue endpointConfig) {
-        ObjectValue httpCaller = ValueCreatorUtils.createCallerObject();
-        ObjectValue inRequest = ValueCreatorUtils.createRequestObject();
-        ObjectValue inRequestEntity = ValueCreatorUtils.createEntityObject();
+                                                  BMap<BString, Object> endpointConfig) {
+        BObject httpCaller = ValueCreatorUtils.createCallerObject();
+        BObject inRequest = ValueCreatorUtils.createRequestObject();
+        BObject inRequestEntity = ValueCreatorUtils.createEntityObject();
 
         HttpUtil.enrichHttpCallerWithConnectionInfo(httpCaller, httpCarbonMessage, httpResource, endpointConfig);
         HttpUtil.enrichHttpCallerWithNativeData(httpCaller, httpCarbonMessage, endpointConfig);
@@ -187,7 +196,7 @@ public class HttpDispatcher {
                         paramValues[paramIndex++] = Boolean.parseBoolean(argumentValue);
                         break;
                     default:
-                        paramValues[paramIndex++] = argumentValue;
+                        paramValues[paramIndex++] = BStringUtils.fromString(argumentValue);
                 }
                 paramValues[paramIndex] = true;
             } catch (Exception ex) {
@@ -209,14 +218,14 @@ public class HttpDispatcher {
         return paramValues;
     }
 
-    private static Object populateAndGetEntityBody(ObjectValue inRequest, ObjectValue inRequestEntity,
+    private static Object populateAndGetEntityBody(BObject inRequest, BObject inRequestEntity,
                                                    org.ballerinalang.jvm.types.BType entityBodyType)
             throws IOException {
         HttpUtil.populateEntityBody(inRequest, inRequestEntity, true, true);
         try {
             switch (entityBodyType.getTag()) {
                 case TypeTags.STRING_TAG:
-                    String stringDataSource = EntityBodyHandler.constructStringDataSource(inRequestEntity);
+                    BString stringDataSource = EntityBodyHandler.constructStringDataSource(inRequestEntity);
                     EntityBodyHandler.addMessageDataSource(inRequestEntity, stringDataSource);
                     return stringDataSource;
                 case TypeTags.JSON_TAG:
@@ -243,13 +252,13 @@ public class HttpDispatcher {
                 default:
                         //Do nothing
             }
-        } catch (ErrorValue ex) {
+        } catch (BError ex) {
             throw new BallerinaConnectorException(ex.toString());
         }
         return null;
     }
 
-    private static Object getRecordEntity(ObjectValue inRequestEntity, BType entityBodyType) {
+    private static Object getRecordEntity(BObject inRequestEntity, BType entityBodyType) {
         Object result = getRecord(entityBodyType, getBJsonValue(inRequestEntity));
         if (result instanceof ErrorValue) {
             throw (ErrorValue) result;
@@ -266,7 +275,7 @@ public class HttpDispatcher {
      */
     private static Object getRecord(BType entityBodyType, Object bjson) {
         try {
-            return ConstructFrom.convert(entityBodyType, bjson);
+            return CloneWithType.convert(entityBodyType, bjson);
         } catch (NullPointerException ex) {
             throw new BallerinaConnectorException("cannot convert payload to record type: " +
                     entityBodyType.getName());
@@ -279,7 +288,7 @@ public class HttpDispatcher {
      * @param inRequestEntity Represents inbound request entity
      * @return a ballerina json value
      */
-    private static Object getBJsonValue(ObjectValue inRequestEntity) {
+    private static Object getBJsonValue(BObject inRequestEntity) {
         Object bjson = EntityBodyHandler.constructJsonDataSource(inRequestEntity);
         EntityBodyHandler.addJsonMessageDataSource(inRequestEntity, bjson);
         return bjson;

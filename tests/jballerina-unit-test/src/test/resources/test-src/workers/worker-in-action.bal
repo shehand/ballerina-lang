@@ -4,9 +4,10 @@ public type ClientEndpointConfiguration record {
 
 };
 
-public type ABCClient client object {
+public client class ABCClient {
 
     remote function testAction1() returns string {
+        @strand{thread:"any"}
         worker sampleWorker {
             string m = "";
             m = <- default;
@@ -21,6 +22,7 @@ public type ABCClient client object {
     }
 
     remote function testAction2() returns string {
+        @strand{thread:"any"}
         worker sampleWorker {
             "request" -> default;
         }
@@ -30,19 +32,19 @@ public type ABCClient client object {
         return result;
     }
 
-};
+}
 
-public type Client object {
+public class Client {
     public ABCClient abcClient = new;
 
-    public function init(ClientEndpointConfiguration config) {
+    public function _init_(ClientEndpointConfiguration config) {
         self.abcClient = new;
     }
 
     public function register(typedesc<any> serviceType) {
     }
 
-    public function start() {
+    public function 'start() {
     }
 
     public function getCallerActions() returns ABCClient {
@@ -51,7 +53,7 @@ public type Client object {
 
     public function stop() {
     }
-};
+}
 
 function testAction1() returns string {
     ABCClient ep1 = new;
@@ -75,6 +77,7 @@ public function testDefaultError () returns string{
 }
 
 function test1(int c) returns error|() {
+    @strand{thread:"any"}
     worker w1 returns int {
         int|error a = <- default;
         //need to verify this line is reached

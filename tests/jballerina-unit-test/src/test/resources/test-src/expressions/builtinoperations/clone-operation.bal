@@ -13,6 +13,8 @@
 // KIND, either express or implied.  See the License for the
 // specific language governing permissions and limitations
 // under the License.
+import ballerina/lang.'xml;
+
 public type Person record {|
     int id;
     string name;
@@ -20,8 +22,8 @@ public type Person record {|
     string...;
 |};
 
-type Employee record {
-    int id;
+public type Employee record {
+    readonly int id;
     string name;
     float salary;
 };
@@ -93,17 +95,14 @@ public function cloneString() returns [string, string, string] {
     return [a, x, y];
 }
 
-public function cloneXML() returns [xml, xml, xml] {
-    xml a = xml `<root><name>Alex</name><id>123</id><age>21</age></root>`;
+public function cloneXML() returns [xml, xml] {
+    'xml:Element a = <'xml:Element> xml `<root><name>Alex</name></root>`;
     xml newName = xml `<name>Charlos</name>`;
-    xml newId = xml `<id>5000</id>`;
-    xml x = a.clone();
-    xml y = a.clone();
-    a.removeChildren("name");
-    a.appendChildren(newName);
-    y.removeChildren("id");
-    y.appendChildren(newId);
-    return [a, x, y];
+
+    'xml:Element x = <'xml:Element> a.clone();
+    a.setChildren(newName);
+
+    return [a, x];
 }
 
 public function cloneMap() returns [map<any>, map<any>, map<any>] {
@@ -124,21 +123,19 @@ public function cloneMap() returns [map<any>, map<any>, map<any>] {
     return [a, x, y];
 }
 
-public function cloneTable() returns [table<Employee>, table<Employee>, table<Employee>] {
+public function cloneTable() returns [Employee[], Employee[], Employee[]] {
 
     Employee e1 = { id: 1, name: "Jane", salary: 300.50 };
     Employee e2 = { id: 2, name: "Anne", salary: 100.50 };
     Employee e3 = { id: 3, name: "John", salary: 400.50 };
-
-    table<Employee> a = table {
-        { key id, name, salary },
-        [e1, e2]
-    };
-    table<Employee> x = a.clone();
-    table<Employee> y = a.clone();
-    checkpanic a.add(e3);
-    checkpanic y.add(e3);
-    return [a, x, y];
+    table<Employee> key(id) a = table [];
+    a[1] = e1;
+    a[2] = e2;
+    table<Employee> key(id) x = a.clone();
+    table<Employee> key(id) y = a.clone();
+    a[3] = e3;
+    y[3] = e3;
+    return [[a[1], a[2], a[3]], [x[1], x[2]], [y[1], y[2], y[3]]];
 }
 
 public function cloneJSON() returns [json, json, json] {
@@ -357,7 +354,7 @@ public function cloneNilAnydata() returns [any, any] {
     return [x, y];
 }
 
-type MyError error<string, record {| string message?; error cause?; string...; |}>;
+type MyError error<record {| string message?; error cause?; string...; |}>;
 
 string reason1 = "err reason 1";
 string reason2 = "err reason 2";
@@ -367,8 +364,8 @@ string[*] reasonArray = [reason1, reason2, reason3, reason4];
 
 error err1 = error(reason1);
 error err2 = error(reason2, one = 1, two = "2");
-MyError err3 = error(reason3, one = "first");
-MyError err4 = error(reason4, one = "first", two = "second");
+MyError err3 = MyError(reason3, one = "first");
+MyError err4 = MyError(reason4, one = "first", two = "second");
 
 public function testCloneArrayWithError() returns boolean {
     error[*] errArray = [err1, err2, err3, err4];
@@ -378,8 +375,8 @@ public function testCloneArrayWithError() returns boolean {
 
     foreach int i in 0 ... 3 {
         cloneSuccessful = cloneSuccessful &&
-                            errArray[i].reason() == clonedErrArray[i].reason() &&
-                            errArray[i].reason() == reasonArray[i] &&
+                            errArray[i].message() == clonedErrArray[i].message() &&
+                            errArray[i].message() == reasonArray[i] &&
                             errArray[i].detail() === clonedErrArray[i].detail();
     }
     return cloneSuccessful;
@@ -406,8 +403,8 @@ public function testCloneMapWithError() returns boolean {
                                 <string> ma["two"] == <string> clonedMap["two"];
 
     map<error> clonedErrorMap = <map<error>> clonedMap["errMap"];
-    foreach [string, error] [key, value] in errMapFromValue.entries() {
-        cloneSuccessful = cloneSuccessful && value === clonedErrorMap[key];
+    foreach [string, error] [x, y] in errMapFromValue.entries() {
+        cloneSuccessful = cloneSuccessful && y === clonedErrorMap[x];
     }
     return cloneSuccessful;
 }

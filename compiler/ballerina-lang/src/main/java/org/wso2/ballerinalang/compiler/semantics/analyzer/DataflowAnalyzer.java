@@ -19,9 +19,12 @@ package org.wso2.ballerinalang.compiler.semantics.analyzer;
 
 import org.ballerinalang.compiler.CompilerPhase;
 import org.ballerinalang.model.symbols.SymbolKind;
+import org.ballerinalang.model.tree.Node;
 import org.ballerinalang.model.tree.NodeKind;
 import org.ballerinalang.model.tree.TopLevelNode;
+import org.ballerinalang.model.tree.expressions.RecordLiteralNode;
 import org.ballerinalang.util.diagnostic.DiagnosticCode;
+import org.wso2.ballerinalang.compiler.diagnostic.BLangDiagnosticLog;
 import org.wso2.ballerinalang.compiler.semantics.analyzer.cyclefind.GlobalVariableRefAnalyzer;
 import org.wso2.ballerinalang.compiler.semantics.model.SymbolEnv;
 import org.wso2.ballerinalang.compiler.semantics.model.SymbolTable;
@@ -31,11 +34,17 @@ import org.wso2.ballerinalang.compiler.semantics.model.symbols.SymTag;
 import org.wso2.ballerinalang.compiler.semantics.model.symbols.Symbols;
 import org.wso2.ballerinalang.compiler.semantics.model.types.BField;
 import org.wso2.ballerinalang.compiler.semantics.model.types.BObjectType;
+import org.wso2.ballerinalang.compiler.semantics.model.types.BTableType;
+import org.wso2.ballerinalang.compiler.semantics.model.types.BType;
+import org.wso2.ballerinalang.compiler.semantics.model.types.BUnionType;
 import org.wso2.ballerinalang.compiler.tree.BLangAnnotation;
 import org.wso2.ballerinalang.compiler.tree.BLangAnnotationAttachment;
+import org.wso2.ballerinalang.compiler.tree.BLangBlockFunctionBody;
+import org.wso2.ballerinalang.compiler.tree.BLangClassDefinition;
 import org.wso2.ballerinalang.compiler.tree.BLangCompilationUnit;
-import org.wso2.ballerinalang.compiler.tree.BLangEndpoint;
 import org.wso2.ballerinalang.compiler.tree.BLangErrorVariable;
+import org.wso2.ballerinalang.compiler.tree.BLangExprFunctionBody;
+import org.wso2.ballerinalang.compiler.tree.BLangExternalFunctionBody;
 import org.wso2.ballerinalang.compiler.tree.BLangFunction;
 import org.wso2.ballerinalang.compiler.tree.BLangIdentifier;
 import org.wso2.ballerinalang.compiler.tree.BLangImportPackage;
@@ -47,18 +56,33 @@ import org.wso2.ballerinalang.compiler.tree.BLangRecordVariable;
 import org.wso2.ballerinalang.compiler.tree.BLangResource;
 import org.wso2.ballerinalang.compiler.tree.BLangService;
 import org.wso2.ballerinalang.compiler.tree.BLangSimpleVariable;
+import org.wso2.ballerinalang.compiler.tree.BLangTableKeySpecifier;
 import org.wso2.ballerinalang.compiler.tree.BLangTestablePackage;
 import org.wso2.ballerinalang.compiler.tree.BLangTupleVariable;
 import org.wso2.ballerinalang.compiler.tree.BLangTypeDefinition;
 import org.wso2.ballerinalang.compiler.tree.BLangVariable;
 import org.wso2.ballerinalang.compiler.tree.BLangWorker;
 import org.wso2.ballerinalang.compiler.tree.BLangXMLNS;
+import org.wso2.ballerinalang.compiler.tree.clauses.BLangDoClause;
+import org.wso2.ballerinalang.compiler.tree.clauses.BLangFromClause;
+import org.wso2.ballerinalang.compiler.tree.clauses.BLangJoinClause;
+import org.wso2.ballerinalang.compiler.tree.clauses.BLangLetClause;
+import org.wso2.ballerinalang.compiler.tree.clauses.BLangLimitClause;
+import org.wso2.ballerinalang.compiler.tree.clauses.BLangMatchClause;
+import org.wso2.ballerinalang.compiler.tree.clauses.BLangOnClause;
+import org.wso2.ballerinalang.compiler.tree.clauses.BLangOnConflictClause;
+import org.wso2.ballerinalang.compiler.tree.clauses.BLangOnFailClause;
+import org.wso2.ballerinalang.compiler.tree.clauses.BLangOrderByClause;
+import org.wso2.ballerinalang.compiler.tree.clauses.BLangOrderKey;
+import org.wso2.ballerinalang.compiler.tree.clauses.BLangSelectClause;
+import org.wso2.ballerinalang.compiler.tree.clauses.BLangWhereClause;
 import org.wso2.ballerinalang.compiler.tree.expressions.BLangAccessExpression;
 import org.wso2.ballerinalang.compiler.tree.expressions.BLangAnnotAccessExpr;
 import org.wso2.ballerinalang.compiler.tree.expressions.BLangArrowFunction;
 import org.wso2.ballerinalang.compiler.tree.expressions.BLangBinaryExpr;
 import org.wso2.ballerinalang.compiler.tree.expressions.BLangCheckPanickedExpr;
 import org.wso2.ballerinalang.compiler.tree.expressions.BLangCheckedExpr;
+import org.wso2.ballerinalang.compiler.tree.expressions.BLangCommitExpr;
 import org.wso2.ballerinalang.compiler.tree.expressions.BLangConstant;
 import org.wso2.ballerinalang.compiler.tree.expressions.BLangElvisExpr;
 import org.wso2.ballerinalang.compiler.tree.expressions.BLangErrorVarRef;
@@ -71,6 +95,7 @@ import org.wso2.ballerinalang.compiler.tree.expressions.BLangInvocation;
 import org.wso2.ballerinalang.compiler.tree.expressions.BLangInvocation.BLangActionInvocation;
 import org.wso2.ballerinalang.compiler.tree.expressions.BLangIsAssignableExpr;
 import org.wso2.ballerinalang.compiler.tree.expressions.BLangLambdaFunction;
+import org.wso2.ballerinalang.compiler.tree.expressions.BLangLetExpression;
 import org.wso2.ballerinalang.compiler.tree.expressions.BLangListConstructorExpr;
 import org.wso2.ballerinalang.compiler.tree.expressions.BLangLiteral;
 import org.wso2.ballerinalang.compiler.tree.expressions.BLangMarkdownDocumentationLine;
@@ -79,14 +104,19 @@ import org.wso2.ballerinalang.compiler.tree.expressions.BLangMarkdownReturnParam
 import org.wso2.ballerinalang.compiler.tree.expressions.BLangMatchExpression;
 import org.wso2.ballerinalang.compiler.tree.expressions.BLangMatchExpression.BLangMatchExprPatternClause;
 import org.wso2.ballerinalang.compiler.tree.expressions.BLangNamedArgsExpression;
+import org.wso2.ballerinalang.compiler.tree.expressions.BLangQueryAction;
+import org.wso2.ballerinalang.compiler.tree.expressions.BLangQueryExpr;
+import org.wso2.ballerinalang.compiler.tree.expressions.BLangRawTemplateLiteral;
 import org.wso2.ballerinalang.compiler.tree.expressions.BLangRecordLiteral;
 import org.wso2.ballerinalang.compiler.tree.expressions.BLangRecordVarRef;
 import org.wso2.ballerinalang.compiler.tree.expressions.BLangRestArgsExpression;
 import org.wso2.ballerinalang.compiler.tree.expressions.BLangServiceConstructorExpr;
 import org.wso2.ballerinalang.compiler.tree.expressions.BLangSimpleVarRef;
 import org.wso2.ballerinalang.compiler.tree.expressions.BLangStringTemplateLiteral;
-import org.wso2.ballerinalang.compiler.tree.expressions.BLangTableLiteral;
+import org.wso2.ballerinalang.compiler.tree.expressions.BLangTableConstructorExpr;
+import org.wso2.ballerinalang.compiler.tree.expressions.BLangTableMultiKeyExpr;
 import org.wso2.ballerinalang.compiler.tree.expressions.BLangTernaryExpr;
+import org.wso2.ballerinalang.compiler.tree.expressions.BLangTransactionalExpr;
 import org.wso2.ballerinalang.compiler.tree.expressions.BLangTrapExpr;
 import org.wso2.ballerinalang.compiler.tree.expressions.BLangTupleVarRef;
 import org.wso2.ballerinalang.compiler.tree.expressions.BLangTypeConversionExpr;
@@ -103,22 +133,26 @@ import org.wso2.ballerinalang.compiler.tree.expressions.BLangWorkerSyncSendExpr;
 import org.wso2.ballerinalang.compiler.tree.expressions.BLangXMLAttribute;
 import org.wso2.ballerinalang.compiler.tree.expressions.BLangXMLAttributeAccess;
 import org.wso2.ballerinalang.compiler.tree.expressions.BLangXMLCommentLiteral;
+import org.wso2.ballerinalang.compiler.tree.expressions.BLangXMLElementAccess;
 import org.wso2.ballerinalang.compiler.tree.expressions.BLangXMLElementLiteral;
+import org.wso2.ballerinalang.compiler.tree.expressions.BLangXMLNavigationAccess;
 import org.wso2.ballerinalang.compiler.tree.expressions.BLangXMLProcInsLiteral;
 import org.wso2.ballerinalang.compiler.tree.expressions.BLangXMLQName;
 import org.wso2.ballerinalang.compiler.tree.expressions.BLangXMLQuotedString;
 import org.wso2.ballerinalang.compiler.tree.expressions.BLangXMLSequenceLiteral;
 import org.wso2.ballerinalang.compiler.tree.expressions.BLangXMLTextLiteral;
-import org.wso2.ballerinalang.compiler.tree.statements.BLangAbort;
+import org.wso2.ballerinalang.compiler.tree.matchpatterns.BLangMatchPattern;
 import org.wso2.ballerinalang.compiler.tree.statements.BLangAssignment;
 import org.wso2.ballerinalang.compiler.tree.statements.BLangBlockStmt;
 import org.wso2.ballerinalang.compiler.tree.statements.BLangBreak;
 import org.wso2.ballerinalang.compiler.tree.statements.BLangCatch;
 import org.wso2.ballerinalang.compiler.tree.statements.BLangCompoundAssignment;
 import org.wso2.ballerinalang.compiler.tree.statements.BLangContinue;
+import org.wso2.ballerinalang.compiler.tree.statements.BLangDo;
 import org.wso2.ballerinalang.compiler.tree.statements.BLangErrorDestructure;
 import org.wso2.ballerinalang.compiler.tree.statements.BLangErrorVariableDef;
 import org.wso2.ballerinalang.compiler.tree.statements.BLangExpressionStmt;
+import org.wso2.ballerinalang.compiler.tree.statements.BLangFail;
 import org.wso2.ballerinalang.compiler.tree.statements.BLangForeach;
 import org.wso2.ballerinalang.compiler.tree.statements.BLangForkJoin;
 import org.wso2.ballerinalang.compiler.tree.statements.BLangIf;
@@ -126,12 +160,16 @@ import org.wso2.ballerinalang.compiler.tree.statements.BLangLock;
 import org.wso2.ballerinalang.compiler.tree.statements.BLangMatch;
 import org.wso2.ballerinalang.compiler.tree.statements.BLangMatch.BLangMatchStaticBindingPatternClause;
 import org.wso2.ballerinalang.compiler.tree.statements.BLangMatch.BLangMatchStructuredBindingPatternClause;
+import org.wso2.ballerinalang.compiler.tree.statements.BLangMatchStatement;
 import org.wso2.ballerinalang.compiler.tree.statements.BLangPanic;
 import org.wso2.ballerinalang.compiler.tree.statements.BLangRecordDestructure;
 import org.wso2.ballerinalang.compiler.tree.statements.BLangRecordVariableDef;
 import org.wso2.ballerinalang.compiler.tree.statements.BLangRetry;
+import org.wso2.ballerinalang.compiler.tree.statements.BLangRetryTransaction;
 import org.wso2.ballerinalang.compiler.tree.statements.BLangReturn;
+import org.wso2.ballerinalang.compiler.tree.statements.BLangRollback;
 import org.wso2.ballerinalang.compiler.tree.statements.BLangSimpleVariableDef;
+import org.wso2.ballerinalang.compiler.tree.statements.BLangStatement;
 import org.wso2.ballerinalang.compiler.tree.statements.BLangThrow;
 import org.wso2.ballerinalang.compiler.tree.statements.BLangTransaction;
 import org.wso2.ballerinalang.compiler.tree.statements.BLangTryCatchFinally;
@@ -146,8 +184,12 @@ import org.wso2.ballerinalang.compiler.tree.types.BLangConstrainedType;
 import org.wso2.ballerinalang.compiler.tree.types.BLangErrorType;
 import org.wso2.ballerinalang.compiler.tree.types.BLangFiniteTypeNode;
 import org.wso2.ballerinalang.compiler.tree.types.BLangFunctionTypeNode;
+import org.wso2.ballerinalang.compiler.tree.types.BLangIntersectionTypeNode;
+import org.wso2.ballerinalang.compiler.tree.types.BLangLetVariable;
 import org.wso2.ballerinalang.compiler.tree.types.BLangObjectTypeNode;
 import org.wso2.ballerinalang.compiler.tree.types.BLangRecordTypeNode;
+import org.wso2.ballerinalang.compiler.tree.types.BLangStreamType;
+import org.wso2.ballerinalang.compiler.tree.types.BLangTableTypeNode;
 import org.wso2.ballerinalang.compiler.tree.types.BLangTupleTypeNode;
 import org.wso2.ballerinalang.compiler.tree.types.BLangType;
 import org.wso2.ballerinalang.compiler.tree.types.BLangUnionTypeNode;
@@ -156,18 +198,21 @@ import org.wso2.ballerinalang.compiler.tree.types.BLangValueType;
 import org.wso2.ballerinalang.compiler.util.CompilerContext;
 import org.wso2.ballerinalang.compiler.util.Name;
 import org.wso2.ballerinalang.compiler.util.Names;
-import org.wso2.ballerinalang.compiler.util.diagnotic.BLangDiagnosticLog;
+import org.wso2.ballerinalang.compiler.util.TypeTags;
 import org.wso2.ballerinalang.compiler.util.diagnotic.DiagnosticPos;
 import org.wso2.ballerinalang.util.Flags;
 
+import java.util.AbstractMap.SimpleEntry;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Deque;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -191,8 +236,10 @@ public class DataflowAnalyzer extends BLangNodeVisitor {
     private SymbolEnv env;
     private SymbolTable symTable;
     private BLangDiagnosticLog dlog;
+    private Types types;
     private Map<BSymbol, InitStatus> uninitializedVars;
     private Map<BSymbol, Set<BSymbol>> globalNodeDependsOn;
+    private Map<BSymbol, Set<BSymbol>> functionToDependency;
     private boolean flowTerminated = false;
 
     private static final CompilerContext.Key<DataflowAnalyzer> DATAFLOW_ANALYZER_KEY = new CompilerContext.Key<>();
@@ -203,6 +250,7 @@ public class DataflowAnalyzer extends BLangNodeVisitor {
         context.put(DATAFLOW_ANALYZER_KEY, this);
         this.symTable = SymbolTable.getInstance(context);
         this.dlog = BLangDiagnosticLog.getInstance(context);
+        this.types = Types.getInstance(context);
         this.symResolver = SymbolResolver.getInstance(context);
         this.names = Names.getInstance(context);
         this.currDependentSymbol = new ArrayDeque<>();
@@ -225,8 +273,9 @@ public class DataflowAnalyzer extends BLangNodeVisitor {
      * @return Data-flow analyzed package
      */
     public BLangPackage analyze(BLangPackage pkgNode) {
-        this.uninitializedVars = new HashMap<>();
+        this.uninitializedVars = new LinkedHashMap<>();
         this.globalNodeDependsOn = new LinkedHashMap<>();
+        this.functionToDependency = new HashMap<>();
         SymbolEnv pkgEnv = this.symTable.pkgEnvMap.get(pkgNode.symbol);
         analyzeNode(pkgNode, pkgEnv);
         return pkgNode;
@@ -240,16 +289,62 @@ public class DataflowAnalyzer extends BLangNodeVisitor {
 
         // Rearrange the top level nodes so that global variables come on top
         List<TopLevelNode> sortedListOfNodes = new ArrayList<>(pkgNode.globalVars);
+        addModuleInitToSortedNodeList(pkgNode, sortedListOfNodes);
+        addNodesToSortedNodeList(pkgNode, sortedListOfNodes);
+
+        for (TopLevelNode topLevelNode : sortedListOfNodes) {
+            if (isModuleInitFunction((BLangNode) topLevelNode)) {
+                analyzeModuleInitFunc((BLangFunction) topLevelNode);
+            } else {
+                analyzeNode((BLangNode) topLevelNode, env);
+            }
+        }
+        checkForUninitializedGlobalVars(pkgNode.globalVars);
+        pkgNode.getTestablePkgs().forEach(testablePackage -> visit((BLangPackage) testablePackage));
+        this.globalVariableRefAnalyzer.analyzeAndReOrder(pkgNode, this.globalNodeDependsOn);
+        this.globalVariableRefAnalyzer.populateFunctionDependencies(this.functionToDependency);
+        checkUnusedImports(pkgNode.imports);
+        pkgNode.completedPhases.add(CompilerPhase.DATAFLOW_ANALYZE);
+    }
+
+    private void addModuleInitToSortedNodeList(BLangPackage pkgNode, List<TopLevelNode> sortedListOfNodes) {
+        for (TopLevelNode node : pkgNode.topLevelNodes) {
+            if (isModuleInitFunction((BLangNode) node)) {
+                sortedListOfNodes.add(node);
+                break;
+            }
+        }
+    }
+
+    private void addNodesToSortedNodeList(BLangPackage pkgNode, List<TopLevelNode> sortedListOfNodes) {
         pkgNode.topLevelNodes.forEach(topLevelNode -> {
             if (!sortedListOfNodes.contains(topLevelNode)) {
                 sortedListOfNodes.add(topLevelNode);
             }
         });
-        sortedListOfNodes.forEach(topLevelNode -> analyzeNode((BLangNode) topLevelNode, env));
-        pkgNode.getTestablePkgs().forEach(testablePackage -> visit((BLangPackage) testablePackage));
-        globalVariableRefAnalyzer.analyzeAndReOrder(pkgNode, this.globalNodeDependsOn);
-        checkUnusedImports(pkgNode.imports);
-        pkgNode.completedPhases.add(CompilerPhase.DATAFLOW_ANALYZE);
+    }
+
+    private boolean isModuleInitFunction(BLangNode node) {
+        return node.getKind() == NodeKind.FUNCTION &&
+                Names.USER_DEFINED_INIT_SUFFIX.value.equals(((BLangFunction) node).name.value);
+    }
+
+    private void analyzeModuleInitFunc(BLangFunction funcNode) {
+        this.currDependentSymbol.push(funcNode.symbol);
+        SymbolEnv moduleInitFuncEnv = SymbolEnv.createModuleInitFunctionEnv(funcNode, funcNode.symbol.scope, env);
+        for (BLangAnnotationAttachment bLangAnnotationAttachment : funcNode.annAttachments) {
+            analyzeNode(bLangAnnotationAttachment.expr, env);
+        }
+        analyzeNode(funcNode.body, moduleInitFuncEnv);
+        this.currDependentSymbol.pop();
+    }
+
+    private void checkForUninitializedGlobalVars(List<BLangSimpleVariable> globalVars) {
+        for (BLangSimpleVariable globalVar : globalVars) {
+            if (this.uninitializedVars.containsKey(globalVar.symbol)) {
+                this.dlog.error(globalVar.pos, DiagnosticCode.UNINITIALIZED_VARIABLE, globalVar.name);
+            }
+        }
     }
 
     @Override
@@ -264,9 +359,37 @@ public class DataflowAnalyzer extends BLangNodeVisitor {
     }
 
     @Override
+    public void visit(BLangBlockFunctionBody body) {
+        SymbolEnv bodyEnv = SymbolEnv.createFuncBodyEnv(body, env);
+        bodyEnv.isModuleInit = env.isModuleInit;
+        for (BLangStatement statement : body.stmts) {
+            analyzeNode(statement, bodyEnv);
+        }
+    }
+
+    @Override
+    public void visit(BLangExprFunctionBody body) {
+        SymbolEnv bodyEnv = SymbolEnv.createFuncBodyEnv(body, env);
+        analyzeNode(body.expr, bodyEnv);
+    }
+
+    @Override
+    public void visit(BLangExternalFunctionBody body) {
+        // do nothing
+    }
+
+    @Override
     public void visit(BLangBlockStmt blockNode) {
         SymbolEnv blockEnv = SymbolEnv.createBlockEnv(blockNode, env);
         blockNode.stmts.forEach(statement -> analyzeNode(statement, blockEnv));
+    }
+
+    @Override
+    public void visit(BLangLetExpression letExpression) {
+        for (BLangLetVariable letVarDeclaration : letExpression.letVarDeclarations) {
+            analyzeNode((BLangNode) letVarDeclaration.definitionNode, letExpression.env);
+        }
+        analyzeNode(letExpression.expr, letExpression.env);
     }
 
     @Override
@@ -279,7 +402,7 @@ public class DataflowAnalyzer extends BLangNodeVisitor {
 
     @Override
     public void visit(BLangService service) {
-        this.currDependentSymbol.push(service.serviceTypeDefinition.symbol);
+        this.currDependentSymbol.push(service.serviceClass.symbol);
         for (BLangExpression attachedExpr : service.attachedExprs) {
             analyzeNode(attachedExpr, env);
         }
@@ -296,6 +419,50 @@ public class DataflowAnalyzer extends BLangNodeVisitor {
     @Override
     public void visit(BLangTypeDefinition typeDefinition) {
         analyzeNode(typeDefinition.typeNode, env);
+    }
+
+    @Override
+    public void visit(BLangClassDefinition classDefinition) {
+        SymbolEnv objectEnv = SymbolEnv.createClassEnv(classDefinition, classDefinition.symbol.scope, env);
+        this.currDependentSymbol.push(classDefinition.symbol);
+
+        classDefinition.fields.forEach(field -> analyzeNode(field, objectEnv));
+        classDefinition.referencedFields.forEach(field -> analyzeNode(field, objectEnv));
+
+        // Visit the constructor with the same scope as the object
+        if (classDefinition.initFunction != null) {
+            if (classDefinition.initFunction.body == null) {
+                // if the init() function is defined as an outside function definition
+                Optional<BLangFunction> outerFuncDef =
+                        objectEnv.enclPkg.functions.stream()
+                                .filter(f -> f.symbol.name.equals((classDefinition.initFunction).symbol.name))
+                                .findFirst();
+                outerFuncDef.ifPresent(bLangFunction -> classDefinition.initFunction = bLangFunction);
+            }
+
+            if (classDefinition.initFunction.body != null) {
+                if (classDefinition.initFunction.body.getKind() == NodeKind.BLOCK_FUNCTION_BODY) {
+                    for (BLangStatement statement :
+                            ((BLangBlockFunctionBody) classDefinition.initFunction.body).stmts) {
+                        analyzeNode(statement, objectEnv);
+                    }
+                } else if (classDefinition.initFunction.body.getKind() == NodeKind.EXPR_FUNCTION_BODY) {
+                    analyzeNode(((BLangExprFunctionBody) classDefinition.initFunction.body).expr, objectEnv);
+                }
+            }
+        }
+
+        Stream.concat(classDefinition.fields.stream(), classDefinition.referencedFields.stream())
+                .filter(field -> !Symbols.isPrivate(field.symbol))
+                .forEach(field -> {
+                    if (this.uninitializedVars.containsKey(field.symbol)) {
+                        this.dlog.error(field.pos, DiagnosticCode.OBJECT_UNINITIALIZED_FIELD, field.name);
+                    }
+                });
+
+        classDefinition.functions.forEach(function -> analyzeNode(function, env));
+        classDefinition.typeRefs.forEach(type -> analyzeNode(type, env));
+        this.currDependentSymbol.pop();
     }
 
     @Override
@@ -343,11 +510,6 @@ public class DataflowAnalyzer extends BLangNodeVisitor {
     public void visit(BLangWorker worker) {
         SymbolEnv workerEnv = SymbolEnv.createWorkerEnv(worker, this.env);
         analyzeBranch(worker.body, workerEnv);
-    }
-
-    @Override
-    public void visit(BLangEndpoint endpoint) {
-        analyzeNode(endpoint.configurationExpr, env);
     }
 
     @Override
@@ -413,8 +575,63 @@ public class DataflowAnalyzer extends BLangNodeVisitor {
     }
 
     @Override
+    public void visit(BLangMatchStatement matchStatement) {
+
+        analyzeNode(matchStatement.expr, env);
+        if (matchStatement.onFailClause != null) {
+            analyzeNode(matchStatement.onFailClause, env);
+        }
+
+        Map<BSymbol, InitStatus> uninitVars = new HashMap<>();
+        BranchResult lastPatternResult = null;
+        for (int i = 0; i < matchStatement.getMatchClauses().size(); i++) {
+            BLangMatchClause matchClause = matchStatement.getMatchClauses().get(i);
+            if (isLastPatternContainsIn(matchClause)) {
+                lastPatternResult = analyzeBranch(matchClause, env);
+            } else {
+                BranchResult result = analyzeBranch(matchClause, env);
+                // If the flow was terminated within the block, then that branch should not be considered for
+                // analyzing the data-flow for the downstream code.
+                if (result.flowTerminated) {
+                    continue;
+                }
+                uninitVars = mergeUninitializedVars(uninitVars, result.uninitializedVars);
+            }
+        }
+
+        if (lastPatternResult != null) {
+            // only if last pattern is present, uninitializedVars should be updated
+            uninitVars = mergeUninitializedVars(uninitVars, lastPatternResult.uninitializedVars);
+            this.uninitializedVars = uninitVars;
+            return;
+        }
+        uninitVars = mergeUninitializedVars(new HashMap<>(), this.uninitializedVars);
+        this.uninitializedVars = uninitVars;
+    }
+
+    @Override
+    public void visit(BLangMatchClause matchClause) {
+
+        analyzeNode(matchClause.blockStmt, env);
+    }
+
+    private boolean isLastPatternContainsIn(BLangMatchClause matchClause) {
+
+        for (BLangMatchPattern pattern : matchClause.matchPatterns) {
+            if (pattern.isLastPattern) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    @Override
     public void visit(BLangMatch match) {
         analyzeNode(match.expr, env);
+        if (match.onFailClause != null) {
+            analyzeNode(match.onFailClause, env);
+        }
+
         Map<BSymbol, InitStatus> uninitVars = new HashMap<>();
         BranchResult lastPatternResult = null;
         for (BLangMatch.BLangMatchBindingPatternClause patternClause : match.patternClauses) {
@@ -445,6 +662,16 @@ public class DataflowAnalyzer extends BLangNodeVisitor {
     public void visit(BLangForeach foreach) {
         analyzeNode(foreach.collection, env);
         analyzeNode(foreach.body, env);
+        if (foreach.onFailClause != null) {
+            analyzeNode(foreach.onFailClause, env);
+        }
+    }
+
+    @Override
+    public void visit(BLangQueryAction queryAction) {
+        for (BLangNode clause : queryAction.getQueryClauses()) {
+            analyzeNode(clause, env);
+        }
     }
 
     @Override
@@ -452,6 +679,10 @@ public class DataflowAnalyzer extends BLangNodeVisitor {
         Map<BSymbol, InitStatus> prevUninitializedVars = this.uninitializedVars;
         analyzeNode(whileNode.expr, env);
         analyzeNode(whileNode.body, env);
+        if (whileNode.onFailClause != null) {
+            analyzeNode(whileNode.onFailClause, env);
+        }
+
         for (BSymbol symbol : prevUninitializedVars.keySet()) {
             if (!this.uninitializedVars.containsKey(symbol)) {
                 this.uninitializedVars.put(symbol, InitStatus.PARTIAL_INIT);
@@ -460,20 +691,51 @@ public class DataflowAnalyzer extends BLangNodeVisitor {
     }
 
     @Override
+    public void visit(BLangDo doNode) {
+        analyzeNode(doNode.body, env);
+        if (doNode.onFailClause != null) {
+            analyzeNode(doNode.onFailClause, env);
+        }
+    }
+
+    public void visit(BLangFail failNode) {
+        analyzeNode(failNode.expr, env);
+    }
+
+    @Override
     public void visit(BLangLock lockNode) {
+        analyzeNode(lockNode.body, this.env);
+        if (lockNode.onFailClause != null) {
+            analyzeNode(lockNode.onFailClause, env);
+        }
     }
 
     @Override
     public void visit(BLangTransaction transactionNode) {
         analyzeNode(transactionNode.transactionBody, env);
-        analyzeNode(transactionNode.onRetryBody, env);
-        analyzeNode(transactionNode.committedBody, env);
-        analyzeNode(transactionNode.abortedBody, env);
+        if (transactionNode.onFailClause != null) {
+            analyzeNode(transactionNode.onFailClause, env);
+        }
 
         // marks the injected import as used
         Name transactionPkgName = names.fromString(Names.DOT.value + Names.TRANSACTION_PACKAGE.value);
         Name compUnitName = names.fromString(transactionNode.pos.getSource().getCompilationUnitName());
         this.symResolver.resolvePrefixSymbol(env, transactionPkgName, compUnitName);
+    }
+
+    @Override
+    public void visit(BLangTransactionalExpr transactionalExpr) {
+
+    }
+
+    @Override
+    public void visit(BLangCommitExpr commitExpr) {
+
+    }
+
+    @Override
+    public void visit(BLangRollback rollbackNode) {
+        analyzeNode(rollbackNode.expr, env);
     }
 
     @Override
@@ -511,25 +773,161 @@ public class DataflowAnalyzer extends BLangNodeVisitor {
     }
 
     @Override
-    public void visit(BLangTableLiteral tableLiteral) {
-        analyzeNode(tableLiteral.indexColumnsArrayLiteral, env);
-        analyzeNode(tableLiteral.keyColumnsArrayLiteral, env);
-        tableLiteral.columns.forEach(column -> analyzeNode(column, env));
-    }
-
-    @Override
     public void visit(BLangListConstructorExpr listConstructorExpr) {
         listConstructorExpr.exprs.forEach(expr -> analyzeNode(expr, env));
     }
 
     @Override
-    public void visit(BLangRecordLiteral recordLiteral) {
-        recordLiteral.keyValuePairs.forEach(keyValPar -> {
-            if (keyValPar.key.computedKey) {
-                analyzeNode(keyValPar.key.expr, env);
+    public void visit(BLangTableConstructorExpr tableConstructorExpr) {
+        tableConstructorExpr.recordLiteralList.forEach(expr -> analyzeNode(expr, env));
+        checkForDuplicateKeys(tableConstructorExpr);
+    }
+
+    private void checkForDuplicateKeys(BLangTableConstructorExpr tableConstructorExpr) {
+        Set<Integer> keyHashSet = new HashSet<>();
+        List<String> fieldNames = getFieldNames(tableConstructorExpr);
+        if (!fieldNames.isEmpty()) {
+            for (BLangRecordLiteral literal : tableConstructorExpr.recordLiteralList) {
+                List<BLangExpression> keyArray = createKeyArray(literal, fieldNames);
+                int hashInt = generateHash(keyArray);
+                if (!keyHashSet.add(hashInt)) {
+                    String fields = String.join(", ", fieldNames);
+                    String values = keyArray.stream().map(Object::toString).collect(Collectors.joining(", "));
+                    dlog.error(literal.pos, DiagnosticCode.DUPLICATE_KEY_IN_TABLE_LITERAL, fields, values);
+                }
             }
-            analyzeNode(keyValPar.valueExpr, env);
-        });
+        }
+    }
+
+    private int generateHash(List<BLangExpression> keyArray) {
+        int result = 0;
+        for (BLangExpression expr : keyArray) {
+            result = 31 * result + hash(expr);
+        }
+        return result;
+    }
+
+    public Integer hash(Node node) {
+        int result = 0;
+
+        if (node == null) {
+            return result;
+        }
+
+        if (node.getKind() == NodeKind.RECORD_LITERAL_EXPR) {
+            BLangRecordLiteral recordLiteral = (BLangRecordLiteral) node;
+            for (RecordLiteralNode.RecordField entry : recordLiteral.fields) {
+                result = 31 * result + hash(entry);
+            }
+        } else if (node.getKind() == NodeKind.RECORD_LITERAL_KEY_VALUE) {
+            BLangRecordLiteral.BLangRecordKeyValueField field = (BLangRecordLiteral.BLangRecordKeyValueField) node;
+            result = 31 * result + hash(field.key.expr) + hash(field.valueExpr);
+        } else if (node.getKind() == NodeKind.ARRAY_LITERAL_EXPR) {
+            BLangListConstructorExpr.BLangArrayLiteral arrayLiteral =
+                    (BLangListConstructorExpr.BLangArrayLiteral) node;
+            for (BLangExpression expr : arrayLiteral.exprs) {
+                result = 31 * result + hash(expr);
+            }
+        } else if (node.getKind() == NodeKind.LITERAL | node.getKind() == NodeKind.NUMERIC_LITERAL) {
+            BLangLiteral literal = (BLangLiteral) node;
+            result = Objects.hash(literal.value);
+        } else if (node.getKind() == NodeKind.XML_TEXT_LITERAL) {
+            BLangXMLTextLiteral literal = (BLangXMLTextLiteral) node;
+            result = 31 * result + hash(literal.concatExpr);
+            for (BLangExpression expr : literal.textFragments) {
+                result = result * 31 + hash(expr);
+            }
+        } else if (node.getKind() == NodeKind.XML_ATTRIBUTE) {
+            BLangXMLAttribute attribute = (BLangXMLAttribute) node;
+            result = 31 * result + hash(attribute.name) + hash(attribute.value);
+        } else if (node.getKind() == NodeKind.XML_QNAME) {
+            BLangXMLQName xmlqName = (BLangXMLQName) node;
+            result = 31 * result + hash(xmlqName.localname) + hash(xmlqName.prefix);
+        } else if (node.getKind() == NodeKind.XML_COMMENT_LITERAL) {
+            BLangXMLCommentLiteral literal = (BLangXMLCommentLiteral) node;
+            result = 31 * result + hash(literal.concatExpr);
+            for (BLangExpression expr : literal.textFragments) {
+                result = result * 31 + hash(expr);
+            }
+        } else if (node.getKind() == NodeKind.XML_ELEMENT_LITERAL) {
+            BLangXMLElementLiteral literal = (BLangXMLElementLiteral) node;
+            result = 31 * result + hash(literal.startTagName) + hash(literal.endTagName);
+            for (BLangExpression expr : literal.attributes) {
+                result = 31 * result + hash(expr);
+            }
+            for (BLangExpression expr : literal.children) {
+                result = 31 * result + hash(expr);
+            }
+        } else if (node.getKind() == NodeKind.XML_QUOTED_STRING) {
+            BLangXMLQuotedString literal = (BLangXMLQuotedString) node;
+            result = 31 * result + hash(literal.concatExpr);
+            for (BLangExpression expr : literal.textFragments) {
+                result = result * 31 + hash(expr);
+            }
+        } else if (node.getKind() == NodeKind.XMLNS) {
+            BLangXMLNS xmlns = (BLangXMLNS) node;
+            result = result * 31 + hash(xmlns.prefix) + hash(xmlns.namespaceURI);
+        } else if (node.getKind() == NodeKind.XML_PI_LITERAL) {
+            BLangXMLProcInsLiteral literal = (BLangXMLProcInsLiteral) node;
+            result = 31 * result + hash(literal.target) + hash(literal.dataConcatExpr);
+            for (BLangExpression expr : literal.dataFragments) {
+                result = result * 31 + hash(expr);
+            }
+        } else if (node.getKind() == NodeKind.IDENTIFIER) {
+            BLangIdentifier identifier = (BLangIdentifier) node;
+            result = identifier.value.hashCode();
+        } else if (node.getKind() == NodeKind.SIMPLE_VARIABLE_REF) {
+            BLangSimpleVarRef simpleVarRef = (BLangSimpleVarRef) node;
+            result = simpleVarRef.variableName.hashCode();
+        } else {
+            dlog.error(((BLangExpression) node).pos, DiagnosticCode.EXPRESSION_IS_NOT_A_CONSTANT_EXPRESSION);
+        }
+        return result;
+    }
+
+    private List<BLangExpression> createKeyArray(BLangRecordLiteral literal, List<String> fieldNames) {
+        //fieldNames have to be literals in table constructor's record literal list
+        Map<String, BLangExpression> fieldMap =
+                literal.fields.stream().map(recordField -> (BLangRecordLiteral.BLangRecordKeyValueField) recordField)
+                        .map(d -> new SimpleEntry<>(d.key.expr.toString(), d.valueExpr)).
+                        collect(Collectors.toMap(SimpleEntry::getKey, SimpleEntry::getValue));
+        return fieldNames.stream().map(fieldMap::get).collect(Collectors.toList());
+    }
+
+    private List<String> getFieldNames(BLangTableConstructorExpr constructorExpr) {
+        List<String> fieldNames = null;
+        if (constructorExpr.type.tag == TypeTags.TABLE) {
+            fieldNames = ((BTableType) constructorExpr.type).fieldNameList;
+            if (fieldNames != null) {
+                return fieldNames;
+            }
+        }
+        if (constructorExpr.tableKeySpecifier != null &&
+                !constructorExpr.tableKeySpecifier.fieldNameIdentifierList.isEmpty()) {
+            BLangTableKeySpecifier tableKeySpecifier = constructorExpr.tableKeySpecifier;
+            return tableKeySpecifier.fieldNameIdentifierList.stream().map(identifier ->
+                    ((BLangIdentifier) identifier).value).collect(Collectors.toList());
+        } else {
+            return new ArrayList<>();
+        }
+    }
+
+    @Override
+    public void visit(BLangRecordLiteral recordLiteral) {
+        for (RecordLiteralNode.RecordField field : recordLiteral.fields) {
+            if (field.isKeyValueField()) {
+                BLangRecordLiteral.BLangRecordKeyValueField keyValuePair =
+                        (BLangRecordLiteral.BLangRecordKeyValueField) field;
+                if (keyValuePair.key.computedKey) {
+                    analyzeNode(keyValuePair.key.expr, env);
+                }
+                analyzeNode(keyValuePair.valueExpr, env);
+            } else if (field.getKind() == NodeKind.SIMPLE_VARIABLE_REF) {
+                analyzeNode((BLangRecordLiteral.BLangRecordVarNameField) field, env);
+            } else {
+                analyzeNode(((BLangRecordLiteral.BLangRecordSpreadOperatorField) field).expr, env);
+            }
+        }
     }
 
     @Override
@@ -552,8 +950,29 @@ public class DataflowAnalyzer extends BLangNodeVisitor {
     }
 
     @Override
+    public void visit(BLangTableMultiKeyExpr tableMultiKeyExpr) {
+        tableMultiKeyExpr.multiKeyIndexExprs.forEach(value -> analyzeNode(value, env));
+    }
+
+    @Override
+    public void visit(BLangXMLElementAccess xmlElementAccess) {
+        analyzeNode(xmlElementAccess.expr, env);
+    }
+
+    @Override
+    public void visit(BLangXMLNavigationAccess xmlNavigation) {
+        analyzeNode(xmlNavigation.expr, env);
+        if (xmlNavigation.childIndex == null) {
+            analyzeNode(xmlNavigation.childIndex, env);
+        }
+    }
+
+    @Override
     public void visit(BLangInvocation invocationExpr) {
         analyzeNode(invocationExpr.expr, env);
+        if (!isGlobalVarsInitialized(invocationExpr.pos)) {
+            return;
+        }
         if (!isFieldsInitializedForSelfArgument(invocationExpr)) {
             return;
         }
@@ -576,7 +995,7 @@ public class DataflowAnalyzer extends BLangNodeVisitor {
 
             // Todo: test lambdas and function arguments
 
-            BSymbol dependsOnFunctionSym = symResolver.lookupSymbol(this.env, name, SymTag.FUNCTION);
+            BSymbol dependsOnFunctionSym = symResolver.lookupSymbolInMainSpace(this.env, name);
             if (symTable.notFoundSymbol != dependsOnFunctionSym) {
                 addDependency(invokableOwnerSymbol, dependsOnFunctionSym);
             }
@@ -587,6 +1006,84 @@ public class DataflowAnalyzer extends BLangNodeVisitor {
                 addDependency(curDependent, invokableProviderSymbol);
             }
         }
+    }
+
+    @Override
+    public void visit(BLangActionInvocation actionInvocation) {
+        this.visit((BLangInvocation) actionInvocation);
+    }
+
+    @Override
+    public void visit(BLangQueryExpr queryExpr) {
+        for (BLangNode clause : queryExpr.getQueryClauses()) {
+            analyzeNode(clause, env);
+        }
+    }
+
+    @Override
+    public void visit(BLangFromClause fromClause) {
+        analyzeNode(fromClause.collection, env);
+    }
+
+    @Override
+    public void visit(BLangJoinClause joinClause) {
+        analyzeNode(joinClause.collection, env);
+        if (joinClause.onClause != null) {
+            analyzeNode((BLangNode) joinClause.onClause, env);
+        }
+    }
+
+    @Override
+    public void visit(BLangLetClause letClause) {
+        for (BLangLetVariable letVariable : letClause.letVarDeclarations) {
+            analyzeNode((BLangNode) letVariable.definitionNode, env);
+        }
+    }
+
+    @Override
+    public void visit(BLangWhereClause whereClause) {
+        analyzeNode(whereClause.expression, env);
+    }
+
+    @Override
+    public void visit(BLangOnClause onClause) {
+        analyzeNode(onClause.lhsExpr, env);
+        analyzeNode(onClause.rhsExpr, env);
+    }
+
+    @Override
+    public void visit(BLangOrderKey orderKeyClause) {
+        analyzeNode(orderKeyClause.expression, env);
+    }
+
+    @Override
+    public void visit(BLangOrderByClause orderByClause) {
+        orderByClause.orderByKeyList.forEach(value -> analyzeNode((BLangNode) value, env));
+    }
+
+    @Override
+    public void visit(BLangSelectClause selectClause) {
+        analyzeNode(selectClause.expression, env);
+    }
+
+    @Override
+    public void visit(BLangOnConflictClause onConflictClause) {
+        analyzeNode(onConflictClause.expression, env);
+    }
+
+    @Override
+    public void visit(BLangLimitClause limitClause) {
+        analyzeNode(limitClause.expression, env);
+    }
+
+    @Override
+    public void visit(BLangDoClause doClause) {
+        analyzeNode(doClause.body, env);
+    }
+
+    @Override
+    public void visit(BLangOnFailClause onFailClause) {
+        analyzeNode(onFailClause.body, env);
     }
 
     private boolean isFieldsInitializedForSelfArgument(BLangInvocation invocationExpr) {
@@ -621,6 +1118,27 @@ public class DataflowAnalyzer extends BLangNodeVisitor {
         return true;
     }
 
+    private boolean isGlobalVarsInitialized(DiagnosticPos pos) {
+        if (env.isModuleInit) {
+            boolean isFirstUninitializedField = true;
+            StringBuilder uninitializedFields = new StringBuilder();
+            for (BSymbol symbol : this.uninitializedVars.keySet()) {
+                if (isFirstUninitializedField) {
+                    uninitializedFields = new StringBuilder(symbol.getName().value);
+                    isFirstUninitializedField = false;
+                } else {
+                    uninitializedFields.append(", ").append(symbol.getName().value);
+                }
+            }
+            if (uninitializedFields.length() != 0) {
+                this.dlog.error(pos, DiagnosticCode.CONTAINS_UNINITIALIZED_VARIABLES,
+                        uninitializedFields.toString());
+                return false;
+            }
+        }
+        return true;
+    }
+
     private boolean isSelfKeyWordExpr(BLangExpression expr) {
 
         return expr.getKind() == NodeKind.SIMPLE_VARIABLE_REF &&
@@ -631,7 +1149,7 @@ public class DataflowAnalyzer extends BLangNodeVisitor {
 
         boolean isFirstUninitializedField = true;
         StringBuilder uninitializedFields = new StringBuilder();
-        for (BField field : objType.fields) {
+        for (BField field : objType.fields.values()) {
             if (this.uninitializedVars.containsKey(field.symbol)) {
                 if (isFirstUninitializedField) {
                     uninitializedFields = new StringBuilder(field.symbol.getName().value);
@@ -653,6 +1171,13 @@ public class DataflowAnalyzer extends BLangNodeVisitor {
             return false;
         }
 
+        return isVariableOrConstant(symbol);
+    }
+
+    private boolean isVariableOrConstant(BSymbol symbol) {
+        if (symbol == null) {
+            return false;
+        }
         return ((symbol.tag & SymTag.VARIABLE) == SymTag.VARIABLE) ||
                 ((symbol.tag & SymTag.CONSTANT) == SymTag.CONSTANT);
     }
@@ -666,10 +1191,25 @@ public class DataflowAnalyzer extends BLangNodeVisitor {
      * @param provider object which provides a value.
      */
     private void addDependency(BSymbol dependent, BSymbol provider) {
-        if (dependent.pkgID != provider.pkgID) {
+        if (provider == null || dependent == null || dependent.pkgID != provider.pkgID) {
             return;
         }
         Set<BSymbol> providers = globalNodeDependsOn.computeIfAbsent(dependent, s -> new LinkedHashSet<>());
+        providers.add(provider);
+
+        // Store the dependencies of functions seperately for lock optimization in later stage.
+        addFunctionToGlobalVarDependency(dependent, provider);
+    }
+
+    private void addFunctionToGlobalVarDependency(BSymbol dependent, BSymbol provider) {
+        if (dependent.kind != SymbolKind.FUNCTION) {
+            return;
+        }
+        if (isVariableOrConstant(provider) && !isGlobalVarSymbol(provider)) {
+            return;
+        }
+
+        Set<BSymbol> providers = this.functionToDependency.computeIfAbsent(dependent, s -> new HashSet<>());
         providers.add(provider);
     }
 
@@ -769,6 +1309,17 @@ public class DataflowAnalyzer extends BLangNodeVisitor {
     }
 
     @Override
+    public void visit(BLangRawTemplateLiteral rawTemplateLiteral) {
+        for (BLangLiteral string : rawTemplateLiteral.strings) {
+            analyzeNode(string, env);
+        }
+
+        for (BLangExpression expr : rawTemplateLiteral.insertions) {
+            analyzeNode(expr, env);
+        }
+    }
+
+    @Override
     public void visit(BLangLambdaFunction bLangLambdaFunction) {
         Map<BSymbol, InitStatus> prevUninitializedVars = this.uninitializedVars;
 
@@ -853,11 +1404,16 @@ public class DataflowAnalyzer extends BLangNodeVisitor {
     }
 
     @Override
-    public void visit(BLangAbort abortNode) {
+    public void visit(BLangRetry retryNode) {
+        analyzeNode(retryNode.retryBody, env);
+        if (retryNode.onFailClause != null) {
+            analyzeNode(retryNode.onFailClause, env);
+        }
     }
 
     @Override
-    public void visit(BLangRetry retryNode) {
+    public void visit(BLangRetryTransaction retryTransaction) {
+        analyzeNode(retryTransaction.transaction, env);
     }
 
     @Override
@@ -867,10 +1423,6 @@ public class DataflowAnalyzer extends BLangNodeVisitor {
 
     @Override
     public void visit(BLangCatch catchNode) {
-    }
-
-    @Override
-    public void visit(BLangActionInvocation actionInvocationExpr) {
     }
 
     @Override
@@ -885,7 +1437,7 @@ public class DataflowAnalyzer extends BLangNodeVisitor {
     public void visit(BLangArrowFunction bLangArrowFunction) {
         bLangArrowFunction.closureVarSymbols.forEach(closureVarSymbol -> {
             if (this.uninitializedVars.keySet().contains(closureVarSymbol.bSymbol)) {
-                this.dlog.error(closureVarSymbol.diagnosticPos, DiagnosticCode.UNINITIALIZED_VARIABLE,
+                this.dlog.error(closureVarSymbol.diagnosticPos, DiagnosticCode.USAGE_OF_UNINITIALIZED_VARIABLE,
                         closureVarSymbol.bSymbol);
             }
         });
@@ -925,6 +1477,21 @@ public class DataflowAnalyzer extends BLangNodeVisitor {
     }
 
     @Override
+    public void visit(BLangStreamType streamType) {
+        analyzeNode(streamType.constraint, env);
+        analyzeNode(streamType.error, env);
+    }
+
+    @Override
+    public void visit(BLangTableTypeNode tableType) {
+        analyzeNode(tableType.constraint, env);
+
+        if (tableType.tableKeyTypeConstraint != null) {
+            analyzeNode(tableType.tableKeyTypeConstraint.keyType, env);
+        }
+    }
+
+    @Override
     public void visit(BLangUserDefinedType userDefinedType) {
     }
 
@@ -940,42 +1507,14 @@ public class DataflowAnalyzer extends BLangNodeVisitor {
     }
 
     @Override
+    public void visit(BLangIntersectionTypeNode intersectionTypeNode) {
+        for (BLangType constituentTypeNode : intersectionTypeNode.constituentTypeNodes) {
+            analyzeNode(constituentTypeNode, env);
+        }
+    }
+
+    @Override
     public void visit(BLangObjectTypeNode objectTypeNode) {
-        SymbolEnv objectEnv = SymbolEnv.createTypeEnv(objectTypeNode, objectTypeNode.symbol.scope, env);
-        this.currDependentSymbol.push(objectTypeNode.symbol);
-
-        objectTypeNode.fields.forEach(field -> analyzeNode(field, objectEnv));
-        objectTypeNode.referencedFields.forEach(field -> analyzeNode(field, objectEnv));
-
-        // Visit the constructor with the same scope as the object
-        if (objectTypeNode.initFunction != null) {
-            if (objectTypeNode.initFunction.body == null) {
-                // if the __init() function is defined as an outside function definition
-                Optional<BLangFunction> outerFuncDef =
-                        objectEnv.enclPkg.functions.stream()
-                                .filter(f -> f.symbol.name.equals((objectTypeNode.initFunction).symbol.name))
-                                .findFirst();
-                outerFuncDef.ifPresent(bLangFunction -> objectTypeNode.initFunction = bLangFunction);
-            }
-
-            if (objectTypeNode.initFunction.body != null) {
-                objectTypeNode.initFunction.body.stmts.forEach(statement -> analyzeNode(statement, objectEnv));
-            }
-        }
-
-        if (!Symbols.isFlagOn(objectTypeNode.symbol.flags, Flags.ABSTRACT)) {
-            Stream.concat(objectTypeNode.fields.stream(), objectTypeNode.referencedFields.stream())
-                .filter(field -> !Symbols.isPrivate(field.symbol))
-                .forEach(field -> {
-                    if (this.uninitializedVars.containsKey(field.symbol)) {
-                        this.dlog.error(field.pos, DiagnosticCode.OBJECT_UNINITIALIZED_FIELD, field.name);
-                    }
-                });
-        }
-
-        objectTypeNode.functions.forEach(function -> analyzeNode(function, env));
-        objectTypeNode.getTypeReferences().forEach(type -> analyzeNode((BLangType) type, env));
-        this.currDependentSymbol.pop();
     }
 
     @Override
@@ -1083,7 +1622,10 @@ public class DataflowAnalyzer extends BLangNodeVisitor {
 
     @Override
     public void visit(BLangErrorVarRef varRefExpr) {
-        analyzeNode(varRefExpr.reason, env);
+        analyzeNode(varRefExpr.message, env);
+        if (varRefExpr.cause != null) {
+            analyzeNode(varRefExpr.cause, env);
+        }
         for (BLangNamedArgsExpression args : varRefExpr.detail) {
             analyzeNode(args.expr, env);
         }
@@ -1216,7 +1758,7 @@ public class DataflowAnalyzer extends BLangNodeVisitor {
         }
 
         if (initStatus == InitStatus.UN_INIT) {
-            this.dlog.error(pos, DiagnosticCode.UNINITIALIZED_VARIABLE, symbol.name);
+            this.dlog.error(pos, DiagnosticCode.USAGE_OF_UNINITIALIZED_VARIABLE, symbol.name);
             return;
         }
 
@@ -1236,7 +1778,7 @@ public class DataflowAnalyzer extends BLangNodeVisitor {
             addDependency(invokableOwnerSymbol, symbol);
         } else if (ownerSymbol.kind == SymbolKind.OBJECT && isGlobalVarSymbol(symbol)) {
             // Global variable reference from a field assignment of an object or a service.
-            // Or global variable reference from a __init function of an object or a service.
+            // Or global variable reference from a init function of an object or a service.
             addDependency(ownerSymbol, symbol);
         }
     }
@@ -1266,8 +1808,11 @@ public class DataflowAnalyzer extends BLangNodeVisitor {
                 return;
             case ERROR_VARIABLE_REF:
                 BLangErrorVarRef errorVarRef = (BLangErrorVarRef) varRef;
-                if (errorVarRef.reason != null) {
-                    checkAssignment(errorVarRef.reason);
+                if (errorVarRef.message != null) {
+                    checkAssignment(errorVarRef.message);
+                }
+                if (errorVarRef.cause != null) {
+                    checkAssignment(errorVarRef.cause);
                 }
                 for (BLangNamedArgsExpression expression : errorVarRef.detail) {
                     checkAssignment(expression);
@@ -1279,11 +1824,29 @@ public class DataflowAnalyzer extends BLangNodeVisitor {
                 return;
             case INDEX_BASED_ACCESS_EXPR:
             case FIELD_BASED_ACCESS_EXPR:
-                if (isObjectMemberAccessWithSelf((BLangAccessExpression) varRef)) {
-                    this.uninitializedVars.remove(((BLangVariableReference) varRef).symbol);
-                } else {
-                    analyzeNode(((BLangAccessExpression) varRef).expr, env);
+                BLangAccessExpression accessExpr = (BLangAccessExpression) varRef;
+
+                BLangExpression expr = accessExpr.expr;
+                BType type = expr.type;
+                if (isObjectMemberAccessWithSelf(accessExpr)) {
+                    BObjectType objectType = (BObjectType) type;
+
+                    BSymbol symbol = accessExpr.symbol;
+                    if (this.uninitializedVars.containsKey(symbol)) {
+                        this.uninitializedVars.remove(symbol);
+                        return;
+                    }
+
+                    String fieldName = ((BLangFieldBasedAccess) varRef).field.value;
+                    checkFinalEntityUpdate(varRef.pos, fieldName, objectType.fields.get(fieldName).symbol);
+                    return;
                 }
+
+                if (accessExpr.getKind() == NodeKind.FIELD_BASED_ACCESS_EXPR) {
+                    checkFinalObjectFieldUpdate((BLangFieldBasedAccess) accessExpr);
+                }
+
+                analyzeNode(expr, env);
                 return;
             default:
                 break;
@@ -1294,7 +1857,63 @@ public class DataflowAnalyzer extends BLangNodeVisitor {
             return;
         }
 
+        // So global variable assignments happen in functions.
+        if (varRef.getKind() == NodeKind.SIMPLE_VARIABLE_REF) {
+            BSymbol symbol = ((BLangSimpleVarRef) varRef).symbol;
+            checkFinalEntityUpdate(varRef.pos, varRef, symbol);
+
+            BSymbol owner = this.currDependentSymbol.peek();
+            addFunctionToGlobalVarDependency(owner, ((BLangSimpleVarRef) varRef).symbol);
+        }
+
         this.uninitializedVars.remove(((BLangVariableReference) varRef).symbol);
+    }
+
+    private void checkFinalObjectFieldUpdate(BLangFieldBasedAccess fieldAccess) {
+        BLangExpression expr = fieldAccess.expr;
+
+        BType exprType = expr.type;
+
+        if (types.isSubTypeOfBaseType(exprType, TypeTags.OBJECT) &&
+                isFinalFieldInAllObjects(exprType, fieldAccess.field.value)) {
+            dlog.error(fieldAccess.pos, DiagnosticCode.CANNOT_UPDATE_FINAL_OBJECT_FIELD, fieldAccess.field.value);
+            return;
+        }
+
+        if (expr.getKind() != NodeKind.FIELD_BASED_ACCESS_EXPR) {
+            return;
+        }
+
+        checkFinalObjectFieldUpdate((BLangFieldBasedAccess) expr);
+    }
+
+    private boolean isFinalFieldInAllObjects(BType type, String fieldName) {
+        if (type.tag == TypeTags.OBJECT) {
+            return Symbols.isFlagOn(((BObjectType) type).fields.get(fieldName).symbol.flags, Flags.FINAL);
+        }
+
+        for (BType memberType : ((BUnionType) type).getMemberTypes()) {
+            if (!isFinalFieldInAllObjects(memberType, fieldName)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private void checkFinalEntityUpdate(DiagnosticPos pos, Object field, BSymbol symbol) {
+        if (symbol == null || !Symbols.isFlagOn(symbol.flags, Flags.FINAL)) {
+            return;
+        }
+
+        if (!this.uninitializedVars.containsKey(symbol)) {
+            dlog.error(pos, DiagnosticCode.CANNOT_ASSIGN_VALUE_FINAL, field);
+            return;
+        }
+
+        InitStatus initStatus = this.uninitializedVars.get(symbol);
+        if (initStatus == InitStatus.PARTIAL_INIT) {
+            dlog.error(pos, DiagnosticCode.CANNOT_ASSIGN_VALUE_TO_POTENTIALLY_INITIALIZED_FINAL, field);
+        }
     }
 
     private void terminateFlow() {

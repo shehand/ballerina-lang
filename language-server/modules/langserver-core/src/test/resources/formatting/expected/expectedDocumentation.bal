@@ -1,3 +1,4 @@
+import ballerina/http;
 // This is the documentation attachment for function `doThatOnObject`.
 # `doThatOnObject` is an attached function for the object `DummyObject`.
 #
@@ -28,7 +29,7 @@ public type DummyRecord record {
 #
 # + fieldOne - This is the description for the `DummyObject`'s field `fieldOne`.
 # + fieldTwo - This is the description for the `DummyObject`'s field `fieldTwo`.
-public type DummyObject abstract object {
+public type DummyObject object {
 
     public string fieldOne;
     public string fieldTwo;
@@ -51,8 +52,8 @@ service serviceName1 on new http:Listener(9090) {
     # + request - request information.
     resource function newResource(http:Caller caller, http:Request request) {
         json? payload;
-        (http:Response | error | ()) clientResponse;
-        (json | error) jsonMsg = req.getJsonPayload();
+        (http:Response|error|()) clientResponse;
+        (json|error) jsonMsg = req.getJsonPayload();
         http:Response res = new;
         res.setPayload("sd");
         var d = 0;

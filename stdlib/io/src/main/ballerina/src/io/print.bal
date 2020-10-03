@@ -14,20 +14,28 @@
 // specific language governing permissions and limitations
 // under the License.
 
-import ballerinax/java;
+import ballerina/java;
 
 # Prints `any` or `error` value(s) to the STDOUT.
+#```ballerina
+#io:print("Start processing the CSV file from ", srcFileName);
+#```
+# 
 # + values - The value(s) to be printed.
 public function print((any|error)... values) = @java:Method {
     name: "print",
-    class: "org.ballerinalang.stdlib.io.nativeimpl.PrintUtils"
+    'class: "org.ballerinalang.stdlib.io.nativeimpl.PrintUtils"
 } external;
 
 # Prints `any` or `error` value(s) to the STDOUT followed by a new line.
+#```ballerina
+#io:println("Start processing the CSV file from ", srcFileName);
+#```
+#  
 # + values - The value(s) to be printed.
 public function println((any|error)... values) = @java:Method {
     name: "println",
-    class: "org.ballerinalang.stdlib.io.nativeimpl.PrintUtils"
+    'class: "org.ballerinalang.stdlib.io.nativeimpl.PrintUtils"
 } external;
 
 # Returns a formatted string using the specified format string and arguments. Following format specifiers are allowed.
@@ -46,15 +54,15 @@ public function println((any|error)... values) = @java:Method {
 #
 # s - string (This specifier is applicable for any of the supported types in Ballerina.
 #             These values will be converted to their string representation.)
+# 
+# ```ballerina
+# string s8 = io:sprintf("%s scored %d for %s and has an average of %.2f.", name, marks, subjects[0], average);
+# ```
 #
 # + format - A format string
-# + args   - Arguments referenced by the format specifiers in the format string.
-# + return - Formatted string
-public function sprintf(string format, (any|error)... args) returns string {
-    return <string>java:toString(sprintfExtern(java:fromString(format), ...args));
-}
-
-function sprintfExtern(handle format, (any|error)... args) returns handle = @java:Method {
+# + args   - Arguments referred by the format specifiers in the format string
+# + return - The formatted string
+public function sprintf(string format, (any|error)... args) returns string = @java:Method {
     name: "sprintf",
-    class: "org.ballerinalang.stdlib.io.nativeimpl.Sprintf"
+    'class: "org.ballerinalang.stdlib.io.nativeimpl.Sprintf"
 } external;

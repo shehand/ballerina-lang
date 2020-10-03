@@ -56,6 +56,7 @@ class BIRGenEnv {
     BIROperand targetOperand;
     BIRBasicBlock enclLoopBB;
     BIRBasicBlock enclLoopEndBB;
+    BIRBasicBlock enclOnFailEndBB;
 
     List<BIRAnnotationAttachment> enclAnnotAttachments;
 
@@ -65,7 +66,7 @@ class BIRGenEnv {
     // for example when we are to return from somewhere, we need to unlock all the
     // values in this list, but if we are to do break or continue, we need to pop
     // list and unlock variables in that
-    Stack<Stack<BIRLockDetailsHolder>> unlockVars = new Stack<>();
+    Stack<BIRLockDetailsHolder> unlockVars = new Stack<>();
 
     // This is the basic block that contains the return instruction for the current function.
     // A function can have only one basic block that has a return instruction.

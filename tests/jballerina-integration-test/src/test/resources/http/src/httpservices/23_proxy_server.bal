@@ -42,7 +42,7 @@ service proxyService on new http:Listener(9219) {
     }
     resource function sayHello (http:Caller caller, http:Request req) {
         string url = <@untainted> req.rawPath;
-        sendRequest(url, <@untainted> req, caller);
+        sendRequest(url, <@untainted> req, <@untainted> caller);
     }
 }
 
@@ -58,8 +58,7 @@ function sendRequest(string url, http:Request req, http:Caller caller) {
     if (response is http:Response) {
         checkpanic listenerEP->respond(response);
     } else {
-        error err = response;
-        checkpanic listenerEP->respond(err.reason());
+        checkpanic listenerEP->respond(response.message());
     }
 }
 

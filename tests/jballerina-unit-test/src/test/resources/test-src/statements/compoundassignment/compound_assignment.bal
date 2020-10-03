@@ -1,3 +1,4 @@
+import ballerina/lang.'xml as xmllib;
 xmlns "http://sample.com/wso2/a1" as ns0;
 
 function testCompoundAssignmentAddition() returns (int){
@@ -176,16 +177,17 @@ function testIntFloatCompoundAssignmentAddition() returns (float){
 }
 
 function testXMLAttributeWithCompoundAssignment() returns (string){
-    xml x1 = xml `<root xmlns:ns3="http://sample.com/wso2/f"></root>`;
-    x1@[ns0:foo1] = "bar1";
-    var result = x1@[ns0:foo1];
+    xmllib:Element x1 = <xmllib:Element> xml `<root xmlns:ns3="http://sample.com/wso2/f"></root>`;
+    map<string> m = x1.getAttributes();
+    m[ns0:foo1] = "bar1";
+    var result = x1.ns0:foo1;
 
     if (result is string) {
         result += "bar2";
         return result;
+    } else {
+        return result.toString();
     }
-
-    return "";
 }
 
 function testCompoundAssignmentAdditionRecursive() returns (int){

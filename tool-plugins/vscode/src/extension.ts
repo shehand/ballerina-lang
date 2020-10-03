@@ -17,19 +17,19 @@
  * under the License.
  *
  */
-import { ExtensionContext, commands, window } from 'vscode';
+import { ExtensionContext, commands, window, Location, Uri, workspace } from 'vscode';
 import { ballerinaExtInstance } from './core';
-import { activate as activateAPIEditor } from './api-editor';
+// import { activate as activateAPIEditor } from './api-editor';
 // import { activate as activateDiagram } from './diagram'; 
 import { activate as activateBBE } from './bbe';
-import { activate as activateDocs } from './docs';
-import { activate as activateTraceLogs } from './trace-logs';
-import { activate as activateTreeView } from './project-tree-view';
+// import { activate as activateDocs } from './docs';
+// import { activate as activateTraceLogs } from './trace-logs';
+// import { activate as activateTreeView } from './project-tree-view';
 import { activateDebugConfigProvider } from './debugger';
 import { activate as activateProjectFeatures } from './project';
-import { activate as activateOverview } from './overview';
+// import { activate as activateOverview } from './overview';
 import { activate as activateSyntaxHighlighter } from './syntax-highlighter';
-import { StaticFeature, ClientCapabilities, DocumentSelector, ServerCapabilities } from 'vscode-languageclient';
+import { StaticFeature, ClientCapabilities, DocumentSelector, ServerCapabilities, DidChangeConfigurationParams } from 'vscode-languageclient';
 import { ExtendedLangClient } from './core/extended-language-client';
 import { log } from './utils';
 
@@ -53,8 +53,18 @@ function onBeforeInit(langClient: ExtendedLangClient) {
         }
     }
 
+    class SyntaxHighlightingFeature implements StaticFeature {
+        fillClientCapabilities(capabilities: ClientCapabilities): void {
+            capabilities.experimental = capabilities.experimental || {};
+            capabilities.experimental.semanticSyntaxHighlighter = false;
+        }
+        initialize(capabilities: ServerCapabilities, documentSelector: DocumentSelector | undefined): void {
+        }
+    }
+
     langClient.registerFeature(new TraceLogsFeature());
     langClient.registerFeature(new ShowFileFeature());
+    langClient.registerFeature(new SyntaxHighlightingFeature());
 }
 
 export function activate(context: ExtensionContext): Promise<any> {
@@ -67,20 +77,37 @@ export function activate(context: ExtensionContext): Promise<any> {
         // Enable Ballerina by examples
         activateBBE(ballerinaExtInstance);
         // Enable Network logs
-        activateTraceLogs(ballerinaExtInstance);
+        // activateTraceLogs(ballerinaExtInstance);
         // Enable Ballerina Debug Config Provider
         activateDebugConfigProvider(ballerinaExtInstance);
         // Enable API Docs Live Preview
-        activateDocs(ballerinaExtInstance);
+        // activateDocs(ballerinaExtInstance);
 		// Enable Ballerina API Designer
-        activateAPIEditor(ballerinaExtInstance);
+        // activateAPIEditor(ballerinaExtInstance);
         // Enable Ballerina Project related features
         activateProjectFeatures(ballerinaExtInstance);
-        activateOverview(ballerinaExtInstance);
+        // activateOverview(ballerinaExtInstance);
         // Enable Ballerina Project Overview
-        activateTreeView(ballerinaExtInstance);
+        // activateTreeView(ballerinaExtInstance);
         // Enable Ballerina Syntax Highlighter
         activateSyntaxHighlighter(ballerinaExtInstance);
+
+        ballerinaExtInstance.onReady().then(() => {
+            const langClient = <ExtendedLangClient>ballerinaExtInstance.langClient;
+            // Send initial configuration without 'ballerina' field to support older SDK versions below 1.2.0
+            if (!ballerinaExtInstance.isNewConfigChangeSupported) {
+                const args: DidChangeConfigurationParams = {
+                    settings: workspace.getConfiguration('ballerina'),
+                };
+                langClient.sendNotification("workspace/didChangeConfiguration", args);
+            }
+            // Register showTextDocument listener
+            langClient.onNotification('window/showTextDocument', (location: Location) => {
+                if (location.uri !== undefined) {
+                    window.showTextDocument(Uri.parse(location.uri.toString()), {selection: location.range});
+                }
+            });
+        });
     }).catch((e) => {
         log("Failed to activate Ballerina extension. " + (e.message ? e.message : e));
         // When plugins fails to start, provide a warning upon each command execution
@@ -104,5 +131,5 @@ export function activate(context: ExtensionContext): Promise<any> {
                 });
             });
         }
-    }); 
+    });
 }

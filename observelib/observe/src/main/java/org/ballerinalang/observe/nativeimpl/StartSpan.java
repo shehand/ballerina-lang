@@ -19,7 +19,9 @@
 
 package org.ballerinalang.observe.nativeimpl;
 
-import org.ballerinalang.jvm.BallerinaErrors;
+import org.ballerinalang.jvm.api.BErrorCreator;
+import org.ballerinalang.jvm.api.BStringUtils;
+import org.ballerinalang.jvm.api.values.BString;
 import org.ballerinalang.jvm.observability.ObservabilityConstants;
 import org.ballerinalang.jvm.scheduling.Strand;
 import org.ballerinalang.jvm.values.MapValue;
@@ -33,7 +35,7 @@ import org.ballerinalang.natives.annotations.ReturnType;
  */
 @BallerinaFunction(
         orgName = "ballerina",
-        packageName = "observe",
+        packageName = "observe", version = "0.8.0",
         functionName = "startSpan",
         args = {
                 @Argument(name = "spanName", type = TypeKind.STRING),
@@ -44,16 +46,19 @@ import org.ballerinalang.natives.annotations.ReturnType;
         isPublic = true
 )
 public class StartSpan {
-    public static Object startSpan(Strand strand, String spanName, Object tags, long parentSpanId) {
+    private static final OpenTracerBallerinaWrapper otWrapperInstance = OpenTracerBallerinaWrapper.getInstance();
+
+    public static Object startSpan(Strand strand, BString spanName, Object tags, long parentSpanId) {
         if (parentSpanId < -1) {
-            return BallerinaErrors.createError("The given parent span ID " + parentSpanId + " is invalid.");
+            return BErrorCreator.createError(
+                    BStringUtils.fromString(("The given parent span ID " + parentSpanId + " " + "is invalid.")));
         } else {
-            long spanId = OpenTracerBallerinaWrapper.getInstance().startSpan(
-                    (String) strand.getProperty(ObservabilityConstants.SERVICE_NAME), spanName,
-                    Utils.toStringMap((MapValue<?, ?>) tags), parentSpanId, strand);
+            long spanId = otWrapperInstance.startSpan(
+                    (String) strand.getProperty(ObservabilityConstants.SERVICE_NAME), spanName.getValue(),
+                    Utils.toStringMap((MapValue<BString, ?>) tags), parentSpanId, strand);
             if (spanId == -1) {
-                return BallerinaErrors.createError(
-                        "No parent span for ID " + parentSpanId + " found. Please recheck the parent span Id");
+                return BErrorCreator.createError(BStringUtils.fromString((
+                        "No parent span for ID " + parentSpanId + " found. Please recheck the parent span Id")));
             }
 
             return spanId;

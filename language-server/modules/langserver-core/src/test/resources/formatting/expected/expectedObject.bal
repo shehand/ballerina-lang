@@ -15,7 +15,7 @@ type ObjectName3 object {
     public ObjectName1? b;
     string h;
 
-    function __init() {
+    function init() {
         self.s = "";
     }
 
@@ -30,8 +30,8 @@ type ObjectName3 object {
     function sd();
 };
 
-function close(io:ReadableByteChannel | io:WritableByteChannel ch) {
-    abstract object {
+function close(io:ReadableByteChannel|io:WritableByteChannel ch) {
+    object {
         public function close() returns error?;
     } channelResult = ch;
     var cr = channelResult.close();
@@ -49,7 +49,7 @@ public type Client client object {
     #
     # + url - URL of the target service
     # + config - The configurations to be used when initializing the client
-    public function __init(string url) {
+    public function init(string url) {
         self.url = url;
     }
 
@@ -59,14 +59,14 @@ public type Client client object {
     # + message - An HTTP outbound request message or any payload of type `string`, `xml`, `json`, `byte[]`,
     #             `io:ReadableByteChannel` or `mime:Entity[]`
     # + return - The response for the request or an `error` if failed to establish communication with the upstream server
-    public remote function post(@untainted string path, RequestMessage message) returns Response | error {
+    public remote function post(@untainted string path, RequestMessage message) returns Response|error {
 
     }
 
-    public remote function get(@untainted string path, RequestMessage message) returns Response | error = external;
+    public remote function get(@untainted string path, RequestMessage message) returns Response|error = external;
 
     private function getConfig()
-    =
-    external
+        =
+        external
     ;
 }

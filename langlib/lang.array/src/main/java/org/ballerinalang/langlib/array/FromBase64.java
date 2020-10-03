@@ -18,7 +18,9 @@
 
 package org.ballerinalang.langlib.array;
 
-import org.ballerinalang.jvm.BallerinaErrors;
+import org.ballerinalang.jvm.api.BErrorCreator;
+import org.ballerinalang.jvm.api.BStringUtils;
+import org.ballerinalang.jvm.api.values.BString;
 import org.ballerinalang.jvm.scheduling.Strand;
 import org.ballerinalang.jvm.values.ArrayValueImpl;
 import org.ballerinalang.model.types.TypeKind;
@@ -28,25 +30,28 @@ import org.ballerinalang.natives.annotations.ReturnType;
 
 import java.util.Base64;
 
+import static org.ballerinalang.util.BLangCompilerConstants.ARRAY_VERSION;
+
 /**
  * Native implementation of lang.array:fromBase64(string).
  *
  * @since 1.0
  */
 @BallerinaFunction(
-        orgName = "ballerina", packageName = "lang.array", functionName = "fromBase64",
+        orgName = "ballerina", packageName = "lang.array", version = ARRAY_VERSION, functionName = "fromBase64",
         args = {@Argument(name = "str", type = TypeKind.STRING)},
         returnType = {@ReturnType(type = TypeKind.UNION)},
         isPublic = true
 )
 public class FromBase64 {
 
-    public static Object fromBase64(Strand strand, String str) {
+    public static Object fromBase64(Strand strand, BString str) {
         try {
-            byte[] decodedArr = Base64.getDecoder().decode(str);
+            byte[] decodedArr = Base64.getDecoder().decode(str.getValue());
             return new ArrayValueImpl(decodedArr);
         } catch (IllegalArgumentException e) {
-            return BallerinaErrors.createError("Invalid base64 string", e.getMessage());
+            return BErrorCreator.createError(BStringUtils.fromString("Invalid base64 string"),
+                                             BStringUtils.fromString(e.getMessage()));
         }
     }
 }

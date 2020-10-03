@@ -17,19 +17,19 @@
  */
 package org.ballerinalang.stdlib.file.utils;
 
-import org.ballerinalang.jvm.BallerinaErrors;
-import org.ballerinalang.jvm.BallerinaValues;
-import org.ballerinalang.jvm.values.ErrorValue;
-import org.ballerinalang.jvm.values.MapValue;
-import org.ballerinalang.jvm.values.ObjectValue;
+import org.ballerinalang.jvm.api.BErrorCreator;
+import org.ballerinalang.jvm.api.BStringUtils;
+import org.ballerinalang.jvm.api.BValueCreator;
+import org.ballerinalang.jvm.api.values.BError;
+import org.ballerinalang.jvm.api.values.BMap;
+import org.ballerinalang.jvm.api.values.BObject;
+import org.ballerinalang.jvm.api.values.BString;
 
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.attribute.FileTime;
 import java.time.ZonedDateTime;
-import java.util.HashMap;
-import java.util.Map;
 
 import static org.ballerinalang.stdlib.file.utils.FileConstants.FILE_INFO_TYPE;
 import static org.ballerinalang.stdlib.file.utils.FileConstants.FILE_PACKAGE_ID;
@@ -42,7 +42,7 @@ import static org.ballerinalang.stdlib.time.util.TimeUtils.getTimeZoneRecord;
  */
 public class FileUtils {
 
-    private static final String UNKNOWN_MESSAGE = "Unknown Error";
+    private static final BString UNKNOWN_MESSAGE = BStringUtils.fromString("Unknown Error");
 
     /**
      * Returns error object for input reason.
@@ -54,8 +54,9 @@ public class FileUtils {
      *              "Unknown Error" sets to message by default.
      * @return Ballerina error object.
      */
-    public static ErrorValue getBallerinaError(String error, Throwable ex) {
-        String errorMsg = error != null && ex.getMessage() != null ? ex.getMessage() : UNKNOWN_MESSAGE;
+    public static BError getBallerinaError(String error, Throwable ex) {
+        BString errorMsg = error != null && ex.getMessage() != null ? BStringUtils.fromString(ex.getMessage()) :
+                UNKNOWN_MESSAGE;
         return getBallerinaError(error, errorMsg);
     }
 
@@ -64,32 +65,26 @@ public class FileUtils {
      * Error type is generic ballerina error type. This utility to construct error object from message.
      *
      * @param error   The specific error type.
-     * @param details Java throwable object to capture description of error struct. If throwable object is null,
-     *                "Unknown Error" is set to message by default.
+     * @param message Error message. "Unknown Error" is set to message by default.
      * @return Ballerina error object.
      */
-    public static ErrorValue getBallerinaError(String error, String details) {
-        return BallerinaErrors.createError(error, populateSystemErrorRecord(details));
+    public static BError getBallerinaError(String error, BString message) {
+        return BErrorCreator.createDistinctError(error, FILE_PACKAGE_ID, message != null ?
+                message : UNKNOWN_MESSAGE);
     }
 
-    private static MapValue populateSystemErrorRecord(String message) {
-        Map<String, Object> valueMap = new HashMap<>();
-        if (message != null) {
-            valueMap.put(FileConstants.ERROR_MESSAGE, message);
-        } else {
-            valueMap.put(FileConstants.ERROR_MESSAGE, UNKNOWN_MESSAGE);
-        }
-        return BallerinaValues.createRecordValue(FILE_PACKAGE_ID, FileConstants.ERROR_DETAILS, valueMap);
-    }
-
-    public static ObjectValue getFileInfo(File inputFile) throws IOException {
-        MapValue<String, Object> lastModifiedInstance;
+    public static BObject getFileInfo(File inputFile) throws IOException {
+        BMap<BString, Object> lastModifiedInstance;
         FileTime lastModified = Files.getLastModifiedTime(inputFile.toPath());
         ZonedDateTime zonedDateTime = ZonedDateTime.parse(lastModified.toString());
         lastModifiedInstance = createTimeRecord(getTimeZoneRecord(), getTimeRecord(),
-                lastModified.toMillis(), zonedDateTime.getZone().toString());
-        return BallerinaValues.createObjectValue(FILE_PACKAGE_ID, FILE_INFO_TYPE, inputFile.getName(),
-                inputFile.length(), lastModifiedInstance, inputFile.isDirectory());
+                                                lastModified.toMillis(), BStringUtils
+                                                        .fromString(zonedDateTime.getZone().toString()));
+        return BValueCreator.createObjectValue(FILE_PACKAGE_ID, FILE_INFO_TYPE,
+                                               BStringUtils.fromString(inputFile.getName()), inputFile.length(),
+                                               lastModifiedInstance,
+                                               inputFile.isDirectory(), BStringUtils
+                                                       .fromString(inputFile.getAbsolutePath()));
     }
 
 

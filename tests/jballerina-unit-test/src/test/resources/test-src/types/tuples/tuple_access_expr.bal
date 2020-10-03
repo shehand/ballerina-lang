@@ -42,17 +42,17 @@ function tupleAccessTest() returns string {
     return finalResult;
 }
 
-type Obj object {
+class Obj {
     private int intField;
 
-    function __init() {
+    function init() {
         self.intField = 10;
     }
 
     function getIntField() returns int {
         return self.intField;
     }
-};
+}
 
 function tupleAccessTestWithBehavioralValues() returns string {
     Obj obj = new;

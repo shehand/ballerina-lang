@@ -60,7 +60,6 @@ import org.wso2.ballerinalang.compiler.util.Name;
 import org.wso2.ballerinalang.compiler.util.Names;
 import org.wso2.ballerinalang.compiler.util.ProjectDirConstants;
 import org.wso2.ballerinalang.compiler.util.ProjectDirs;
-import org.wso2.ballerinalang.compiler.util.diagnotic.BLangDiagnosticLog;
 import org.wso2.ballerinalang.util.RepoUtils;
 
 import java.io.PrintStream;
@@ -102,7 +101,7 @@ public class PackageLoader {
     private final boolean offline;
     private final boolean testEnabled;
     private final boolean lockEnabled;
-    
+
     /**
      * Manifest of the current project.
      */
@@ -116,7 +115,6 @@ public class PackageLoader {
     private final SymbolEnter symbolEnter;
     private final BIRPackageSymbolEnter birPackageSymbolEnter;
     private final Names names;
-    private final BLangDiagnosticLog dlog;
     private static final boolean shouldReadBalo = true;
     private final CompilerPhase compilerPhase;
     
@@ -149,7 +147,6 @@ public class PackageLoader {
         this.symbolEnter = SymbolEnter.getInstance(context);
         this.birPackageSymbolEnter = BIRPackageSymbolEnter.getInstance(context);
         this.names = Names.getInstance(context);
-        this.dlog = BLangDiagnosticLog.getInstance(context);
         this.offline = Boolean.parseBoolean(options.get(OFFLINE));
         this.testEnabled = Boolean.parseBoolean(options.get(TEST_ENABLED));
         this.lockEnabled = Boolean.parseBoolean(options.get(LOCK_ENABLED));
@@ -174,12 +171,13 @@ public class PackageLoader {
     private RepoHierarchy genRepoHierarchy(Path sourceRoot) {
         Converter<Path> converter = sourceDirectory.getConverter();
     
-        String ballerinaHome = System.getProperty(ProjectDirConstants.BALLERINA_HOME);
-        Repo systemBirRepo = new BirRepo(Paths.get(ballerinaHome));
+        Path ballerinaHome = Paths.get(System.getProperty(ProjectDirConstants.BALLERINA_HOME));
+        Repo systemBirRepo = new BirRepo(ballerinaHome);
         Repo systemZipRepo = new BinaryRepo(RepoUtils.getLibDir(), compilerPhase);
-        Repo remoteRepo = new RemoteRepo(URI.create(RepoUtils.getRemoteRepoURL()), this.dependencyManifests);
+        Repo remoteRepo = new RemoteRepo(URI.create(RepoUtils.getRemoteRepoURL()),
+                                         this.dependencyManifests, ballerinaHome);
         Repo remoteDryRepo = new RemoteRepo(new URIDryConverter(URI.create(RepoUtils.getRemoteRepoURL()),
-                this.dependencyManifests));
+                this.dependencyManifests), ballerinaHome);
         Repo homeBaloCache = new HomeBaloRepo(this.dependencyManifests);
         Repo homeBirRepo = new HomeBirRepo();
         Repo secondarySystemRepo = new BinaryRepo(RepoUtils.getLibDir(), compilerPhase);
@@ -282,7 +280,7 @@ public class PackageLoader {
             return new GenericPackageSource(pkgId, resolution.inputs, resolution.resolvedBy);
         }
     }
-    
+
     /**
      * Resolve a module by path if given.
      *
@@ -374,15 +372,11 @@ public class PackageLoader {
         }
 
         BLangPackage packageNode = parse(pkgId, (PackageSource) pkgEntity);
-        if (packageNode.diagCollector.hasErrors()) {
-            return packageNode;
-        }
-
         define(packageNode);
         return packageNode;
     }
 
-    private BLangPackage loadPackage(PackageID pkgId) {
+    public BLangPackage loadPackage(PackageID pkgId) {
         // TODO Remove this method()
         BLangPackage bLangPackage = packageCache.get(pkgId);
         if (bLangPackage != null) {
@@ -502,7 +496,7 @@ public class PackageLoader {
         byte[] pkgBinaryContent = pkgBinary.getCompilerInput().getCode();
         BPackageSymbol pkgSymbol;
         pkgSymbol = this.birPackageSymbolEnter.definePackage(pkgId, pkgBinary.getRepoHierarchy(), pkgBinaryContent);
-        this.packageCache.putSymbol(pkgId, pkgSymbol);
+        this.packageCache.putSymbol(pkgSymbol.pkgID, pkgSymbol);
 
         // TODO create CompiledPackage
         return pkgSymbol;

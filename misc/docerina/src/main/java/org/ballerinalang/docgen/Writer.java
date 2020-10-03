@@ -28,9 +28,20 @@ import com.github.jknack.handlebars.io.ClassPathTemplateLoader;
 import com.github.jknack.handlebars.io.FileTemplateLoader;
 import org.apache.commons.lang3.StringUtils;
 import org.ballerinalang.docgen.docs.BallerinaDocConstants;
-import org.ballerinalang.docgen.generator.model.DefaultableVarible;
+import org.ballerinalang.docgen.generator.model.AbstractObjectPageContext;
+import org.ballerinalang.docgen.generator.model.AnnotationsPageContext;
+import org.ballerinalang.docgen.generator.model.ClassPageContext;
+import org.ballerinalang.docgen.generator.model.ClientPageContext;
+import org.ballerinalang.docgen.generator.model.ConstantsPageContext;
+import org.ballerinalang.docgen.generator.model.DefaultableVariable;
+import org.ballerinalang.docgen.generator.model.ErrorsPageContext;
+import org.ballerinalang.docgen.generator.model.FunctionsPageContext;
+import org.ballerinalang.docgen.generator.model.ListenerPageContext;
+import org.ballerinalang.docgen.generator.model.ModulePageContext;
 import org.ballerinalang.docgen.generator.model.PageContext;
+import org.ballerinalang.docgen.generator.model.RecordPageContext;
 import org.ballerinalang.docgen.generator.model.Type;
+import org.ballerinalang.docgen.generator.model.TypesPageContext;
 import org.ballerinalang.docgen.generator.model.Variable;
 
 import java.io.File;
@@ -54,17 +65,20 @@ public class Writer {
      */
     public static void writeHtmlDocument(Object object, String packageTemplateName, String filePath) throws
             IOException {
-        String templatesFolderPath = System.getProperty(BallerinaDocConstants.TEMPLATES_FOLDER_PATH_KEY, File
-                .separator + "template" + File.separator + "html");
+        String templatesFolderPath = System.getProperty("CUSTOM_TEMPLATE_PATH");
+        if (templatesFolderPath == null) {
+            templatesFolderPath = System.getProperty("ballerina.home") + File.separator + "lib" + File.separator +
+                    "templates";
+        }
 
         String templatesClassPath = System.getProperty(BallerinaDocConstants.TEMPLATES_FOLDER_PATH_KEY,
                 "/template/html");
         PrintWriter writer = null;
         try {
-            Handlebars handlebars = new Handlebars().with(new ClassPathTemplateLoader(templatesClassPath), new
-                    FileTemplateLoader(templatesFolderPath));
+            Handlebars handlebars = new Handlebars().with(new FileTemplateLoader(templatesFolderPath),
+                    new ClassPathTemplateLoader(templatesClassPath));
             handlebars.registerHelpers(StringHelpers.class);
-            handlebars.registerHelper("paramSummary", (Helper<List<DefaultableVarible>>)
+            handlebars.registerHelper("paramSummary", (Helper<List<DefaultableVariable>>)
                     (varList, options) -> varList.stream()
                             .map(variable -> getTypeLabel(variable.type, options.context) + " " + variable.name)
                             .collect(Collectors.joining(", "))
@@ -84,6 +98,84 @@ public class Writer {
             );
             handlebars.registerHelper("typeName", (Helper<Type>)
                     (type, options) -> getTypeLabel(type, options.context));
+
+            handlebars.registerHelper("defVal", (Helper<Type>) (type, options) -> {
+                String defaultValue;
+                String name = options.param(0);
+                Context context = options.context;
+                String root = getRootPath(context);
+                String link = root + type.moduleName + "/" + type.category + "/" + name + ".html";
+                if (type.category.equals("classes") && !name.equals("()")) {
+                    defaultValue = "<span class=\"default\">(default</span> <span class=\"type\">" +
+                            "<a href=\"" + link + "\">" + name + "</a>" + "</span><span class=\"default\">)</span>";
+                } else {
+                    defaultValue = "<span class=\"default\">(default " + name + ")</span>";
+                }
+                return defaultValue;
+            });
+
+            handlebars.registerHelper("editDescription", (Helper<String>) (description, options) -> {
+                //remove anything with <pre> tag
+                String newDescription = description.replaceAll("<pre>(.|\\n)*?<\\/pre>", " ");
+                // replace \n with a space
+                newDescription = newDescription.replaceAll("\\n", " ");
+                // select only the first sentence
+                String[] splits = newDescription.split("\\. ", 2);
+                if (splits.length < 2) {
+                    return splits[0];
+                } else {
+                    return splits[0] + ".";
+                }
+            });
+
+            handlebars.registerHelper("setStyles", (Helper<String>) (description, options) -> {
+                //set css for table tags
+                return description.replaceAll("<table>", "<table class=\"ui table row-border " + "pad-left\">");
+            });
+
+            handlebars.registerHelper("showSidebarList", (Helper<PageContext>) (page, options) ->
+                    page.getClass() != ModulePageContext.class && !(page instanceof ConstantsPageContext));
+
+            handlebars.registerHelper("isModulePage", (Helper<PageContext>) (page, options) ->
+                    page.getClass() == ModulePageContext.class);
+
+            handlebars.registerHelper("addColon", (Helper<PageContext>) (page, options) ->
+                    page.getClass() == ClassPageContext.class || page.getClass() == AbstractObjectPageContext.class ||
+                    page.getClass() == RecordPageContext.class || page.getClass() == ClientPageContext.class ||
+                    page.getClass() == ListenerPageContext.class);
+
+            handlebars.registerHelper("getType", (Helper<PageContext>) (page, options) -> {
+                if (page.getClass() == ClassPageContext.class) {
+                    return "classes";
+                } else if (page.getClass() == ListenerPageContext.class) {
+                    return "listeners";
+                } else if (page.getClass() == ClientPageContext.class) {
+                    return "clients";
+                } else if (page.getClass() == AnnotationsPageContext.class) {
+                    return "annotations";
+                } else if (page.getClass() == RecordPageContext.class) {
+                    return "records";
+                } else if (page.getClass() == FunctionsPageContext.class) {
+                    return "functions";
+                } else if (page.getClass() == ConstantsPageContext.class) {
+                    return "constants";
+                } else if (page.getClass() == TypesPageContext.class) {
+                    return "types";
+                } else if (page.getClass() == ErrorsPageContext.class) {
+                    return "errors";
+                } else {
+                    return "";
+                }
+            });
+
+            handlebars.registerHelper("removeTags", (Helper<String>) (string, options) -> {
+                //remove html tags
+                if (string != null) {
+                    return string.replaceAll("<\\/?[^>]*>", "");
+                } else {
+                    return "";
+                }
+            });
 
             handlebars.registerHelper("equals", (arg1, options) -> {
                 CharSequence result;
@@ -143,8 +235,20 @@ public class Writer {
         } else if (type.isArrayType) {
             label = "<span class=\"array-type\">" + getTypeLabel(type.elementType, context) + getSuffixes(type)
                     + "</span>";
+        } else if (type.isRestParam) {
+            label = "<span class=\"array-type\">" + getTypeLabel(type.elementType, context) + getSuffixes(type)
+                    + "</span>";
+        } else if ("map".equals(type.category) && type.constraint != null) {
+            label = "<span class=\"builtin-type\">" + type.name + "</span><" +
+                    getTypeLabel(type.constraint, context) + ">";
+        } else if ("stream".equals(type.category)) {
+            label = "<span class=\"builtin-type\">" + type.name + "<";
+            label += type.memberTypes.stream()
+                    .map(type1 -> getTypeLabel(type1, context))
+                    .collect(Collectors.joining(" ,"));
+            label += "></span>";
         } else if ("builtin".equals(type.category) || "lang.annotations".equals(type.moduleName)
-                || !type.generateUserDefinedTypeLink) {
+                || !type.generateUserDefinedTypeLink || "UNKNOWN".equals(type.category)) {
             label = "<span class=\"builtin-type\">" + type.name + getSuffixes(type) + "</span>";
         } else {
             label = getHtmlLink(type, root);
@@ -175,7 +279,12 @@ public class Writer {
     }
 
     private static String getSuffixes(Type type) {
-        String suffix = type.isArrayType ? StringUtils.repeat("[]", type.arrayDimensions) : "";
+        String suffix = "";
+        if (type.isArrayType) {
+            suffix = StringUtils.repeat("[]", type.arrayDimensions);
+        } else if (type.isRestParam) {
+            suffix = "...";
+        }
         suffix += type.isNullable ? "?" : "";
         return suffix;
     }

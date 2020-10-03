@@ -18,11 +18,11 @@
 
 package org.ballerinalang.langlib.string;
 
-import org.ballerinalang.jvm.BallerinaValues;
+import org.ballerinalang.jvm.api.BStringUtils;
+import org.ballerinalang.jvm.api.BValueCreator;
+import org.ballerinalang.jvm.api.values.BString;
 import org.ballerinalang.jvm.scheduling.Strand;
-import org.ballerinalang.jvm.types.BFunctionType;
-import org.ballerinalang.jvm.types.BRecordType;
-import org.ballerinalang.jvm.types.BUnionType;
+import org.ballerinalang.jvm.types.BTypes;
 import org.ballerinalang.jvm.values.MapValueImpl;
 import org.ballerinalang.jvm.values.ObjectValue;
 import org.ballerinalang.model.types.TypeKind;
@@ -33,6 +33,8 @@ import org.ballerinalang.natives.annotations.ReturnType;
 import java.text.CharacterIterator;
 import java.text.StringCharacterIterator;
 
+import static org.ballerinalang.util.BLangCompilerConstants.STRING_VERSION;
+
 
 /**
  * Native implementation of lang.string.StringIterator:next().
@@ -40,27 +42,28 @@ import java.text.StringCharacterIterator;
  * @since 1.0
  */
 @BallerinaFunction(
-        orgName = "ballerina", packageName = "lang.string", functionName = "next",
+        orgName = "ballerina", packageName = "lang.string", version = STRING_VERSION, functionName = "next",
         receiver = @Receiver(type = TypeKind.OBJECT, structType = "StringIterator",
                 structPackage = "ballerina/lang.string"),
         returnType = {@ReturnType(type = TypeKind.RECORD)},
         isPublic = true
 )
 public class Next {
+
     //TODO: refactor hard coded values
     public static Object next(Strand strand, ObjectValue m) {
         StringCharacterIterator stringCharacterIterator = (StringCharacterIterator) m.getNativeData("&iterator&");
         if (stringCharacterIterator == null) {
-            stringCharacterIterator = new StringCharacterIterator((String) m.get("m"));
+            String s = ((BString) m.get(BStringUtils.fromString("m"))).getValue();
+            stringCharacterIterator = new StringCharacterIterator(s);
             m.addNativeData("&iterator&", stringCharacterIterator);
         }
 
         if (stringCharacterIterator.current() != CharacterIterator.DONE) {
             char character = stringCharacterIterator.current();
             stringCharacterIterator.next();
-            BFunctionType nextFuncType = m.getType().getAttachedFunctions()[0].type;
-            BRecordType recordType = (BRecordType) ((BUnionType) nextFuncType.retType).getMemberTypes().get(0);
-            return BallerinaValues.createRecord(new MapValueImpl<>(recordType), String.valueOf(character));
+            Object charAsStr = BStringUtils.fromString(String.valueOf(character));
+            return BValueCreator.createRecordValue(new MapValueImpl<>(BTypes.stringItrNextReturnType), charAsStr);
         }
 
         return null;

@@ -1,12 +1,12 @@
-## Module overview
+## Module Overview
 
-This module provides an implementation for connecting and interacting with HTTP, HTTP2, and WebSocket endpoints. The module facilitates two types of endpoints as ‘Client’ and ‘Listener’.
+This module provides an implementation for connecting and interacting with HTTP, HTTP2, and WebSocket endpoints. The module facilitates two types of network entry points as ‘Client’ and ‘Listener’.
 
-### Client endpoints
+### Client
 
-`Client` endpoints are used to connect to and interact with HTTP endpoints. They support connection pooling and can be configured to have a maximum number of active connections that can be made with the remote endpoint. `Client` endpoints activate connection eviction after a given idle period and also support follow-redirects so that the users do not have to manually handle 3xx HTTP status codes.
+The `Client` is used to connect to and interact with HTTP endpoints. They support connection pooling and can be configured to have a maximum number of active connections that can be made with the remote endpoint. The `Client` activates connection eviction after a given idle period and also supports follow-redirects so that the users do not have to manually handle 3xx HTTP status codes.
 
-`Client` endpoints handle resilience in multiple ways such as load balancing, circuit breaking, endpoint timeouts, and a retry mechanism.
+The `Client` handles resilience in multiple ways such as load balancing, circuit breaking, endpoint timeouts, and a retry mechanism.
 
 Load balancing is used in the round robin or failover manner.
 
@@ -14,9 +14,9 @@ When a failure occurs in the remote service, the client connections might wait f
 
 The Ballerina circuit breaker supports tripping on HTTP error status codes and I/O errors. Failure thresholds can be configured based on a sliding window (e.g., 5 failures within 10 seconds). `Client` endpoints also support a retry mechanism that allows a client to resend failed requests periodically for a given number of times.
 
-`Client` endpoints support Server Name Indication (SNI), Certificate Revocation List (CRL), Online Certificate Status Protocol (OCSP), and OCSP Stapling for SSL/TLS connections. They also support HTTP2, keep-alive, chunking, HTTP caching, data compression/decompression, and authentication/authorization.
+The `Client` supports Server Name Indication (SNI), Certificate Revocation List (CRL), Online Certificate Status Protocol (OCSP), and OCSP Stapling for SSL/TLS connections. They also support HTTP2, keep-alive, chunking, HTTP caching, data compression/decompression, and authentication/authorization.
 
-A `Client` endpoint can be defined using the URL of the remote service that the client needs to connect with, as shown below:
+A `Client` can be defined using the URL of the remote service that the client needs to connect with, as shown below:
 
 ``` ballerina
 http:Client clientEndpoint = new("https://my-simple-backend.com");
@@ -28,9 +28,13 @@ The defined `Client` endpoint can be used to call a remote service as follows:
 var response = clientEndpoint->get("/get?id=123");
 ```
 
-For more information, see [Client Endpoint Example](https://ballerina.io/learn/by-example/http-client-endpoint.html), [Circuit Breaker Example](https://ballerina.io/learn/by-example/http-circuit-breaker.html), [HTTP Redirects Example](https://ballerina.io/learn/by-example/http-redirects.html).
+For more information, see the following.
+* [Client Endpoint Example](https://ballerina.io/swan-lake/learn/by-example/http-client-endpoint.html)
+* [Circuit Breaker Example](https://ballerina.io/swan-lake/learn/by-example/http-circuit-breaker.html)
+* [HTTP Redirects Example](https://ballerina.io/swan-lake/learn/by-example/http-redirects.html)
+* [HTTP Cookies](https://ballerina.io/swan-lake/learn/by-example/http-cookies.html)
 
-### Listener endpoints
+### Listener
 
 A `Service` represents a collection of network-accessible entry points and can be exposed via a `Listener` endpoint. A resource represents one such entry point and can have its own path, HTTP methods, body format, 'consumes' and 'produces' content types, CORS headers, etc. In resources, `http:caller` and `http:Request` are mandatory parameters while `path` and `body` are optional.
 
@@ -63,20 +67,23 @@ service helloWorld on helloWorldEP {
        // Sends the response back to the client.
        var result = caller->respond(res);
        if (result is http:ListenerError) {
-            error err = result;
-            log:printError("Error sending response", err = err);
+            log:printError("Error sending response", result);
        }
    }
 }
 ```
 
-See [Listener Endpoint Example](https://ballerina.io/learn/by-example/http-data-binding.html), [HTTP CORS Example](https://ballerina.io/learn/by-example/http-cors.html), [HTTP Failover Example](https://ballerina.io/learn/by-example/http-failover.html), [HTTP Load Balancer Example](https://ballerina.io/learn/by-example/http-load-balancer.html)
+See the following.
+* [Listener Endpoint Example](https://ballerina.io/swan-lake/learn/by-example/http-data-binding.html)
+* [HTTP CORS Example](https://ballerina.io/swan-lake/learn/by-example/http-cors.html)
+* [HTTP Failover Example](https://ballerina.io/swan-lake/learn/by-example/http-failover.html)
+* [HTTP Load Balancer Example](https://ballerina.io/swan-lake/learn/by-example/http-load-balancer.html)
 
 `Listener` endpoints can be exposed via SSL. They support Mutual SSL, Hostname Verification, and Application Layer Protocol Negotiation (ALPN) for HTTP2. `Listener` endpoints also support Certificate Revocation List (CRL), Online Certificate Status Protocol (OCSP), OCSP Stapling, HTTP2, keep-alive, chunking, HTTP caching, data compression/decompression, and authentication/authorization.
 
-For more information, see [Mutual SSL Example](https://ballerina.io/learn/by-example/mutual-ssl.html).
+For more information, see [Mutual SSL Example](https://ballerina.io/swan-lake/learn/by-example/mutual-ssl.html).
 
-For more information, see [Caching Example](https://ballerina.io/learn/by-example/cache.html), [HTTP Disable Chunking Example](https://ballerina.io/learn/by-example/http-disable-chunking.html).
+For more information, see [Caching Example](https://ballerina.io/swan-lake/learn/by-example/cache.html), [HTTP Disable Chunking Example](https://ballerina.io/swan-lake/learn/by-example/http-disable-chunking.html).
 
 ### WebSocket
 
@@ -112,7 +119,15 @@ The `upgradeService` is a server callback service.
 
 **onError**: This resource is dispatched when an error occurs in the WebSocket connection. This will always be preceded by a connection closure with an appropriate close frame.
 
-For more information, see [WebSocket Basic Example](https://ballerina.io/learn/by-example/websocket-basic-sample.html), [HTTP to WebSocket Upgrade Example](https://ballerina.io/learn/by-example/http-to-websocket-upgrade.html), [WebSocket Chat Application](https://ballerina.io/learn/by-example/websocket-chat-application.html), [WebSocket Proxy Server](https://ballerina.io/learn/by-example/websocket-proxy-server.html).
+For more information, see the following.
+* [WebSocket Basic Example](https://ballerina.io/swan-lake/learn/by-example/websocket-basic-sample.html)
+* [HTTP to WebSocket Upgrade Example](https://ballerina.io/swan-lake/learn/by-example/http-to-websocket-upgrade.html)
+* [WebSocket Chat Application](https://ballerina.io/swan-lake/learn/by-example/websocket-chat-application.html)
+* [WebSocket Proxy Server](https://ballerina.io/swan-lake/learn/by-example/websocket-proxy-server.html)
+* [Client Endpoint](https://ballerina.io/swan-lake/learn/by-example/websocket-client.html)   
+* [Retry](https://ballerina.io/swan-lake/learn/by-example/websocket-retry.html)
+* [Failover](https://ballerina.io/swan-lake/learn/by-example/websocket-failover.html)
+* [Cookie](https://ballerina.io/swan-lake/learn/by-example/websocket-cookie.html)
 
 ### Logging
 
@@ -128,4 +143,4 @@ This module supports two types of logs:
 
 To publish logs to a socket, both the host and port configurations must be provided.
 
-See [HTTP Access Logs Example](https://ballerina.io/learn/by-example/http-access-logs.html), [HTTP Trace Logs Example](https://ballerina.io/learn/by-example/http-trace-logs.html)
+See [HTTP Access Logs Example](https://ballerina.io/swan-lake/learn/by-example/http-access-logs.html), [HTTP Trace Logs Example](https://ballerina.io/swan-lake/learn/by-example/http-trace-logs.html)

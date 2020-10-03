@@ -23,7 +23,6 @@ import org.ballerinalang.model.types.ValueType;
 import org.wso2.ballerinalang.compiler.semantics.model.TypeVisitor;
 import org.wso2.ballerinalang.compiler.semantics.model.symbols.BTypeSymbol;
 import org.wso2.ballerinalang.compiler.util.Names;
-import org.wso2.ballerinalang.compiler.util.TypeDescriptor;
 import org.wso2.ballerinalang.compiler.util.TypeTags;
 
 import static org.wso2.ballerinalang.compiler.util.TypeTags.BOOLEAN;
@@ -32,7 +31,9 @@ import static org.wso2.ballerinalang.compiler.util.TypeTags.DECIMAL;
 import static org.wso2.ballerinalang.compiler.util.TypeTags.ERROR;
 import static org.wso2.ballerinalang.compiler.util.TypeTags.FLOAT;
 import static org.wso2.ballerinalang.compiler.util.TypeTags.INT;
+import static org.wso2.ballerinalang.compiler.util.TypeTags.NEVER;
 import static org.wso2.ballerinalang.compiler.util.TypeTags.NIL;
+import static org.wso2.ballerinalang.compiler.util.TypeTags.READONLY;
 import static org.wso2.ballerinalang.compiler.util.TypeTags.STRING;
 import static org.wso2.ballerinalang.compiler.util.TypeTags.TYPEDESC;
 
@@ -59,32 +60,18 @@ public class BType implements ValueType {
         this.flags = 0;
     }
 
+    public BType(int tag, BTypeSymbol tsymbol, int flags) {
+        this.tag = tag;
+        this.tsymbol = tsymbol;
+        this.name = Names.EMPTY;
+        this.flags = flags;
+    }
+
     public BType(int tag, BTypeSymbol tsymbol, Name name, int flags) {
         this.tag = tag;
         this.tsymbol = tsymbol;
         this.name = name;
         this.flags = flags;
-    }
-
-    public String getDesc() {
-        switch (tag) {
-            case INT:
-                return TypeDescriptor.SIG_INT;
-            case BYTE:
-                return TypeDescriptor.SIG_BYTE;
-            case FLOAT:
-                return TypeDescriptor.SIG_FLOAT;
-            case DECIMAL:
-                return TypeDescriptor.SIG_DECIMAL;
-            case STRING:
-                return TypeDescriptor.SIG_STRING;
-            case BOOLEAN:
-                return TypeDescriptor.SIG_BOOLEAN;
-            case TYPEDESC:
-                return TypeDescriptor.SIG_TYPEDESC;
-            default:
-                return null;
-        }
     }
 
     public BType getReturnType() {
@@ -118,8 +105,12 @@ public class BType implements ValueType {
                 return TypeKind.TYPEDESC;
             case NIL:
                 return TypeKind.NIL;
+            case NEVER:
+                return TypeKind.NEVER;
             case ERROR:
                 return TypeKind.ERROR;
+            case READONLY:
+                return TypeKind.READONLY;
             default:
                 return TypeKind.OTHER;
         }

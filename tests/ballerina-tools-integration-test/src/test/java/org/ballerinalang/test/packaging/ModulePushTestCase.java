@@ -46,7 +46,8 @@ public class ModulePushTestCase extends BaseTest {
         envVariables = addEnvVariables(TestUtils.getEnvVariables());
     }
 
-    @Test(description = "Test pushing a package to central by specifying the access token as an environment variable")
+    @Test(enabled = false, description = "Test pushing a package to central by specifying " +
+            "the access token as an environment variable")
     public void testPush() throws Exception {
         // Org-name
         String orgName = "bcintegrationtest";
@@ -72,7 +73,7 @@ public class ModulePushTestCase extends BaseTest {
      * @return env directory variable array
      */
     private Map<String, String> addEnvVariables(Map<String, String> envVariables) {
-        envVariables.put("BALLERINA_DEV_STAGE_CENTRAL", "true");
+        envVariables.put("BALLERINA_DEV_PREPROD_CENTRAL", "true");
         envVariables.put("BALLERINA_CENTRAL_ACCESS_TOKEN", TestUtils.getToken());
         return envVariables;
     }

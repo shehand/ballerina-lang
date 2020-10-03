@@ -3,17 +3,21 @@ package org.ballerinalang.net.http.compiler;
 import org.ballerinalang.model.tree.AnnotationAttachmentNode;
 import org.ballerinalang.model.tree.FunctionNode;
 import org.ballerinalang.model.tree.SimpleVariableNode;
+import org.ballerinalang.model.tree.expressions.LiteralNode;
+import org.ballerinalang.model.tree.expressions.RecordLiteralNode;
+import org.ballerinalang.net.http.HttpConstants;
 import org.ballerinalang.util.diagnostic.Diagnostic;
 import org.ballerinalang.util.diagnostic.DiagnosticLog;
 import org.wso2.ballerinalang.compiler.tree.BLangSimpleVariable;
+import org.wso2.ballerinalang.compiler.tree.expressions.BLangExpression;
 import org.wso2.ballerinalang.compiler.tree.expressions.BLangRecordLiteral;
 import org.wso2.ballerinalang.compiler.tree.expressions.BLangSimpleVarRef;
 import org.wso2.ballerinalang.compiler.util.diagnotic.DiagnosticPos;
+import org.wso2.ballerinalang.util.Lists;
 
 import java.util.ArrayList;
 import java.util.List;
 
-import static org.ballerinalang.net.http.HttpConstants.ANN_CONFIG_ATTR_WEBSOCKET_UPGRADE;
 import static org.ballerinalang.net.http.HttpConstants.ANN_NAME_RESOURCE_CONFIG;
 import static org.ballerinalang.net.http.HttpConstants.ANN_RESOURCE_ATTR_BODY;
 import static org.ballerinalang.net.http.HttpConstants.ANN_RESOURCE_ATTR_PATH;
@@ -36,7 +40,9 @@ public class ResourceSignatureValidator {
     private static final String CALLER_TYPE = PROTOCOL_PACKAGE_HTTP + ":" + CALLER;
     private static final String HTTP_REQUEST_TYPE = PROTOCOL_PACKAGE_HTTP + ":" + REQUEST;
 
-    public static void validate(List<BLangSimpleVariable> signatureParams, DiagnosticLog dlog, DiagnosticPos pos) {
+    @SuppressWarnings("unchecked")
+    public static void validate(FunctionNode resourceNode, DiagnosticLog dlog, DiagnosticPos pos) {
+        List<BLangSimpleVariable> signatureParams = (List<BLangSimpleVariable>) resourceNode.getParameters();
         final int nParams = signatureParams.size();
 
         if (nParams < COMPULSORY_PARAM_COUNT) {
@@ -52,6 +58,8 @@ public class ResourceSignatureValidator {
         if (!isValidResourceParam(signatureParams.get(1), HTTP_REQUEST_TYPE)) {
             dlog.logDiagnostic(Diagnostic.Kind.ERROR, pos, "second parameter should be of type " + HTTP_REQUEST_TYPE);
         }
+
+        validateResourceAnnotation(resourceNode, dlog);
     }
 
     private static boolean isValidResourceParam(BLangSimpleVariable param, String expectedType) {
@@ -62,13 +70,15 @@ public class ResourceSignatureValidator {
     static void validateResourceAnnotation(FunctionNode resourceNode, DiagnosticLog dlog) {
         List<AnnotationAttachmentNode> annotations =
                 (List<AnnotationAttachmentNode>) resourceNode.getAnnotationAttachments();
-        List<BLangRecordLiteral.BLangRecordKeyValue> annVals = new ArrayList<>();
+        List<BLangRecordLiteral.BLangRecordKeyValueField> annVals = new ArrayList<>();
         List<String> paramSegments = new ArrayList<>();
         int count = 0;
         for (AnnotationAttachmentNode annotation : annotations) {
             if (annotation.getAnnotationName().getValue().equals(ANN_NAME_RESOURCE_CONFIG) &&
                     annotation.getExpression() != null) {
-                annVals = ((BLangRecordLiteral) annotation.getExpression()).keyValuePairs;
+                for (RecordLiteralNode.RecordField field : ((BLangRecordLiteral) annotation.getExpression()).fields) {
+                    annVals.add((BLangRecordLiteral.BLangRecordKeyValueField) field);
+                }
                 count++;
             }
         }
@@ -77,9 +87,9 @@ public class ResourceSignatureValidator {
             return;
         }
 
-        for (BLangRecordLiteral.BLangRecordKeyValue keyValue : annVals) {
+        for (BLangRecordLiteral.BLangRecordKeyValueField keyValue : annVals) {
             switch (getAnnotationFieldKey(keyValue)) {
-                case ANN_CONFIG_ATTR_WEBSOCKET_UPGRADE:
+                case HttpConstants.CONFIG_ATTR_WEBSOCKET_UPGRADE:
                     validateWebSocketUpgrade(resourceNode, dlog, annVals, paramSegments, keyValue);
                     break;
                 case ANN_RESOURCE_ATTR_PATH:
@@ -87,7 +97,12 @@ public class ResourceSignatureValidator {
                     break;
                 case ANN_RESOURCE_ATTR_BODY:
                     List<? extends SimpleVariableNode> parameters = resourceNode.getParameters();
-                    String bodyFieldValue = keyValue.getValue().toString();
+                    String bodyFieldValue = "";
+                    BLangExpression valueExpr = keyValue.getValue();
+                    if (valueExpr instanceof LiteralNode) {
+                        LiteralNode literal = (LiteralNode) valueExpr;
+                        bodyFieldValue = literal.getValue().toString();
+                    }
                     // Data binding param should be placed as the last signature param
                     String signatureBodyParam = parameters.get(parameters.size() - 1).getName().getValue();
                     if (bodyFieldValue.isEmpty()) {
@@ -110,16 +125,19 @@ public class ResourceSignatureValidator {
     }
 
     private static void validateWebSocketUpgrade(FunctionNode resourceNode, DiagnosticLog dlog,
-                                                 List<BLangRecordLiteral.BLangRecordKeyValue> annVals,
+                                                 List<BLangRecordLiteral.BLangRecordKeyValueField> annVals,
                                                  List<String> paramSegments,
-                                                 BLangRecordLiteral.BLangRecordKeyValue keyValue) {
+                                                 BLangRecordLiteral.BLangRecordKeyValueField keyValue) {
         if (annVals.size() > 1) {
             dlog.logDiagnostic(Diagnostic.Kind.ERROR, resourceNode.getPosition(),
                                "Invalid configurations for WebSocket upgrade resource");
             return;
         }
-        List<BLangRecordLiteral.BLangRecordKeyValue> upgradeFields =
-                ((BLangRecordLiteral) keyValue.valueExpr).keyValuePairs;
+        List<BLangRecordLiteral.BLangRecordKeyValueField> upgradeFields = new ArrayList<>();
+        for (RecordLiteralNode.RecordField field : ((BLangRecordLiteral) keyValue.valueExpr).fields) {
+            upgradeFields.add((BLangRecordLiteral.BLangRecordKeyValueField) field);
+        }
+
         if (upgradeFields.isEmpty()) {
             dlog.logDiagnostic(Diagnostic.Kind.ERROR, resourceNode.getPosition(),
                                "An upgradeService need to be specified for the WebSocket upgrade " +
@@ -133,17 +151,22 @@ public class ResourceSignatureValidator {
             return;
         }
         // WebSocket upgrade path validation
-        for (BLangRecordLiteral.BLangRecordKeyValue upgradeField : upgradeFields) {
-            if (getAnnotationFieldKey(upgradeField).equals(ANN_WEBSOCKET_ATTR_UPGRADE_PATH)) {
+        for (BLangRecordLiteral.BLangRecordKeyValueField upgradeField : upgradeFields) {
+            if (getAnnotationFieldKey(upgradeField).equals(ANN_WEBSOCKET_ATTR_UPGRADE_PATH.getValue())) {
                 validateResourcePath(dlog, paramSegments, upgradeField);
             }
         }
     }
 
     private static void validateResourcePath(DiagnosticLog dlog, List<String> paramSegments,
-                                             BLangRecordLiteral.BLangRecordKeyValue keyValue) {
+                                             BLangRecordLiteral.BLangRecordKeyValueField keyValue) {
         DiagnosticPos position = keyValue.getValue().getPosition();
-        String[] segments = keyValue.getValue().toString().split("/");
+        List<String> segments = new ArrayList<>();
+        BLangExpression valueExpr = keyValue.getValue();
+        if (valueExpr instanceof LiteralNode) {
+            LiteralNode literal = (LiteralNode) valueExpr;
+            segments = Lists.of(literal.getValue().toString().split("/"));
+        }
         for (String segment : segments) {
             validatePathSegment(segment, position, dlog, paramSegments);
         }
@@ -212,7 +235,7 @@ public class ResourceSignatureValidator {
                 .anyMatch(parameter -> signatureParam.getName().getValue().equals(parameter)))) {
             String errorMsg = "invalid resource parameter(s): cannot specify > 2 parameters without specifying " +
                     "path config and/or body config in the resource annotation";
-            dlog.logDiagnostic(Diagnostic.Kind.ERROR, resourceNode.getPosition(),
+            dlog.logDiagnostic(Diagnostic.Kind.ERROR, resourceNode.getAnnotationAttachments().get(0).getPosition(),
                                errorMsg);
         }
     }
@@ -220,7 +243,7 @@ public class ResourceSignatureValidator {
     private ResourceSignatureValidator() {
     }
 
-    private static String getAnnotationFieldKey(BLangRecordLiteral.BLangRecordKeyValue keyValue) {
+    private static String getAnnotationFieldKey(BLangRecordLiteral.BLangRecordKeyValueField keyValue) {
         return ((BLangSimpleVarRef) (keyValue.key).expr).variableName.getValue();
     }
 }

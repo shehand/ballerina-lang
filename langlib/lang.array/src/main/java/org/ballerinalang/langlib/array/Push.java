@@ -27,8 +27,8 @@ import org.ballerinalang.natives.annotations.Argument;
 import org.ballerinalang.natives.annotations.BallerinaFunction;
 import org.ballerinalang.natives.annotations.ReturnType;
 
-import static org.ballerinalang.jvm.values.utils.ArrayUtils.add;
 import static org.ballerinalang.jvm.values.utils.ArrayUtils.createOpNotSupportedError;
+import static org.ballerinalang.util.BLangCompilerConstants.ARRAY_VERSION;
 
 /**
  * Native implementation of lang.array:push((any|error)[], (any|error)...).
@@ -36,30 +36,27 @@ import static org.ballerinalang.jvm.values.utils.ArrayUtils.createOpNotSupported
  * @since 1.0
  */
 @BallerinaFunction(
-        orgName = "ballerina", packageName = "lang.array", functionName = "push",
+        orgName = "ballerina", packageName = "lang.array", version = ARRAY_VERSION, functionName = "push",
         args = {@Argument(name = "arr", type = TypeKind.ARRAY), @Argument(name = "vals", type = TypeKind.ARRAY)},
         returnType = {@ReturnType(type = TypeKind.ANY)},
         isPublic = true
 )
 public class Push {
 
+    private static final String FUNCTION_SIGNATURE = "push()";
+
     public static void push(Strand strand, ArrayValue arr, ArrayValue vals) {
         BType arrType = arr.getType();
         int nVals = vals.size();
         switch (arrType.getTag()) {
             case TypeTags.ARRAY_TAG:
-                int elemTypeTag = arr.getElementType().getTag();
-                for (int i = arr.size(), j = 0; j < nVals; i++, j++) {
-                    add(arr, elemTypeTag, i, vals.get(j));
-                }
-                break;
             case TypeTags.TUPLE_TAG:
                 for (int i = arr.size(), j = 0; j < nVals; i++, j++) {
-                    add(arr, TypeTags.ANY_TAG, i, vals.get(j));
+                    arr.add(i, vals.get(j));
                 }
                 break;
             default:
-                throw createOpNotSupportedError(arrType, "push()");
+                throw createOpNotSupportedError(arrType, FUNCTION_SIGNATURE);
         }
     }
 }

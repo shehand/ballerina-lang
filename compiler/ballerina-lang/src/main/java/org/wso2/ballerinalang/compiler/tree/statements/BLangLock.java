@@ -17,21 +17,17 @@
 */
 package org.wso2.ballerinalang.compiler.tree.statements;
 
+import org.ballerinalang.model.clauses.OnFailClauseNode;
 import org.ballerinalang.model.tree.NodeKind;
-import org.ballerinalang.model.tree.statements.BlockNode;
+import org.ballerinalang.model.tree.statements.BlockStatementNode;
 import org.ballerinalang.model.tree.statements.LockNode;
 import org.wso2.ballerinalang.compiler.semantics.model.symbols.BVarSymbol;
 import org.wso2.ballerinalang.compiler.tree.BLangNodeVisitor;
-import org.wso2.ballerinalang.compiler.tree.expressions.BLangIndexBasedAccess.BLangStructFieldAccessExpr;
-import org.wso2.ballerinalang.compiler.tree.expressions.BLangLiteral;
-import org.wso2.ballerinalang.compiler.tree.expressions.BLangVariableReference;
+import org.wso2.ballerinalang.compiler.tree.clauses.BLangOnFailClause;
 import org.wso2.ballerinalang.compiler.util.diagnotic.DiagnosticPos;
 
-import java.util.HashMap;
 import java.util.HashSet;
-import java.util.Map;
 import java.util.Set;
-import java.util.TreeSet;
 import java.util.stream.Collectors;
 
 /**
@@ -43,11 +39,9 @@ public class BLangLock extends BLangStatement implements LockNode {
 
     public BLangBlockStmt body;
 
-    public Set<BVarSymbol> lockVariables = new HashSet<>();
-
-    public Map<BVarSymbol, Set<BLangStructFieldAccessExpr>> fieldVariables = new HashMap<>();
-
     public String uuid;
+
+    public BLangOnFailClause onFailClause;
 
     public BLangLock() {
     }
@@ -58,8 +52,18 @@ public class BLangLock extends BLangStatement implements LockNode {
     }
 
     @Override
-    public void setBody(BlockNode body) {
+    public void setBody(BlockStatementNode body) {
         this.body = (BLangBlockStmt) body;
+    }
+
+    @Override
+    public OnFailClauseNode getOnFailClause() {
+        return this.onFailClause;
+    }
+
+    @Override
+    public void setOnFailClause(OnFailClauseNode onFailClause) {
+        this.onFailClause = (BLangOnFailClause) onFailClause;
     }
 
     @Override
@@ -70,22 +74,6 @@ public class BLangLock extends BLangStatement implements LockNode {
     @Override
     public NodeKind getKind() {
         return NodeKind.LOCK;
-    }
-
-    public boolean addLockVariable(BVarSymbol variable) {
-        return lockVariables.add(variable);
-    }
-
-    public void addFieldVariable(BLangStructFieldAccessExpr expr) {
-        fieldVariables.putIfAbsent((BVarSymbol) ((BLangVariableReference) expr.expr).symbol,
-                new HashSet<>());
-
-        Set<BLangStructFieldAccessExpr> exprList = fieldVariables.get(((BLangVariableReference) expr.expr).symbol);
-
-        // remove the existing one to avoid duplicates if same field already exist
-        exprList.removeIf(fieldExpr ->
-                ((BLangLiteral) fieldExpr.indexExpr).value.equals(((BLangLiteral) expr.indexExpr).value));
-        exprList.add(expr);
     }
 
     @Override
@@ -103,8 +91,6 @@ public class BLangLock extends BLangStatement implements LockNode {
 
         public Set<BVarSymbol> lockVariables = new HashSet<>();
 
-        public Map<BVarSymbol, Set<String>> fieldVariables = new HashMap<>();
-
         public BLangLockStmt(DiagnosticPos pos) {
             this.pos = pos;
         }
@@ -116,20 +102,11 @@ public class BLangLock extends BLangStatement implements LockNode {
 
         @Override
         public String toString() {
-            return "lock [" + lockVariables.stream().map(s -> s.name.value).collect(Collectors.joining(", "))
-                    + "] [" + fieldVariables.entrySet().stream().map(e -> e.getKey().name.value + "["
-                    + String.join(", ", e.getValue()) + "]").collect(Collectors.joining(", ")) + "]";
-
+            return "lock [" + lockVariables.stream().map(s -> s.name.value).collect(Collectors.joining(", "));
         }
 
         public boolean addLockVariable(BVarSymbol variable) {
             return lockVariables.add(variable);
-        }
-
-        public void addFieldVariable(BVarSymbol varSymbol, String field) {
-            fieldVariables.putIfAbsent(varSymbol, new TreeSet<>());
-            Set<String> exprList = fieldVariables.get(varSymbol);
-            exprList.add(field);
         }
     }
 
@@ -139,6 +116,8 @@ public class BLangLock extends BLangStatement implements LockNode {
      * @since 1.0.0
      */
     public static class BLangUnLockStmt extends BLangLock {
+
+        public BLangLockStmt relatedLock;
 
         public BLangUnLockStmt(DiagnosticPos pos) {
             this.pos = pos;

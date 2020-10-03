@@ -51,16 +51,16 @@ type Animal record {
 };
 
 // Object with decimal fields
-type Student object {
+class Student {
     string name = "";
     int age = 0;
     decimal weight = 65.65;
     decimal height = 0.0;
 
-    function __init(decimal weight, decimal height, string name = "Bob", int age = 25) {
+    function init(decimal weight, decimal height, string name = "Bob", int age = 25) {
         self.name = name;
         self.age = age;
         self.weight = weight;
         self.height = height;
     }
-};
+}

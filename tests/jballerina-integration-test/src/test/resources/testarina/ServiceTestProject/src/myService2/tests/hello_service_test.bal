@@ -1,5 +1,6 @@
 import ballerina/test;
 import ballerina/io;
+import ballerina/http;
 
 # Before Suite Function
 @test:BeforeSuite
@@ -29,7 +30,7 @@ function testServiceFunction () {
 
 
 # After Suite Function
-@test:AfterSuite
+@test:AfterSuite {}
 function afterSuiteServiceFunc () {
     io:println("Service should stop after this.");
 }

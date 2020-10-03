@@ -20,15 +20,16 @@ package org.ballerinalang.net.http.nativeimpl.connection;
 
 import io.netty.handler.codec.http.HttpHeaderNames;
 import io.netty.handler.codec.http.HttpResponseStatus;
+import org.ballerinalang.jvm.api.BalEnv;
+import org.ballerinalang.jvm.api.values.BError;
+import org.ballerinalang.jvm.api.values.BObject;
 import org.ballerinalang.jvm.observability.ObserveUtils;
 import org.ballerinalang.jvm.observability.ObserverContext;
 import org.ballerinalang.jvm.scheduling.Scheduler;
 import org.ballerinalang.jvm.scheduling.State;
 import org.ballerinalang.jvm.scheduling.Strand;
-import org.ballerinalang.jvm.values.ErrorValue;
-import org.ballerinalang.jvm.values.ObjectValue;
-import org.ballerinalang.jvm.values.connector.NonBlockingCallback;
 import org.ballerinalang.net.http.DataContext;
+import org.ballerinalang.net.http.HttpConstants;
 import org.ballerinalang.net.http.HttpErrorType;
 import org.ballerinalang.net.http.HttpUtil;
 import org.ballerinalang.net.http.caching.ResponseCacheControlObj;
@@ -40,7 +41,7 @@ import org.wso2.transport.http.netty.message.HttpCarbonMessage;
 
 import java.util.Optional;
 
-import static org.ballerinalang.jvm.observability.ObservabilityConstants.TAG_KEY_HTTP_STATUS_CODE;
+import static org.ballerinalang.jvm.observability.ObservabilityConstants.PROPERTY_KEY_HTTP_STATUS_CODE;
 import static org.ballerinalang.net.http.HttpConstants.RESPONSE_CACHE_CONTROL_FIELD;
 import static org.ballerinalang.net.http.HttpConstants.RESPONSE_STATUS_CODE_FIELD;
 import static org.ballerinalang.net.http.nativeimpl.pipelining.PipeliningHandler.executePipeliningLogic;
@@ -56,13 +57,24 @@ public class Respond extends ConnectionAction {
 
     private static final Logger log = LoggerFactory.getLogger(Respond.class);
 
-    public static Object nativeRespond(ObjectValue connectionObj, ObjectValue outboundResponseObj) {
+    public static Object nativeRespond(BalEnv env, BObject connectionObj, BObject outboundResponseObj) {
 
         HttpCarbonMessage inboundRequestMsg = HttpUtil.getCarbonMsg(connectionObj, null);
         Strand strand = Scheduler.getStrand();
-        DataContext dataContext = new DataContext(strand, new NonBlockingCallback(strand), inboundRequestMsg);
-        HttpCarbonMessage outboundResponseMsg = HttpUtil
-                .getCarbonMsg(outboundResponseObj, HttpUtil.createHttpCarbonMessage(false));
+        DataContext dataContext = new DataContext(strand, env.markAsync(), inboundRequestMsg);
+        if (isDirtyResponse(outboundResponseObj)) {
+            String errorMessage = "Couldn't complete the respond operation as the response has been already used.";
+            HttpUtil.sendOutboundResponse(inboundRequestMsg, HttpUtil.createErrorMessage(errorMessage, 500));
+            unBlockStrand(strand);
+            if (log.isDebugEnabled()) {
+                log.debug("Couldn't complete the respond operation for the sequence id of the request: {} " +
+                        "as the response has been already used.", inboundRequestMsg.getSequenceId());
+            }
+            return HttpUtil.createHttpError(errorMessage, HttpErrorType.GENERIC_LISTENER_ERROR);
+        }
+        outboundResponseObj.addNativeData(HttpConstants.DIRTY_RESPONSE, true);
+        HttpCarbonMessage outboundResponseMsg = HttpUtil.getCarbonMsg(outboundResponseObj, HttpUtil.
+                    createHttpCarbonMessage(false));
         outboundResponseMsg.setPipeliningEnabled(inboundRequestMsg.isPipeliningEnabled());
         outboundResponseMsg.setSequenceId(inboundRequestMsg.getSequenceId());
         setCacheControlHeader(outboundResponseObj, outboundResponseMsg);
@@ -72,6 +84,8 @@ public class Respond extends ConnectionAction {
         // Based on https://tools.ietf.org/html/rfc7232#section-4.1
         if (CacheUtils.isValidCachedResponse(outboundResponseMsg, inboundRequestMsg)) {
             outboundResponseMsg.setHttpStatusCode(HttpResponseStatus.NOT_MODIFIED.code());
+            outboundResponseMsg.setProperty(HttpConstants.HTTP_REASON_PHRASE,
+                                            HttpResponseStatus.NOT_MODIFIED.reasonPhrase());
             outboundResponseMsg.removeHeader(HttpHeaderNames.CONTENT_LENGTH.toString());
             outboundResponseMsg.removeHeader(HttpHeaderNames.CONTENT_TYPE.toString());
             outboundResponseMsg.waitAndReleaseAllEntities();
@@ -79,8 +93,8 @@ public class Respond extends ConnectionAction {
         }
 
         Optional<ObserverContext> observerContext = ObserveUtils.getObserverContextOfCurrentFrame(strand);
-        observerContext.ifPresent(ctx -> ctx.addTag(TAG_KEY_HTTP_STATUS_CODE, String.valueOf
-                (outboundResponseObj.get(RESPONSE_STATUS_CODE_FIELD))));
+        int statusCode = (int) outboundResponseObj.getIntValue(RESPONSE_STATUS_CODE_FIELD);
+        observerContext.ifPresent(ctx -> ctx.addProperty(PROPERTY_KEY_HTTP_STATUS_CODE, statusCode));
         try {
             if (pipeliningRequired(inboundRequestMsg)) {
                 if (log.isDebugEnabled()) {
@@ -94,7 +108,7 @@ public class Respond extends ConnectionAction {
             } else {
                 sendOutboundResponseRobust(dataContext, inboundRequestMsg, outboundResponseObj, outboundResponseMsg);
             }
-        } catch (ErrorValue e) {
+        } catch (BError e) {
             unBlockStrand(strand);
             log.debug(e.getPrintableStackTrace(), e);
             return e;
@@ -115,12 +129,17 @@ public class Respond extends ConnectionAction {
         strand.blockedOnExtern = false;
     }
 
-    private static void setCacheControlHeader(ObjectValue outboundRespObj, HttpCarbonMessage outboundResponse) {
-        ObjectValue cacheControl = (ObjectValue) outboundRespObj.get(RESPONSE_CACHE_CONTROL_FIELD);
+    private static void setCacheControlHeader(BObject outboundRespObj, HttpCarbonMessage outboundResponse) {
+        BObject cacheControl = (BObject) outboundRespObj.get(RESPONSE_CACHE_CONTROL_FIELD);
         if (cacheControl != null &&
                 outboundResponse.getHeader(HttpHeaderNames.CACHE_CONTROL.toString()) == null) {
             ResponseCacheControlObj respCC = new ResponseCacheControlObj(cacheControl);
             outboundResponse.setHeader(HttpHeaderNames.CACHE_CONTROL.toString(), respCC.buildCacheControlDirectives());
         }
+    }
+
+    private static boolean isDirtyResponse(BObject outboundResponseObj) {
+        return outboundResponseObj.get(RESPONSE_CACHE_CONTROL_FIELD) == null && outboundResponseObj.
+                getNativeData(HttpConstants.DIRTY_RESPONSE) != null;
     }
 }

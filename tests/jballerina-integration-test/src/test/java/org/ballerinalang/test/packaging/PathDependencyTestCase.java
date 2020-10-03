@@ -23,6 +23,7 @@ import org.ballerinalang.test.BaseTest;
 import org.ballerinalang.test.context.BMainInstance;
 import org.ballerinalang.test.context.BallerinaTestException;
 import org.ballerinalang.test.context.LogLeecher;
+import org.testng.Assert;
 import org.testng.annotations.AfterClass;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.Test;
@@ -36,16 +37,18 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.List;
 import java.util.Map;
+import java.util.jar.JarFile;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import static java.nio.file.StandardCopyOption.REPLACE_EXISTING;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.awaitility.Awaitility.given;
+import static org.ballerinalang.test.packaging.ModulePushTestCase.REPO_TO_CENTRAL_SUCCESS_MSG;
 import static org.ballerinalang.test.packaging.PackerinaTestUtils.deleteFiles;
 import static org.wso2.ballerinalang.compiler.util.ProjectDirConstants.BLANG_COMPILED_JAR_EXT;
 import static org.wso2.ballerinalang.compiler.util.ProjectDirConstants.BLANG_COMPILED_PKG_BINARY_EXT;
 import static org.wso2.ballerinalang.compiler.util.ProjectDirConstants.BLANG_SOURCE_EXT;
+import static org.wso2.ballerinalang.util.RepoUtils.BALLERINA_STAGE_CENTRAL;
 
 /**
  * Test cases related to solving dependencies using paths in Ballerina.toml.
@@ -58,14 +61,14 @@ public class PathDependencyTestCase extends BaseTest {
     private String orgName = "bcintegrationtest";
     private String beeModuleName = "bee" + PackerinaTestUtils.randomModuleName(10);
     
-    @BeforeClass()
+    @BeforeClass(enabled = false)
     public void setUp() throws IOException, BallerinaTestException {
         this.tempHomeDirectory = Files.createTempDirectory("bal-test-integration-packaging-pathdep-home-");
         this.tempTestResources = Files.createTempDirectory("bal-test-integration-packaging-pathdep-project-");
         
         // copy resources to a temp
         Path testResources = Paths.get("src", "test", "resources", "packaging", "balopath").toAbsolutePath();
-        copyFolder(testResources, this.tempTestResources);
+        PackerinaTestUtils.copyFolder(testResources, this.tempTestResources);
         
         PackerinaTestUtils.createSettingToml(tempHomeDirectory);
         envVariables = addEnvVariables(PackerinaTestUtils.getEnvVariables());
@@ -78,7 +81,7 @@ public class PathDependencyTestCase extends BaseTest {
      *
      * @throws BallerinaTestException Error when executing the commands.
      */
-    @Test(description = "Case1: Test path between 2 projects.")
+    @Test(enabled = false, description = "Case1: Test path between 2 projects.")
     public void testBaloPathCase1() throws BallerinaTestException {
         Path caseResources = tempTestResources.resolve("case1");
         // Build bee module of TestProject1
@@ -114,7 +117,8 @@ public class PathDependencyTestCase extends BaseTest {
      *
      * @throws BallerinaTestException Error when executing the commands.
      */
-    @Test(description = "Case2: Test path between 2 projects where 3 modules are involved and imported as a chain.")
+    @Test(enabled = false, description = "Case2: Test path between 2 projects where 3 modules are " +
+            "involved and imported as a chain.")
     public void testBaloPathCase2() throws BallerinaTestException {
         Path caseResources = tempTestResources.resolve("case2");
         // Build bee module of TestProject1
@@ -157,7 +161,7 @@ public class PathDependencyTestCase extends BaseTest {
      *
      * @throws BallerinaTestException Error when executing the commands.
      */
-    @Test(description = "Case3: Test path between 2 projects which the import is a native.")
+    @Test(enabled = false, description = "Case3: Test path between 2 projects which the import is a native.")
     public void testBaloPathCase3() throws BallerinaTestException {
         Path caseResources = tempTestResources.resolve("case3");
         // Build bee module of TestProject1
@@ -197,14 +201,15 @@ public class PathDependencyTestCase extends BaseTest {
      *
      * @throws BallerinaTestException Error when executing the commands.
      */
-    @Test()
-    public void testBaloPathCase4() throws BallerinaTestException, IOException {
+    @Test(enabled = false)
+    public void testBaloPathCase4() throws BallerinaTestException, IOException, InterruptedException {
         Path caseResources = tempTestResources.resolve("case4");
         // Build bee module of TestProject1
         //// change module name
         Path testProjBeeModulePath = caseResources.resolve("TestProject1").resolve("src").resolve(beeModuleName);
         Files.createDirectories(caseResources.resolve("TestProject1").resolve("src").resolve(beeModuleName));
-        copyFolder(caseResources.resolve("TestProject1").resolve("src").resolve("bee"), testProjBeeModulePath);
+        PackerinaTestUtils.copyFolder(caseResources.resolve("TestProject1").resolve("src").resolve("bee"),
+                                      testProjBeeModulePath);
         deleteFiles(caseResources.resolve("TestProject1").resolve("src").resolve("bee"));
         
         String beeModuleBaloFileName = beeModuleName + "-" + ProgramFileConstants.IMPLEMENTATION_VERSION + "-java8-1" +
@@ -217,11 +222,11 @@ public class PathDependencyTestCase extends BaseTest {
         beeModuleBuildLeecher.waitForText(5000);
     
         // Push bee module of TestProject1
-        String beePushMsg = orgName + "/" + beeModuleName + ":1.2.0 [project repo -> central]";
-        LogLeecher beePushLeecher = new LogLeecher(beePushMsg);
+        String beePushMsg = orgName + "/" + beeModuleName + ":1.2.0" + REPO_TO_CENTRAL_SUCCESS_MSG;
+        LogLeecher beePushLeecher = new LogLeecher(beePushMsg, LogLeecher.LeecherType.INFO);
         balClient.runMain("push", new String[]{"--all"}, envVariables, new String[]{},
                 new LogLeecher[]{beePushLeecher}, caseResources.resolve("TestProject1").toString());
-        beePushLeecher.waitForText(5000);
+        beePushLeecher.waitForText(12000);
     
         
         // Build fee module of TestProject2
@@ -236,13 +241,15 @@ public class PathDependencyTestCase extends BaseTest {
         //// change module name
         Path testProjFeeModulePath = caseResources.resolve("TestProject2").resolve("src").resolve(feeModuleName);
         Files.createDirectories(caseResources.resolve("TestProject2").resolve("src").resolve(feeModuleName));
-        copyFolder(caseResources.resolve("TestProject2").resolve("src").resolve("fee"), testProjFeeModulePath);
+        PackerinaTestUtils.copyFolder(caseResources.resolve("TestProject2").resolve("src").resolve("fee"),
+                                      testProjFeeModulePath);
         deleteFiles(caseResources.resolve("TestProject2").resolve("src").resolve("fee"));
     
         String feeModuleBaloFileName = feeModuleName + "-" + ProgramFileConstants.IMPLEMENTATION_VERSION + "-any-2.0.0"
                                        + BLANG_COMPILED_PKG_BINARY_EXT;
     
         String feeBaloFilePath = "target" + File.separator + "balo" + File.separator + feeModuleBaloFileName;
+
         given().with().pollInterval(Duration.TEN_SECONDS).and()
                 .with().pollDelay(Duration.FIVE_SECONDS)
                 .await().atMost(120, SECONDS).until(() -> {
@@ -252,7 +259,7 @@ public class PathDependencyTestCase extends BaseTest {
         });
     
         // Push fee module of TestProject2
-        String feePushMsg = orgName + "/" + feeModuleName + ":2.0.0 [project repo -> central]";
+        String feePushMsg = orgName + "/" + feeModuleName + ":2.0.0" + REPO_TO_CENTRAL_SUCCESS_MSG;
         LogLeecher feePushLeecher = new LogLeecher(feePushMsg);
         balClient.runMain("push", new String[]{"-a"}, envVariables, new String[]{},
                 new LogLeecher[]{feePushLeecher}, caseResources.resolve("TestProject2").toString());
@@ -265,10 +272,10 @@ public class PathDependencyTestCase extends BaseTest {
         replaced = lines.map(line -> line.replaceAll("fee", feeModuleName))
                 .collect(Collectors.toList());
         Files.write(jeeBalPath, replaced);
-    
+
         String jeeModuleBaloFileName = "jee" + BLANG_COMPILED_JAR_EXT;
-    
         String jeeExecutableFilePath = "target" + File.separator + "bin" + File.separator + jeeModuleBaloFileName;
+
         given().with().pollInterval(Duration.TEN_SECONDS).and()
                 .with().pollDelay(Duration.FIVE_SECONDS)
                 .await().atMost(120, SECONDS).until(() -> {
@@ -330,7 +337,8 @@ public class PathDependencyTestCase extends BaseTest {
      *
      * @throws BallerinaTestException Error when executing the commands.
      */
-    @Test(description = "Case5: Push with path dependency.", expectedExceptions = BallerinaTestException.class)
+    @Test(enabled = false, description = "Case5: Push with path dependency.",
+            expectedExceptions = BallerinaTestException.class)
     public void testBaloPathCase5() throws BallerinaTestException {
         Path caseResources = tempTestResources.resolve("case5");
         // Build bee module of TestProject1
@@ -367,7 +375,8 @@ public class PathDependencyTestCase extends BaseTest {
      *
      * @throws BallerinaTestException Error when executing the commands.
      */
-    @Test(description = "Case6: Test dependency between two porject with common module as an import.")
+    @Test(enabled = false, description = "Case6: Test dependency between two porject with " +
+            "common module as an import.")
     public void testBaloPathCase6() throws BallerinaTestException {
         Path caseResources = tempTestResources.resolve("case6");
 
@@ -414,7 +423,8 @@ public class PathDependencyTestCase extends BaseTest {
      *
      * @throws BallerinaTestException Error when executing the commands.
      */
-    @Test(description = "Case7: Test platform dependency of two project with common module as an interop dependency")
+    @Test(enabled = false, description = "Case7: Test platform dependency of two project with " +
+            "common module as an interop dependency")
     public void testBaloPathCase7() throws BallerinaTestException {
         Path caseResources = tempTestResources.resolve("case7");
         // Build all modules of TestProject3
@@ -450,8 +460,8 @@ public class PathDependencyTestCase extends BaseTest {
      *
      * @throws BallerinaTestException Error when executing the commands.
      */
-    @Test(description = "Case8: Test single bal file using external module with interop dependency",
-    dependsOnMethods = "testBaloPathCase7")
+    @Test(enabled = false, description = "Case8: Test single bal file using external module with interop dependency",
+    dependsOnMethods = "testBaloPathCase4")
     public void testBaloSingleBalFileCase8() throws BallerinaTestException, IOException {
 
         Path caseResources = tempTestResources.resolve("case8");
@@ -493,8 +503,8 @@ public class PathDependencyTestCase extends BaseTest {
      *
      * @throws BallerinaTestException Error when executing the commands.
      */
-    @Test(description = "Case9: Test path between 2 projects which the import is a native and libraries are in " +
-            "resources directory.")
+    @Test(enabled = false, description = "Case9: Test path between 2 projects which the import is " +
+            "a native and libraries are in resources directory.")
     public void testBaloPathCase9() throws BallerinaTestException {
         Path caseResources = tempTestResources.resolve("case9");
         // Build bee module of TestProject1
@@ -524,14 +534,43 @@ public class PathDependencyTestCase extends BaseTest {
     }
 
     /**
+     * Case10: Build and run TestProject1 which imports module with "ballerina" org name via balo path.
+     *
+     * @throws BallerinaTestException Error when executing the commands.
+     */
+    @Test(enabled = false, description = "Case10: Test build and run project which imports " +
+            "module with \"ballerina\" org name via balo path.")
+    public void testBaloPathCase10() throws BallerinaTestException {
+        Path caseResources = tempTestResources.resolve("case10");
+        String printBarLog = "Bar";
+        String buildLog = "target/bin/mod1.jar";
+        LogLeecher testLogeecher = new LogLeecher(printBarLog);
+        LogLeecher buildLogLeecher = new LogLeecher(buildLog);
+
+        // Build TestProject1 with tests
+        balClient.runMain("build", new String[]{"-a"}, envVariables, new String[]{},
+                          new LogLeecher[]{testLogeecher, buildLogLeecher},
+                          caseResources.resolve("TestProject1").toString());
+        testLogeecher.waitForText(5000);
+        buildLogLeecher.waitForText(5000);
+
+        // Run TestProject1
+        LogLeecher runLogLeecher = new LogLeecher(printBarLog);
+        balClient.runMain("run", new String[]{"mod1"}, envVariables, new String[]{},
+                          new LogLeecher[]{runLogLeecher}, caseResources.resolve("TestProject1").toString());
+        runLogLeecher.waitForText(5000);
+    }
+
+    /**
      * Build TestProject1. TestProject1 will fail as the given platform dependency does not have a valid path.
      *
      * @throws BallerinaTestException Error when executing the commands.
      */
-    @Test(description = "Test platform library dependency valid path")
+    @Test(enabled = false, description = "Test platform library dependency valid path")
     public void testValidatePlatformLibraryPath() throws BallerinaTestException {
         Path caseResources = tempTestResources.resolve("platform-dependency");
-        String msg = "error: path is not specified for given platform library dependency.";
+        String msg = "error: path or maven dependency properties are not specified for given platform library " +
+                "dependency.";
         LogLeecher bazRunLeecher = new LogLeecher(msg, LogLeecher.LeecherType.ERROR);
         balClient.runMain("build", new String[]{"-a"}, envVariables, new String[]{}, new LogLeecher[]{bazRunLeecher},
                 caseResources.resolve("TestProject1").toString());
@@ -544,7 +583,7 @@ public class PathDependencyTestCase extends BaseTest {
      *
      * @throws BallerinaTestException Error when executing the commands.
      */
-    @Test(description = "Test runtime test dependency from different modules")
+    @Test(enabled = false, description = "Test runtime test dependency from different modules")
     public void testRuntimeTimeDependencyForExecutingModuleTests() throws BallerinaTestException {
         Path caseResources = tempTestResources.resolve("test-dependency");
         String msg = "invoked fooFn";
@@ -563,6 +602,38 @@ public class PathDependencyTestCase extends BaseTest {
         balClient.runMain("build", new String[]{"-a"}, envVariables, new String[]{}, new LogLeecher[]{buildLogLeecher},
                 caseResources.toString());
         buildLogLeecher.waitForText(10000);
+
+        // Test ballerina test command with single module which has dependencies.
+        buildLogLeecher = new LogLeecher(msg);
+        balClient.runMain("test", new String[]{"bar"}, envVariables, new String[]{}, new LogLeecher[]{buildLogLeecher},
+                          caseResources.toString());
+        buildLogLeecher.waitForText(10000);
+    }
+
+    @Test(enabled = false, description = "Test if observability jar gets packed with executable " +
+            "if observability flag is given.")
+    public void testObservabilityFlag() throws BallerinaTestException, IOException {
+        // Test ballerina init
+        Path projectPath = tempTestResources.resolve("test-dependency");
+        String moduleExecutableFileName = "bar" + BLANG_COMPILED_JAR_EXT;
+        String observabilityEntry = "org/ballerinalang/observe/trace/extension/choreo/";
+        Path executablePath = projectPath.resolve(ProjectDirConstants.TARGET_DIR_NAME).
+                resolve(ProjectDirConstants.BIN_DIR_NAME).resolve(moduleExecutableFileName);
+
+        // Build module without "--observability-included" flag
+        String buildText = ProjectDirConstants.TARGET_DIR_NAME + File.separator + ProjectDirConstants.BIN_DIR_NAME +
+                File.separator + moduleExecutableFileName;
+        LogLeecher buildLeecher = new LogLeecher(buildText);
+        balClient.runMain("build", new String[] { "bar" }, envVariables, new String[] {},
+                new LogLeecher[] { buildLeecher }, projectPath.toString());
+        buildLeecher.waitForText(5000);
+        Assert.assertFalse(isJarEntryExists(executablePath, observabilityEntry));
+
+        // Build module with "--observability-included" flag
+        balClient.runMain("build", new String[] { "--observability-included", "bar" }, envVariables,
+                new String[] {}, new LogLeecher[] { buildLeecher }, projectPath.toString());
+        buildLeecher.waitForText(5000);
+        Assert.assertTrue(isJarEntryExists(executablePath, observabilityEntry));
     }
 
     /**
@@ -572,23 +643,17 @@ public class PathDependencyTestCase extends BaseTest {
      */
     private Map<String, String> addEnvVariables(Map<String, String> envVariables) {
         envVariables.put(ProjectDirConstants.HOME_REPO_ENV_KEY, tempHomeDirectory.toString());
-        envVariables.put("BALLERINA_DEV_STAGE_CENTRAL", "true");
+        envVariables.put(BALLERINA_STAGE_CENTRAL, "true");
         return envVariables;
     }
-    
-    public  void copyFolder(Path src, Path dest) throws IOException {
-        Files.walk(src).forEach(source -> copy(source, dest.resolve(src.relativize(source))));
-    }
-    
-    private void copy(Path source, Path dest) {
-        try {
-            Files.copy(source, dest, REPLACE_EXISTING);
-        } catch (Exception e) {
-            throw new RuntimeException(e.getMessage(), e);
+
+    private boolean isJarEntryExists(Path executablePath, String jarEntry) throws IOException {
+        try (JarFile jarFile = new JarFile(executablePath.toFile())) {
+            return jarFile.getEntry(jarEntry) != null;
         }
     }
     
-    @AfterClass
+    @AfterClass(enabled = false)
     private void cleanup() throws Exception {
         deleteFiles(this.tempHomeDirectory);
         deleteFiles(this.tempTestResources);

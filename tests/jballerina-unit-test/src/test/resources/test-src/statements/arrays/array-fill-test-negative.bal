@@ -14,13 +14,13 @@
 // specific language governing permissions and limitations
 // under the License.
 
-type ObjInitWithParam object {
+class ObjInitWithParam {
     int i;
 
-    function __init(int i) {
+    function init(int i) {
         self.i = i;
     }
-};
+}
 
 function testArrayFillWithObjWithInitParam() {
     ObjInitWithParam[] objWithParamsArray = [];
@@ -58,15 +58,15 @@ function testArrayFillWithTypedesc() {
     typedescArr[1] = int;
 }
 
-type Student object {
+class Student {
     public string name;
     public int age;
 
-    public function __init(string name, int age) {
+    public function init(string name, int age) {
         self.name = name;
         self.age = age;
     }
-};
+}
 
 function testNonSequentialArrayInsertion() returns Student[] {
     Student s = new("Grainier", 28);
@@ -89,11 +89,6 @@ function testIllegalTwoDimensionalArrayInsertion() returns (int|string|boolean)[
     (int|string|boolean)[][2] x = [];
     x[1] = [1, 3];
     return x;
-}
-
-function testTwoDimensionalSealedArrayFill() {
-    int[][2] x = [];
-    x[1] = [1, 3];
 }
 
 type Rec record {

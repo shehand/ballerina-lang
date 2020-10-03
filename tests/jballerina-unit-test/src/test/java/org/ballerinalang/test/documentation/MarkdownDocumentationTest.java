@@ -19,6 +19,7 @@
 package org.ballerinalang.test.documentation;
 
 import org.ballerinalang.compiler.CompilerPhase;
+import org.ballerinalang.model.tree.ClassDefinition;
 import org.ballerinalang.model.tree.DocumentationReferenceType;
 import org.ballerinalang.model.tree.PackageNode;
 import org.ballerinalang.model.tree.ServiceNode;
@@ -172,7 +173,7 @@ public class MarkdownDocumentationTest {
         Assert.assertNull(returnParameter);
     }
 
-    @Test(description = "Test doc type")
+    @Test(description = "Test doc type", groups = { "disableOnOldParser" })
     public void testDocType() {
         CompileResult compileResult = BCompileUtil.compile("test-src/documentation/markdown_type.bal");
         Assert.assertEquals(compileResult.getErrorCount(), 0);
@@ -224,7 +225,7 @@ public class MarkdownDocumentationTest {
         Assert.assertEquals(references.get(7).referenceName, "annot");
     }
 
-    @Test(description = "Test doc function")
+    @Test(description = "Test doc function", groups = { "disableOnOldParser" })
     public void testDocFunction() {
         CompileResult compileResult = BCompileUtil.compile("test-src/documentation/markdown_function.bal");
         Assert.assertEquals(compileResult.getErrorCount(), 0);
@@ -248,7 +249,7 @@ public class MarkdownDocumentationTest {
         Assert.assertNotNull(returnParameter);
         Assert.assertEquals(returnParameter.getReturnParameterDocumentation(), "success or not");
 
-        documentationAttachment = packageNode.getTypeDefinitions().get(0).getMarkdownDocumentationAttachment();
+        documentationAttachment = packageNode.getClassDefinitions().get(0).getMarkdownDocumentationAttachment();
         Assert.assertNotNull(documentationAttachment);
         Assert.assertEquals(documentationAttachment.getDocumentation(), "Documentation for File type");
 
@@ -321,7 +322,51 @@ public class MarkdownDocumentationTest {
 
     }
 
-    @Test(description = "Test doc negative cases.")
+    @Test(description = "Test doc function with function keyword", groups = { "disableOnOldParser" })
+    public void testDocFunctionSpecial() {
+        CompileResult compileResult = BCompileUtil.compile("test-src/documentation/markdown_function_special.bal");
+        Assert.assertEquals(compileResult.getErrorCount(), 0);
+        Assert.assertEquals(compileResult.getWarnCount(), 3);
+
+        PackageNode packageNode = compileResult.getAST();
+        BLangMarkdownDocumentation documentationAttachment =
+                packageNode.getFunctions().get(0).getMarkdownDocumentationAttachment();
+        Assert.assertNotNull(documentationAttachment);
+
+        LinkedList<BLangMarkdownReferenceDocumentation> references = documentationAttachment.getReferences();
+        Assert.assertEquals(references.size(), 6);
+
+        Assert.assertEquals(references.get(0).type, DocumentationReferenceType.FUNCTION);
+        Assert.assertEquals(references.get(0).referenceName, "foo");
+        Assert.assertEquals(references.get(0).identifier, "foo");
+
+        Assert.assertEquals(references.get(1).type, DocumentationReferenceType.FUNCTION);
+        Assert.assertEquals(references.get(1).referenceName, "foo()");
+        Assert.assertEquals(references.get(1).identifier, "foo");
+
+        Assert.assertEquals(references.get(2).type, DocumentationReferenceType.FUNCTION);
+        Assert.assertEquals(references.get(2).referenceName, "bar.baz()");
+        Assert.assertEquals(references.get(2).typeName, "bar");
+        Assert.assertEquals(references.get(2).identifier, "baz");
+
+        Assert.assertEquals(references.get(3).type, DocumentationReferenceType.FUNCTION);
+        Assert.assertEquals(references.get(3).referenceName, "m:foo");
+        Assert.assertEquals(references.get(3).qualifier, "m");
+        Assert.assertEquals(references.get(3).identifier, "foo");
+
+        Assert.assertEquals(references.get(4).type, DocumentationReferenceType.FUNCTION);
+        Assert.assertEquals(references.get(4).referenceName, "m:foo()");
+        Assert.assertEquals(references.get(4).qualifier, "m");
+        Assert.assertEquals(references.get(4).identifier, "foo");
+
+        Assert.assertEquals(references.get(5).type, DocumentationReferenceType.FUNCTION);
+        Assert.assertEquals(references.get(5).referenceName, "m:bar.baz()");
+        Assert.assertEquals(references.get(5).qualifier, "m");
+        Assert.assertEquals(references.get(5).typeName, "bar");
+        Assert.assertEquals(references.get(5).identifier, "baz");
+    }
+
+    @Test(description = "Test doc negative cases.", groups = { "disableOnOldParser" })
     public void testDocumentationNegative() {
         CompileResult compileResult = BCompileUtil.compile("test-src/documentation/markdown_negative.bal");
         Assert.assertEquals(compileResult.getErrorCount(), 0);
@@ -330,7 +375,7 @@ public class MarkdownDocumentationTest {
         int index = 0;
 
         BAssertUtil.validateWarning(compileResult, index++,
-                "invalid identifier in documentation reference '9invalidFunc'", 4, 3);
+                "invalid identifier in documentation reference '9invalidFunc'", 4, 13);
         BAssertUtil.validateWarning(compileResult, index++,
                 "invalid reference in documentation 'invalidFunc' for type 'function'", 5, 3);
         BAssertUtil.validateWarning(compileResult, index++,
@@ -340,7 +385,7 @@ public class MarkdownDocumentationTest {
         BAssertUtil.validateWarning(compileResult, index++, "no documentable return parameter", 11, 1);
         BAssertUtil.validateWarning(compileResult, index++, "undocumented field 'cd'", 15, 5);
         BAssertUtil.validateWarning(compileResult, index++,
-                "invalid identifier in documentation reference '9invalidServ'", 21, 3);
+                "invalid identifier in documentation reference '9invalidServ'", 21, 12);
         BAssertUtil.validateWarning(compileResult, index++,
                 "invalid reference in documentation 'invalidServ' for type 'service'", 22, 3);
         BAssertUtil.validateWarning(compileResult, index++,
@@ -351,7 +396,7 @@ public class MarkdownDocumentationTest {
         BAssertUtil.validateWarning(compileResult, index++, "field 'path' already documented", 39, 5);
         BAssertUtil.validateWarning(compileResult, index++, "no such documentable field 'path2'", 40, 5);
         BAssertUtil.validateWarning(compileResult, index++,
-                "invalid identifier in documentation reference '9invalidConst'", 41, 3);
+                "invalid identifier in documentation reference '9invalidConst'", 41, 10);
         BAssertUtil.validateWarning(compileResult, index++,
                 "invalid reference in documentation 'invalidConst' for type 'const'", 42, 3);
         BAssertUtil.validateWarning(compileResult, index++,
@@ -364,7 +409,7 @@ public class MarkdownDocumentationTest {
         BAssertUtil.validateWarning(compileResult, index++, "no such documentable field 'urls'", 77, 5);
         BAssertUtil.validateWarning(compileResult, index++, "undocumented field 'url2'", 80, 3);
         BAssertUtil.validateWarning(compileResult, index++,
-                "invalid identifier in documentation reference '9invalidConst'", 85, 3);
+                "invalid identifier in documentation reference '9invalidConst'", 85, 10);
         BAssertUtil.validateWarning(compileResult, index++,
                 "invalid reference in documentation 'invalidConst' for type 'const'", 86, 3);
         BAssertUtil.validateWarning(compileResult, index++,
@@ -376,7 +421,7 @@ public class MarkdownDocumentationTest {
         BAssertUtil.validateWarning(compileResult, index++, "no such documentable parameter 'testConstd'", 109, 5);
         BAssertUtil.validateWarning(compileResult, index++, "no documentable return parameter", 110, 1);
         BAssertUtil.validateWarning(compileResult, index++,
-                "invalid identifier in documentation reference '9function'", 115, 3);
+                "invalid identifier in documentation reference '9function'", 115, 13);
         BAssertUtil.validateWarning(compileResult, index++,
                 "invalid reference in documentation 'filePath1' for type 'parameter'", 116, 3);
         BAssertUtil.validateWarning(compileResult, index, "undocumented parameter 'filePath'", 117, 22);
@@ -454,8 +499,8 @@ public class MarkdownDocumentationTest {
         Assert.assertEquals(compileResult.getWarnCount(), 8);
 
         PackageNode packageNode = compileResult.getAST();
-        TypeDefinition typeDefinition = packageNode.getTypeDefinitions().get(0);
-        BLangMarkdownDocumentation documentationAttachment = typeDefinition.getMarkdownDocumentationAttachment();
+        ClassDefinition classDef = packageNode.getClassDefinitions().get(0);
+        BLangMarkdownDocumentation documentationAttachment = classDef.getMarkdownDocumentationAttachment();
         Assert.assertNotNull(documentationAttachment);
         Assert.assertEquals(documentationAttachment.getDocumentation(), "Test Connector");
 
@@ -466,7 +511,7 @@ public class MarkdownDocumentationTest {
         Assert.assertEquals(parameters.get(1).getParameterName().getValue(), "path");
         Assert.assertEquals(parameters.get(1).getParameterDocumentation(), "path for endpoint");
 
-        List<BLangFunction> functions = ((BLangObjectTypeNode) typeDefinition.getTypeNode()).getFunctions();
+        List<BLangFunction> functions = classDef.getFunctions();
         Assert.assertEquals(functions.size(), 2);
 
         documentationAttachment = functions.get(0).getMarkdownDocumentationAttachment();
@@ -490,7 +535,7 @@ public class MarkdownDocumentationTest {
         Assert.assertNotNull(returnParameter);
         Assert.assertEquals(returnParameter.getReturnParameterDocumentation(), "whether successful or not");
 
-        documentationAttachment = packageNode.getTypeDefinitions().get(1).getMarkdownDocumentationAttachment();
+        documentationAttachment = packageNode.getClassDefinitions().get(1).getMarkdownDocumentationAttachment();
         Assert.assertNotNull(documentationAttachment);
 
         LinkedList<BLangMarkdownReferenceDocumentation> references = documentationAttachment.getReferences();
@@ -564,9 +609,22 @@ public class MarkdownDocumentationTest {
 
         BLangMarkdownReturnParameterDocumentation returnParameter = documentationAttachment.getReturnParameter();
         Assert.assertNull(returnParameter);
+        documentationAttachment = packageNode.getFunctions().get(0).getMarkdownDocumentationAttachment();
+        Assert.assertNotNull(documentationAttachment);
+        Assert.assertEquals(documentationAttachment.getDocumentationLines().get(1).text, "``` Purpose of adding\n" +
+                "    # this documentation is\n" +
+                "    # to check backtic documentations ```");
+
+        documentationAttachment = packageNode.getFunctions().get(1).getMarkdownDocumentationAttachment();
+        Assert.assertNotNull(documentationAttachment);
+        Assert.assertEquals(documentationAttachment.getDocumentationLines().get(1).text, "```\n" +
+                "    # Purpose of adding\n" +
+                "    # this documentation is\n" +
+                "    # to check backtic documentations\n" +
+                "    # ```");
     }
 
-    @Test(description = "Test doc multiple.")
+    @Test(description = "Test doc multiple.", groups = { "disableOnOldParser" })
     public void testMultiple() {
         CompileResult compileResult = BCompileUtil.compile("test-src/documentation/markdown_multiple.bal");
         Assert.assertEquals(compileResult.getErrorCount(), 0);
@@ -657,7 +715,7 @@ public class MarkdownDocumentationTest {
 
         PackageNode packageNode = compileResult.getAST();
         BLangMarkdownDocumentation documentationAttachment =
-                packageNode.getTypeDefinitions().get(0).getMarkdownDocumentationAttachment();
+                packageNode.getClassDefinitions().get(0).getMarkdownDocumentationAttachment();
         Assert.assertNotNull(documentationAttachment);
         Assert.assertEquals(documentationAttachment.getDocumentation(), "Documentation for TimeOrderWindow.\n");
 
@@ -665,5 +723,21 @@ public class MarkdownDocumentationTest {
         Assert.assertEquals(parameters.size(), 1);
         Assert.assertEquals(parameters.get(0).getParameterName().getValue(), "f");
         Assert.assertEquals(parameters.get(0).getParameterDocumentation(), "documentation");
+    }
+
+    @Test(description = "Test on methods of object type def")
+    public void testMarkdownOnMethodOfObjectTypeDef() {
+        CompileResult compileResult = BCompileUtil.compile(
+                "test-src/documentation/markdown_on_method_object_type_def.bal");
+        Assert.assertEquals(compileResult.getErrorCount(), 0);
+        Assert.assertEquals(compileResult.getWarnCount(), 1);
+        BAssertUtil.validateWarning(compileResult, 0, "undocumented parameter 'i'", 4, 25);
+
+        PackageNode packageNode = compileResult.getAST();
+        TypeDefinition typeDefinition = packageNode.getTypeDefinitions().get(0);
+        BLangObjectTypeNode objectTypeNode = (BLangObjectTypeNode) typeDefinition.getTypeNode();
+        BLangFunction bLangFunction = objectTypeNode.functions.get(0);
+        BLangMarkdownDocumentation markdownDocumentationAttachment = bLangFunction.getMarkdownDocumentationAttachment();
+        Assert.assertEquals(markdownDocumentationAttachment.getDocumentation(), "This is the doc");
     }
 }

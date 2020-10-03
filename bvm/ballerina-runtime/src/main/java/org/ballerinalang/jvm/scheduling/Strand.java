@@ -18,6 +18,8 @@
 package org.ballerinalang.jvm.scheduling;
 
 import org.ballerinalang.jvm.TypeChecker;
+import org.ballerinalang.jvm.api.BStringUtils;
+import org.ballerinalang.jvm.api.values.BError;
 import org.ballerinalang.jvm.observability.ObserverContext;
 import org.ballerinalang.jvm.transactions.TransactionLocalContext;
 import org.ballerinalang.jvm.types.BTypes;
@@ -31,7 +33,10 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
+import java.util.Stack;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
@@ -48,11 +53,18 @@ import static org.ballerinalang.jvm.scheduling.State.YIELD;
 
 public class Strand {
 
+    private static AtomicInteger nextStrandId = new AtomicInteger(0);
+
+    private int id;
+    private String name;
+    private StrandMetadata metadata;
+
     public Object[] frames;
     public int resumeIndex;
     public Object returnValue;
+    public BError panic;
     public Scheduler scheduler;
-    public Strand parent = null;
+    public Strand parent;
     public WDChannels wdChannels;
     public FlushDetail flushDetail;
     public boolean blockedOnExtern;
@@ -64,14 +76,17 @@ public class Strand {
     SchedulerItem schedulerItem;
     List<WaitContext> waitingContexts;
     WaitContext waitContext;
+    ItemGroup strandGroup;
 
     private Map<String, Object> globalProps;
-    public TransactionLocalContext transactionLocalContext;
+    public TransactionLocalContext currentTrxContext;
+    public Stack<TransactionLocalContext> trxContexts;
     private State state;
     private final ReentrantLock strandLock;
 
-
-    public Strand(Scheduler scheduler) {
+    public Strand(String name, StrandMetadata metadata, Scheduler scheduler, Strand parent,
+                  Map<String, Object> properties) {
+        this.id = nextStrandId.incrementAndGet();
         this.scheduler = scheduler;
         this.wdChannels = new WDChannels();
         this.channelDetails = new HashSet<>();
@@ -80,10 +95,9 @@ public class Strand {
         this.dependants = new HashSet<>();
         this.strandLock = new ReentrantLock();
         this.waitingContexts = new ArrayList<>();
-    }
-
-    public Strand(Scheduler scheduler, Strand parent, Map<String, Object> properties) {
-        this(scheduler);
+        this.name = name;
+        this.metadata = metadata;
+        this.trxContexts = new Stack<>();
         this.parent = parent;
         this.globalProps = properties != null ? properties : new HashMap<>();
     }
@@ -101,10 +115,6 @@ public class Strand {
         }
     }
 
-    public void setReturnValues(Object returnValue) {
-        this.returnValue = returnValue;
-    }
-
     public Object getProperty(String key) {
         return this.globalProps.get(key);
     }
@@ -114,11 +124,27 @@ public class Strand {
     }
 
     public boolean isInTransaction() {
-        return this.transactionLocalContext != null;
+        return this.currentTrxContext != null && this.currentTrxContext.isTransactional();
     }
 
+    @Deprecated
     public void removeLocalTransactionContext() {
-        this.transactionLocalContext = null;
+        this.currentTrxContext = null;
+    }
+
+    public void removeCurrentTrxContext() {
+        if (!this.trxContexts.isEmpty()) {
+            this.currentTrxContext = this.trxContexts.pop();
+            return;
+        }
+        this.currentTrxContext = null;
+    }
+
+    public void setCurrentTransactionContext(TransactionLocalContext ctx) {
+        if (this.currentTrxContext != null) {
+            this.trxContexts.push(this.currentTrxContext);
+        }
+        this.currentTrxContext = ctx;
     }
 
     public ErrorValue handleFlush(ChannelDetails[] channels) throws Throwable {
@@ -188,7 +214,7 @@ public class Strand {
                     throw future.panic;
                 }
                 ctx.waitCount.decrementAndGet();
-                target.put(entry.getKey(), future.result);
+                target.put(BStringUtils.fromString(entry.getKey()), future.result);
             } else {
                 this.setState(BLOCK_ON_AND_YIELD);
                 entry.getValue().strand.waitingContexts.add(ctx);
@@ -301,6 +327,29 @@ public class Strand {
 
     public void unlock() {
         this.strandLock.unlock();
+    }
+
+    public int getId() {
+        return id;
+    }
+
+    /**
+     * Gets the strand name. This will be optional. Strand name can be either name given in strand annotation or async
+     * call or function pointer variable name.
+     *
+     * @return Optional strand name.
+     */
+    public Optional<String> getName() {
+        return Optional.ofNullable(name);
+    }
+
+    /**
+     * Gets @{@link StrandMetadata}.
+     *
+     * @return metadata of the strand.
+     */
+    public StrandMetadata getMetadata() {
+        return metadata;
     }
 
     /**

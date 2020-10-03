@@ -17,15 +17,15 @@
  */
 package org.ballerinalang.test.javainterop;
 
-import org.ballerinalang.jvm.StringUtils;
+import org.ballerinalang.jvm.api.BStringUtils;
 import org.ballerinalang.jvm.scheduling.Scheduler;
 import org.ballerinalang.jvm.types.BTypes;
 import org.ballerinalang.jvm.values.ErrorValue;
 import org.ballerinalang.jvm.values.FPValue;
 import org.ballerinalang.jvm.values.FutureValue;
 import org.ballerinalang.jvm.values.HandleValue;
-import org.ballerinalang.jvm.values.StringValue;
 import org.ballerinalang.jvm.values.TypedescValue;
+import org.ballerinalang.jvm.values.TypedescValueImpl;
 import org.ballerinalang.jvm.values.XMLItem;
 import org.ballerinalang.jvm.values.XMLValue;
 import org.ballerinalang.model.values.BBoolean;
@@ -50,11 +50,14 @@ import org.testng.annotations.Test;
 import java.util.HashMap;
 import java.util.Map;
 
+import javax.xml.namespace.QName;
+
 /**
  * Test cases for java interop with ballerina ref types.
  *
  * @since 1.0.0
  */
+@Test(groups = { "brokenOnOldParser" })
 public class RefTypeTests {
 
     private CompileResult result;
@@ -223,8 +226,8 @@ public class RefTypeTests {
     }
 
     @Test(expectedExceptions = { BLangRuntimeException.class },
-            expectedExceptionsMessageRegExp = "error: \\{ballerina\\}TypeCastError message=incompatible types: 'int'" +
-                    " cannot be cast to 'MIX_TYPE'.*")
+            expectedExceptionsMessageRegExp = "error: \\{ballerina\\}TypeCastError \\{\"message\":\"incompatible " +
+                    "types: 'int' cannot be cast to 'MIX_TYPE'.*")
     public void testGetInvalidIntegerAsMixType() {
         BValue[] returns = BRunUtil.invoke(result, "getInvalidIntegerAsMixType");
         Assert.assertTrue(returns[0] instanceof BValueType);
@@ -236,10 +239,10 @@ public class RefTypeTests {
         BValue[] returns = BRunUtil.invoke(result, "testAcceptMixTypes");
         Assert.assertTrue(returns[0] instanceof BInteger);
         Assert.assertEquals(((BInteger) returns[0]).intValue(), 2);
-        Assert.assertTrue(returns[1] instanceof BHandleValue);
-        Assert.assertEquals(((BHandleValue) returns[1]).getValue(), "hello");
+        Assert.assertTrue(returns[1] instanceof BString);
+        Assert.assertEquals(returns[1].stringValue(), "hello");
         Assert.assertTrue(returns[2] instanceof BBoolean);
-        Assert.assertEquals(((BBoolean) returns[2]).booleanValue(), false);
+        Assert.assertFalse(((BBoolean) returns[2]).booleanValue());
     }
 
     @Test
@@ -259,8 +262,8 @@ public class RefTypeTests {
     @Test
     public void testUseTypeDesc() {
         BValue[] returns = BRunUtil.invoke(result, "testUseTypeDesc");
-        Assert.assertTrue(returns[0] instanceof BHandleValue);
-        Assert.assertEquals(((BHandleValue) returns[0]).getValue(), "typedesc json");
+        Assert.assertTrue(returns[0] instanceof BString);
+        Assert.assertEquals(returns[0].stringValue(), "typedesc json");
     }
 
     @Test
@@ -314,20 +317,40 @@ public class RefTypeTests {
         Object returns = BRunUtil.invokeAndGetJVMResult(result, "testThrowJavaException2");
         Assert.assertTrue(returns instanceof ErrorValue);
         ErrorValue error = (ErrorValue) returns;
-        Assert.assertEquals(error.getPrintableStackTrace(), "java.util.EmptyStackException \n" +
+        Assert.assertEquals(error.getPrintableStackTrace(), "java.util.EmptyStackException\n" +
                 "\tat ballerina_types_as_interop_types:javaStackPop(ballerina_types_as_interop_types.bal:400)\n" +
                 "\t   ballerina_types_as_interop_types:testThrowJavaException2(ballerina_types_as_interop_types.bal:" +
                 "392)");
     }
 
+    @Test
+    public void testDifferentRefTypesForIntersectionEffectiveType() {
+        BRunUtil.invoke(result, "testDifferentRefTypesForIntersectionEffectiveType");
+    }
+
+    @Test
+    public void testUsingIntersectionEffectiveType() {
+        BRunUtil.invoke(result, "testUsingIntersectionEffectiveType");
+    }
+
+    @Test
+    public void testReadOnlyAsParamAndReturnTypes() {
+        BRunUtil.invoke(result, "testReadOnlyAsParamAndReturnTypes");
+    }
+
+    @Test
+    public void testNarrowerTypesAsReadOnlyReturnTypes() {
+        BRunUtil.invoke(result, "testNarrowerTypesAsReadOnlyReturnTypes");
+    }
+
     // static methods
 
     public static XMLValue getXML() {
-        return new XMLItem("<hello/>");
+        return new XMLItem(new QName("hello"));
     }
 
-    public static String getStringFromXML(XMLValue x) {
-        return x.toString();
+    public static org.ballerinalang.jvm.api.values.BString getStringFromXML(XMLValue x) {
+        return BStringUtils.fromString(x.toString());
     }
 
     public static int getAllInts() {
@@ -359,19 +382,19 @@ public class RefTypeTests {
     }
 
     public static int useFunctionPointer(FPValue fp) {
-        return ((Long) fp.call(new Object[] { Scheduler.getStrand(), 3, true, 4, true })).intValue();
+        return ((Long) fp.call(new Object[]{Scheduler.getStrand(), 3, true, 4, true})).intValue();
     }
 
     public static FPValue getFunctionPointer(Object fp) {
         return (FPValue) fp;
     }
 
-    public static String useTypeDesc(TypedescValue type) {
-        return type.stringValue();
+    public static org.ballerinalang.jvm.api.values.BString useTypeDesc(TypedescValue type) {
+        return BStringUtils.fromString(type.stringValue(null));
     }
 
     public static TypedescValue getTypeDesc() {
-        return new TypedescValue(BTypes.typeXML);
+        return new TypedescValueImpl(BTypes.typeXML);
     }
 
     public static Object useFuture(FutureValue future) {
@@ -388,8 +411,8 @@ public class RefTypeTests {
         return new HandleValue(m);
     }
 
-    public static StringValue useHandle(HandleValue h) {
+    public static org.ballerinalang.jvm.api.values.BString useHandle(HandleValue h) {
         Map<String, String> m = (Map<String, String>) h.getValue();
-        return StringUtils.fromString(m.get("name"));
+        return BStringUtils.fromString(m.get("name"));
     }
 }

@@ -42,7 +42,9 @@ import org.testng.annotations.Test;
 import java.math.BigDecimal;
 
 import static org.testng.Assert.assertEquals;
+import static org.testng.Assert.assertFalse;
 import static org.testng.Assert.assertNull;
+import static org.testng.Assert.assertTrue;
 
 /**
  * Test cases for filling the elements of the array with its type's implicit initial value.
@@ -188,6 +190,24 @@ public class ArrayFillTest {
     }
 
     @Test
+    public void testTupleSealedArrayFill() {
+        BValue[] args = new BValue[]{new BInteger(index)};
+        BValue[] returns = BRunUtil.invokeFunction(compileResult, "testTupleSealedArrayFill", args);
+        BValueArray tupleArr = (BValueArray) returns[0];
+        assertEquals(tupleArr.size(), index + 1);
+
+        for (int i = 0; i < index; i++) {
+            BValueArray tuple = (BValueArray) tupleArr.getBValue(i);
+            assertEquals(tuple.getBValue(0).stringValue(), "");
+            assertEquals(((BInteger) tuple.getBValue(1)).intValue(), 0);
+        }
+
+        BValueArray tuple = (BValueArray) tupleArr.getBValue(index);
+        assertEquals(tuple.getBValue(0).stringValue(), "Hello World!");
+        assertEquals(((BInteger) tuple.getBValue(1)).intValue(), 100);
+    }
+
+    @Test
     public void testMapArrayFill() {
         BMap<String, BValue> emptyMap = new BMap<>(BTypes.typeMap);
         BMap<String, BValue> map = new BMap<>(BTypes.typeMap);
@@ -207,17 +227,7 @@ public class ArrayFillTest {
     @Test
     public void testTableArrayFill() {
         BValue[] args = new BValue[]{new BInteger(index)};
-        BValue[] returns = BRunUtil.invoke(compileResult, "testTableArrayFill", args);
-        BValueArray tableArr = (BValueArray) returns[0];
-        assertEquals(tableArr.size(), index + 1);
-
-        for (int i = 0; i < index; i++) {
-            assertEquals(tableArr.getBValue(i).stringValue(), "table<Employee> {index: [], primaryKey: [], data: []}");
-        }
-
-        assertEquals(tableArr.getBValue(index).stringValue(), "table<Employee> {index: [], primaryKey: [\"id\"], " +
-                "data: [{id:1, name:\"John\", salary:50000.0}]}");
-        assertEquals(returns[1].stringValue(), "John");
+        BRunUtil.invoke(compileResult, "testTableArrayFill", args);
     }
 
     @Test
@@ -277,8 +287,7 @@ public class ArrayFillTest {
         assertEquals(unionArr.getBValue(index).stringValue(), "{name:\"John\", age:25}");
     }
 
-    // TODO: 2/14/19 disabled due to https://github.com/ballerina-platform/ballerina-lang/issues/13612
-    @Test(enabled = false)
+    @Test
     public void testUnionArrayFill4() {
         BValue[] args = new BValue[]{new BInteger(index)};
         BValue[] returns = BRunUtil.invokeFunction(compileResult, "testUnionArrayFill4", args);
@@ -328,10 +337,10 @@ public class ArrayFillTest {
         assertEquals(unionArr.size(), index + 1);
 
         for (int i = 0; i < index; i++) {
-            assertEquals(((BBoolean) unionArr.getBValue(i)).booleanValue(), false);
+            assertFalse(((BBoolean) unionArr.getBValue(i)).booleanValue());
         }
 
-        assertEquals(((BBoolean) unionArr.getBValue(index)).booleanValue(), true);
+        assertTrue(((BBoolean) unionArr.getBValue(index)).booleanValue());
     }
 
     @Test
@@ -345,11 +354,10 @@ public class ArrayFillTest {
             assertNull(unionArr.getBValue(i));
         }
 
-        assertEquals(((BBoolean) unionArr.getBValue(index)).booleanValue(), true);
+        assertTrue(((BBoolean) unionArr.getBValue(index)).booleanValue());
     }
 
-    // disabled due to https://github.com/ballerina-platform/ballerina-lang/issues/13612
-    @Test(enabled = false)
+    @Test
     public void testFiniteTypeArrayFill5() {
         BValue[] args = new BValue[]{new BInteger(index)};
         BValue[] returns = BRunUtil.invokeFunction(compileResult, "testFiniteTypeArrayFill5", args);
@@ -357,10 +365,10 @@ public class ArrayFillTest {
         assertEquals(unionArr.size(), index + 1);
 
         for (int i = 0; i < index; i++) {
-            assertEquals(((BDecimal) unionArr.getBValue(i)).decimalValue(), 0.0);
+            assertEquals(((BDecimal) unionArr.getBValue(i)).decimalValue(), new BigDecimal("0.0"));
         }
 
-        assertEquals(((BDecimal) unionArr.getBValue(index)).decimalValue(), 1.2);
+        assertEquals(((BDecimal) unionArr.getBValue(index)).decimalValue(), new BigDecimal("1.2"));
     }
 
     @Test
@@ -392,9 +400,37 @@ public class ArrayFillTest {
     }
 
     @Test
+    public void testAnySealedArrayFill() {
+        BValue[] args = new BValue[]{new BInteger(index)};
+        BValue[] returns = BRunUtil.invokeFunction(compileResult, "testAnySealedArrayFill", args);
+        BValueArray unionArr = (BValueArray) returns[0];
+        assertEquals(unionArr.size(), index + 1);
+
+        for (int i = 0; i < index; i++) {
+            assertNull(unionArr.getBValue(i));
+        }
+
+        assertEquals(unionArr.getBValue(index).stringValue(), "{name:\"John\", age:25}");
+    }
+
+    @Test
     public void testAnydataArrayFill() {
         BValue[] args = new BValue[]{new BInteger(index)};
         BValue[] returns = BRunUtil.invokeFunction(compileResult, "testAnydataArrayFill", args);
+        BValueArray unionArr = (BValueArray) returns[0];
+        assertEquals(unionArr.size(), index + 1);
+
+        for (int i = 0; i < index; i++) {
+            assertNull(unionArr.getBValue(i));
+        }
+
+        assertEquals(unionArr.getBValue(index).stringValue(), "{name:\"John\", age:25}");
+    }
+
+    @Test
+    public void testAnydataSealedArrayFill() {
+        BValue[] args = new BValue[]{new BInteger(index)};
+        BValue[] returns = BRunUtil.invokeFunction(compileResult, "testAnydataSealedArrayFill", args);
         BValueArray unionArr = (BValueArray) returns[0];
         assertEquals(unionArr.size(), index + 1);
 
@@ -458,6 +494,15 @@ public class ArrayFillTest {
     }
 
     @Test
+    public void testSingletonTypeArrayStaticFill() {
+        BValue[] returns = BRunUtil.invokeFunction(compileResult, "testSingletonTypeArrayStaticFill");
+        BValueArray singletonArray = (BValueArray) returns[0];
+        assertEquals(singletonArray.size(), 2);
+        assertEquals(singletonArray.getRefValue(0).stringValue(), "true");
+        assertEquals(singletonArray.getRefValue(1).stringValue(), "true");
+    }
+
+    @Test
     public void testSequentialArrayInsertion() {
         BValue[] returns = BRunUtil.invokeFunction(compileResult, "testSequentialArrayInsertion");
         BValueArray resultArray = (BValueArray) returns[0];
@@ -485,15 +530,6 @@ public class ArrayFillTest {
         BValue[] returns = BRunUtil.invokeFunction(compileResult, "testFiniteTypeArrayFill");
         Assert.assertEquals(returns[0].getType().getTag(), TypeTags.ARRAY_TAG);
         Assert.assertEquals(((BValueArray) returns[0]).getValues()[5].value().toString(), "1.2");
-    }
-
-    @Test(enabled = false)
-    public void testRecordTypeWithOptionalFieldsArrayFill() {
-        BValue[] returns = BRunUtil.invokeFunction(compileResult, "testRecordTypeWithOptionalFieldsArrayFill");
-        BValueArray resultArray = (BValueArray) returns[0];
-        assertEquals(resultArray.size(), 2);
-        assertEquals(resultArray.getBValue(0).stringValue(), "{j:0}");  // this fails
-        assertEquals(resultArray.getBValue(1).stringValue(), "{j:2, i:1}");
     }
 
     @Test(expectedExceptions = BLangRuntimeException.class,
@@ -550,13 +586,6 @@ public class ArrayFillTest {
                     "without filler values.*")
     public void testIllegalTwoDimensionalArrayInsertion() {
         BRunUtil.invokeFunction(negativeCompileResult, "testIllegalTwoDimensionalArrayInsertion");
-    }
-
-    @Test(expectedExceptions = BLangRuntimeException.class,
-            expectedExceptionsMessageRegExp = ".*array of length .* cannot be expanded into array of length .* " +
-                    "without filler values.*")
-    public void testTwoDimensionalSealedArrayFill() {
-        BRunUtil.invokeFunction(negativeCompileResult, "testTwoDimensionalSealedArrayFill");
     }
 
     @Test(expectedExceptions = BLangRuntimeException.class,

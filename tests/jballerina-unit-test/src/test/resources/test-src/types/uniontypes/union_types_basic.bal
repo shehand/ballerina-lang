@@ -94,9 +94,9 @@ function testUnionTypeArrayWithValueTypeArrayAssignment() returns int {
     return globalParamArray.length();
 }
 
-public type Person object {
+public class Person {
     string name = "";
-};
+}
 
 public type RecPerson record {
     string name;
@@ -144,9 +144,80 @@ function testUnionTypeWithMultipleRecordTypes() returns string[] {
     return returnValues;
 }
 
+const ASSERTION_ERR_REASON = "AssertionError";
+
+function testUnionTypeWithMultipleRecordTypesWithLiteralKeysInLiteral() {
+
+    Foo|Bar v1 = {s: "dummy string", "i": 1};
+    Foo|Bar v2 = {"x": "dummy string", y: 2};
+
+    if !(v1 is Foo) {
+        panic error(ASSERTION_ERR_REASON, message = "expected v1 to be of type Foo");
+    }
+
+    if !(v2 is Bar) {
+        panic error(ASSERTION_ERR_REASON, message = "expected v2 to be of type Bar");
+    }
+}
+
 function testUnionLhsWithDiscriminatedFloatDecimalLiterals() returns [(float|decimal), (float|decimal), (float|decimal)] {
     float|decimal a = 1.0;
     float|decimal b = 1.0f;
     float|decimal c = 1.0d;
     return [a, b, c];
+}
+
+type Employee object {
+    public int age;
+    public string firstName;
+    public string lastName;
+
+    function getFullName() returns string;
+};
+
+class Engineer {
+    public int age;
+    public string firstName;
+    public string lastName;
+
+    function init(int age, string firstName, string lastName) {
+        self.age = age;
+        self.firstName = firstName;
+        self.lastName = lastName;
+    }
+
+    function getFullName() returns string {
+        return self.firstName + self.lastName;
+    }
+
+}
+
+function testUnionTypeWithFunctionPointerAccess() {
+    Engineer engineer = new Engineer(20, "John", "Doe");
+    Employee employee = new Engineer(20, "Jane", "Doe");
+
+    Engineer|Employee person1 = engineer;
+    Engineer|Employee person2 = employee;
+
+    person1.age = 25;
+    person2.age = 25;
+
+    var setAge = function () {
+        person1.age = 30;
+        person2.age = 30;
+    };
+    setAge();
+    assertEquality(30, person1.age);
+    assertEquality(30, person2.age);
+}
+
+function assertEquality(any|error expected, any|error actual) {
+    if expected is anydata && actual is anydata && expected == actual {
+        return;
+    }
+    if expected === actual {
+        return;
+    }
+    panic error(ASSERTION_ERR_REASON,
+                message = "expected '" + expected.toString() + "', found '" + actual.toString () + "'");
 }

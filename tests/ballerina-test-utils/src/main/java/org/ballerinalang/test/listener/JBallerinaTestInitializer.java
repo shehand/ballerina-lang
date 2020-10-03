@@ -38,7 +38,7 @@ public class JBallerinaTestInitializer implements ITestListener {
     @Override
     public void onStart(ITestContext context) {
         String property = context.getCurrentXmlTest().getParameter(ENABLE_JBALLERINA_TESTS);
-        if (property != null && Boolean.valueOf(property)) {
+        if (Boolean.parseBoolean(property)) {
             log.info("JBallerina tests initialized...");
             System.setProperty(ENABLE_JBALLERINA_TESTS, "true");
         }
@@ -47,7 +47,7 @@ public class JBallerinaTestInitializer implements ITestListener {
     @Override
     public void onFinish(ITestContext context) {
         String property = context.getCurrentXmlTest().getParameter(ENABLE_JBALLERINA_TESTS);
-        if (property != null && Boolean.valueOf(property)) {
+        if (Boolean.parseBoolean(property)) {
             log.info("JBallerina tests disabled...");
             System.clearProperty(ENABLE_JBALLERINA_TESTS);
         }

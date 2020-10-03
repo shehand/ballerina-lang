@@ -6,7 +6,7 @@ function testElementLiteralWithNamespaces() returns [xml, xml] {
     xmlns "http://ballerina.com/c" as ns1;
 
     xml x1 = xml `<root ns0:id="456"><foo>123</foo><bar ns1:status="complete"></bar></root>`;
-    xml x2 = x1.*;
+    xml x2 = x1/*;
     return [x1, x2];
 }
 
@@ -119,22 +119,22 @@ function testInnerScopeNamespaceDclr() returns [string, string, string] {
     string s1 = "";
     string s2 = "";
     string s3 = "";
-    
+
     if (true) {
         s1 = ns1:foo;
-        
+
         xmlns "http://sample.com/wso2/a3" as ns1;
         s2 = ns1:foo;
     }
-    
+
     s3 = ns1:foo;
-    
+
     return [s1, s2, s3];
 }
 
-type Person object {
+class Person {
     xml info = xml `<p:person xmlns:p="foo" xmlns:q="bar">hello</p:person>`;
-};
+}
 
 function testObjectLevelXML() returns xml {
     Person p = new();
@@ -144,4 +144,16 @@ function testObjectLevelXML() returns xml {
 function getXML() returns xml {
     xml x = xml `<foo xmlns="http://wso2.com/">hello</foo>`;
     return x;
+}
+
+function XMLWithDefaultNamespaceToString() returns string {
+    xml x = xml `<Order xmlns="http://acme.company" xmlns:acme="http://acme.company">
+        <OrderLines>
+            <OrderLine acme:lineNo="334" itemCode="334-2"></OrderLine>
+        </OrderLines>
+        <ShippingAddress>
+        </ShippingAddress>
+    </Order>`;
+
+    return x.toString();
 }

@@ -17,7 +17,9 @@
  */
 package org.ballerinalang.stdlib.crypto;
 
-import org.ballerinalang.jvm.BallerinaErrors;
+import org.ballerinalang.jvm.api.BErrorCreator;
+import org.ballerinalang.jvm.api.BStringUtils;
+import org.ballerinalang.jvm.api.values.BError;
 import org.ballerinalang.jvm.values.ArrayValueImpl;
 import org.ballerinalang.jvm.values.ErrorValue;
 
@@ -44,6 +46,9 @@ import javax.crypto.SecretKey;
 import javax.crypto.spec.GCMParameterSpec;
 import javax.crypto.spec.IvParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
+
+import static org.ballerinalang.stdlib.crypto.Constants.CRYPTO_ERROR;
+import static org.ballerinalang.stdlib.crypto.Constants.CRYPTO_PACKAGE_ID;
 
 /**
  * Utility functions relevant to crypto operations.
@@ -159,8 +164,8 @@ public class CryptoUtils {
      * @param errMsg error description
      * @return conversion error
      */
-    public static ErrorValue createError(String errMsg) {
-        return BallerinaErrors.createError(Constants.CRYPTO_ERROR_CODE, errMsg);
+    public static BError createError(String errMsg) {
+        return BErrorCreator.createDistinctError(CRYPTO_ERROR, CRYPTO_PACKAGE_ID, BStringUtils.fromString(errMsg));
     }
 
     /**
@@ -285,19 +290,19 @@ public class CryptoUtils {
         switch (algorithmMode) {
             case Constants.GCM:
                 if (iv == null) {
-                    throw BallerinaErrors.createError("GCM mode requires 16 byte IV");
+                    throw CryptoUtils.createError("GCM mode requires 16 byte IV");
                 } else {
                     return new GCMParameterSpec(tagSize, iv);
                 }
             case Constants.CBC:
                 if (iv == null) {
-                    throw BallerinaErrors.createError("CBC mode requires 16 byte IV");
+                    throw CryptoUtils.createError("CBC mode requires 16 byte IV");
                 } else {
                     return new IvParameterSpec(iv);
                 }
             case Constants.ECB:
                 if (iv != null) {
-                    throw BallerinaErrors.createError("ECB mode cannot use IV");
+                    throw CryptoUtils.createError("ECB mode cannot use IV");
                 }
         }
         return null;
@@ -313,7 +318,7 @@ public class CryptoUtils {
     private static String transformAlgorithmMode(String algorithmMode) throws ErrorValue {
         if (!algorithmMode.equals(Constants.CBC) && !algorithmMode.equals(Constants.ECB)
                 && !algorithmMode.equals(Constants.GCM)) {
-            throw BallerinaErrors.createError("Unsupported mode: " + algorithmMode);
+            throw CryptoUtils.createError("Unsupported mode: " + algorithmMode);
         }
         return algorithmMode;
     }
@@ -352,7 +357,7 @@ public class CryptoUtils {
                 algorithmPadding = "NoPadding";
                 break;
             default:
-                throw BallerinaErrors.createError("Unsupported padding: " + algorithmPadding);
+                throw CryptoUtils.createError("Unsupported padding: " + algorithmPadding);
         }
         return algorithmPadding;
     }

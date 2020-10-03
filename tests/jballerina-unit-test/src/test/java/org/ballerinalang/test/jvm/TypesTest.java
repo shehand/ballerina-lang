@@ -28,7 +28,6 @@ import org.ballerinalang.model.values.BInteger;
 import org.ballerinalang.model.values.BMap;
 import org.ballerinalang.model.values.BNewArray;
 import org.ballerinalang.model.values.BString;
-import org.ballerinalang.model.values.BTable;
 import org.ballerinalang.model.values.BValue;
 import org.ballerinalang.model.values.BValueArray;
 import org.ballerinalang.test.util.BCompileUtil;
@@ -217,6 +216,16 @@ public class TypesTest {
         // Todo: revisit when tuple access and var type supported
         BValue[] result = BRunUtil.invoke(compileResult, "tupleTest");
         Assert.assertEquals((result[0]).stringValue(), "10");
+    }
+
+    @Test
+    public void testRestType() {
+        BRunUtil.invoke(compileResult, "testRestType");
+    }
+
+    @Test
+    public void testEmptyArrayType() {
+        BRunUtil.invoke(compileResult, "testEmptyArrayType");
     }
 
     @Test
@@ -492,8 +501,8 @@ public class TypesTest {
     }
 
     @Test(expectedExceptions = BLangRuntimeException.class,
-            expectedExceptionsMessageRegExp = ".*TypeCastError message=incompatible types: 'map<json>' cannot be " +
-                                              "cast to 'json\\[\\]'.*")
+            expectedExceptionsMessageRegExp = ".*TypeCastError \\{\"message\":\"incompatible types: 'map<json>' " +
+                    "cannot be cast to 'json\\[\\]'.*")
     public void testSetToNonArrayWithIndex() {
         BValue[] returns = BRunUtil.invoke(compileResult, "testSetToNonArrayWithIndex");
         Assert.assertTrue(returns[0] instanceof BMap);
@@ -514,8 +523,8 @@ public class TypesTest {
     }
 
     @Test(expectedExceptions = BLangRuntimeException.class,
-            expectedExceptionsMessageRegExp = ".*TypeCastError message=incompatible types: 'json\\[\\]' cannot be " +
-                                              "cast to 'map<json>.*")
+            expectedExceptionsMessageRegExp = ".*TypeCastError \\{\"message\":\"incompatible types: 'json\\[\\]' " +
+                    "cannot be cast to 'map<json>.*")
     public void testSetToNonObjectWithKey() {
         BValue[] returns = BRunUtil.invoke(compileResult, "testSetToNonObjectWithKey");
         Assert.assertTrue(returns[0] instanceof BValueArray);
@@ -533,11 +542,11 @@ public class TypesTest {
         Assert.assertNotNull(returns[1]);
         Assert.assertNotNull(returns[2]);
         Assert.assertEquals(((BError) returns[0]).getDetails().stringValue(),
-                            "{message:\"JSON value is not a mapping\"}");
+                            "{\"message\":\"JSON value is not a mapping\"}");
         Assert.assertEquals(((BError) returns[1]).getDetails().stringValue(),
-                            "{message:\"JSON value is not a mapping\"}");
+                            "{\"message\":\"JSON value is not a mapping\"}");
         Assert.assertEquals(((BError) returns[2]).getDetails().stringValue(),
-                            "{message:\"JSON value is not a mapping\"}");
+                            "{\"message\":\"JSON value is not a mapping\"}");
     }
 
     @Test
@@ -548,7 +557,7 @@ public class TypesTest {
     }
 
     @Test(expectedExceptions = { BLangRuntimeException.class },
-          expectedExceptionsMessageRegExp = ".*IndexOutOfRange message=array index out of range: " +
+          expectedExceptionsMessageRegExp = ".*IndexOutOfRange \\{\"message\":\"array index out of range: " +
                                             "index: 5, size: 3.*")
     public void testGetArrayOutofBoundElement() {
         BRunUtil.invoke(compileResult, "testGetArrayOutofBoundElement");
@@ -558,7 +567,7 @@ public class TypesTest {
     public void testGetElementFromPrimitive() {
         BValue[] returns = BRunUtil.invoke(compileResult, "testGetElementFromPrimitive");
         Assert.assertEquals(((BError) returns[0]).getDetails().stringValue(),
-                            "{message:\"JSON value is not a mapping\"}");
+                            "{\"message\":\"JSON value is not a mapping\"}");
     }
 
     @Test
@@ -748,14 +757,7 @@ public class TypesTest {
 
     @Test
     public void testNewTable() {
-        BValue[] result = BRunUtil.invoke(compileResult, "tableFunc");
-        Assert.assertNotNull(result[0]);
-        BTable table = (BTable) result[0];
-        BMap data = table.getNext();
-        Assert.assertEquals(data.getMap().get("name"), new BString("Mary"));
-        Assert.assertEquals(data.getMap().get("physics"), new BInteger(90));
-        Assert.assertEquals(data.getMap().get("chemistry"), new BInteger(87));
-
+        BRunUtil.invoke(compileResult, "tableFunc");
     }
 
     @Test

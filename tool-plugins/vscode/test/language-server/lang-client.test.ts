@@ -33,7 +33,7 @@ suite("Language Server Tests", function () {
         langClient = new ExtendedLangClient(
             'ballerina-vscode',
             'Ballerina LS Client',
-            getServerOptions(getBallerinaCmd(), true, true, true),
+            getServerOptions(getBallerinaCmd()),
             { documentSelector: [{ scheme: 'file', language: 'ballerina' }] },
             false
         );
@@ -54,7 +54,7 @@ suite("Language Server Tests", function () {
 
     test("Test getAST", function (done): void {
         langClient.onReady().then(() => {
-            const filePath = path.join(getBBEPath(), 'hello-world', 'hello_world.bal');
+            const filePath = path.join(getBBEPath(), 'hello_world.bal');
             let uri = Uri.file(filePath.toString());
             langClient.getAST(uri).then((response) => {
                 expect(response).to.contain.keys('ast', 'parseSuccess');

@@ -14,46 +14,24 @@
 // specific language governing permissions and limitations
 // under the License.
 
-import ballerinax/java;
+import ballerina/java;
 
-# Represents the InvocationContext.
+# Represents the `runtime:InvocationContext`.
 #
-# + id - Unique id generated when initiating the invocation context.
-# + principal - User principal instance.
-# + authenticationContext - Authentication context instance.
-# + attributes - Context attributes.
+# + id - Unique ID generated when initiating the invocation context
+# + attributes - Map of context attributes
 public type InvocationContext record {|
     string id;
-    Principal principal?;
-    AuthenticationContext authenticationContext?;
     map<any> attributes;
 |};
 
-# Represents the AuthenticationContext, populated with authenticated information.
-#
-# + scheme - Authentication token type. e.g: JWT etc.
-# + authToken - Relevant token for the schema.
-public type AuthenticationContext record {
-    string scheme?;
-    string authToken?;
-};
 
-# Represents the Principal, populated with authenticated user information.
+# Returns the `runtime:InvocationContext` instance.
+# ```ballerina
+# runtime:InvocationContext invocationContext = runtime:getInvocationContext();
+# ```
 #
-# + userId - User Id of the authenticated user.
-# + username - Username of the authenticated user.
-# + claims - Claims of the authenticated user.
-# + scopes - Authenticated user scopes.
-public type Principal record {
-    string userId?;
-    string username?;
-    map<any> claims?;
-    string[] scopes?;
-};
-
-# Creates a InvocationContext instance.
-#
-# + return - InvocationContext instance
+# + return - The `runtime:InvocationContext` instance
 public function getInvocationContext() returns InvocationContext = @java:Method {
-    class: "org.ballerinalang.stdlib.runtime.nativeimpl.GetInvocationContext"
+    'class: "org.ballerinalang.stdlib.runtime.nativeimpl.GetInvocationContext"
 } external;

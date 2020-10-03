@@ -14,10 +14,10 @@
 // specific language governing permissions and limitations
 // under the License.
 
-import ballerinax/java;
+import ballerina/java;
 
 # Represents a channel which will allow to read
-public type ReadableTextRecordChannel object {
+public class ReadableTextRecordChannel {
 
     private ReadableCharacterChannel charChannel;
     private string rs;
@@ -28,62 +28,62 @@ public type ReadableTextRecordChannel object {
     # + charChannel - CharacterChannel which will point to the input/output resource
     # + fs - Field separator (this could be a regex)
     # + rs - Record separator (this could be a regex)
-    public function __init(ReadableCharacterChannel charChannel, public string fs = "", public string rs = "",
-                           public string fmt = "default") {
+    public function init(ReadableCharacterChannel charChannel, string fs = "", string rs = "",
+                           string fmt = "default") {
         self.charChannel = charChannel;
         self.rs = rs;
         self.fs = fs;
-        initReadableTextRecordChannel(self, charChannel, java:fromString(fs), java:fromString(rs), java:fromString(fmt));
+        initReadableTextRecordChannel(self, charChannel, fs, rs, fmt);
     }
 
-    # Checks whether there's a record left to be read.
-    #
-    # + return - True if there's a record left to be read
+# Checks whether there's a record left to be read.
+# ```ballerina
+# boolean hasNext = readableRecChannel.hasNext();
+# ```
+#
+# + return - True if there's a record left to be read
     public function hasNext() returns boolean {
         return hasNextExtern(self);
     }
 
-    # Get next record from the input/output resource.
-    #
-    # + return - Set of fields included in the record or `Error` if any error occurred
+# Get the next record from the input/output resource.
+# ```ballerina
+# string[]|io:Error record = readableRecChannel.getNext();
+# ```
+#
+# + return - Set of fields included in the record or else `io:Error`
     public function getNext() returns @tainted string[]|Error {
-        handle[]|Error result = getNextExtern(self);
-        if (result is Error) {
-            return result;
-        } else {
-            string[] records = [];
-            foreach handle v in result {
-                records.push(<string>java:toString(v));
-            }
-            return records;
-        }
+        return getNextExtern(self);
     }
 
-    # Closes a given record channel.
-    #
-    # + return - An `Error` if the record channel could not be closed properly
+# Closes a given record channel.
+# ```ballerina
+# io:Error err = readableRecChannel.close();
+# ```
+#
+# + return - An `io:Error` if the record channel could not be closed properly
     public function close() returns Error? {
         return closeReadableTextRecordChannelExtern(self);
     }
-};
+}
 
 function initReadableTextRecordChannel(ReadableTextRecordChannel textChannel, ReadableCharacterChannel charChannel,
-            handle fs, handle rs, handle fmt) = @java:Method {
+                                       string fs, string rs, string fmt) = @java:Method {
     name: "initRecordChannel",
-    class: "org.ballerinalang.stdlib.io.nativeimpl.RecordChannelUtils"
+    'class: "org.ballerinalang.stdlib.io.nativeimpl.RecordChannelUtils"
 } external;
 
 function hasNextExtern(ReadableTextRecordChannel textChannel) returns boolean = @java:Method {
     name: "hasNext",
-    class: "org.ballerinalang.stdlib.io.nativeimpl.RecordChannelUtils"
+    'class: "org.ballerinalang.stdlib.io.nativeimpl.RecordChannelUtils"
 } external;
 
-function getNextExtern(ReadableTextRecordChannel textChannel) returns @tainted handle[]|Error = @java:Method {
+function getNextExtern(ReadableTextRecordChannel textChannel) returns @tainted string[]|Error = @java:Method {
     name: "getNext",
-    class: "org.ballerinalang.stdlib.io.nativeimpl.RecordChannelUtils"
+    'class: "org.ballerinalang.stdlib.io.nativeimpl.RecordChannelUtils"
 } external;
 
 function closeReadableTextRecordChannelExtern(ReadableTextRecordChannel textChannel) returns Error? = @java:Method {
     name: "close",
-    class: "org.ballerinalang.stdlib.io.nativeimpl.RecordChannelUtils"
+    'class: "org.ballerinalang.stdlib.io.nativeimpl.RecordChannelUtils"
 } external;

@@ -18,7 +18,7 @@ import eq;
 import eq2;
 import req;
 
-public type person1 object {
+public class person1 {
     public int age = 0;
     public string name = "";
     public string address = "";
@@ -26,7 +26,7 @@ public type person1 object {
     string ssn = "";
     int id = 0;
 
-    public function __init () {}
+    public function init () {}
 
     public function getName () returns string {
         return self.name;
@@ -43,9 +43,9 @@ public type person1 object {
     function setSSN (string s) {
         self.ssn = s;
     }
-};
+}
 
-public type employee1 object {
+public class employee1 {
     public int age = 0;
     public string name = "";
     public string address = "";
@@ -54,7 +54,7 @@ public type employee1 object {
     string ssn = "";
     int id = 0;
 
-    public function __init (int age, string name) {
+    public function init (int age, string name) {
         self.age = age;
         self.name = name;
     }
@@ -78,7 +78,7 @@ public type employee1 object {
     public function getEmployeeId () returns int {
         return self.employeeId;
     }
-};
+}
 
 function testObjectEquivalenceWhenFieldsHaveModuleVisibility() returns string {
     employee1 e = new (14, "rat");
@@ -89,7 +89,7 @@ function testObjectEquivalenceWhenFieldsHaveModuleVisibility() returns string {
     return p.getSSN();
 }
 
-public type person2 object {
+public class person2 {
     public int age = 0;
     public string name = "";
     public string address = "";
@@ -112,9 +112,9 @@ public type person2 object {
     public function setSSN (string s) {
         self.ssn = s;
     }
-};
+}
 
-public type employee2 object {
+public class employee2 {
     public int age = 0;
     public string name = "";
     public string address = "";
@@ -142,7 +142,7 @@ public type employee2 object {
     public function getEmployeeId () returns int {
         return self.employeeId;
     }
-};
+}
 
 function testObjectEquivalenceWhenFieldsHavePublicVisibility() returns string {
     employee2 e = new;
@@ -166,7 +166,7 @@ function testEqOfPublicObjectsInBalo() returns string {
 }
 
 
-public type employee3 object {
+public class employee3 {
     public int age = 0;
     public string name = "";
     public string address = "";
@@ -194,7 +194,7 @@ public type employee3 object {
     public function getEmployeeId () returns int {
         return self.employeeId;
     }
-};
+}
 
 function testEqOfPublicObjects() returns string {
     employee3 e = new;
@@ -221,7 +221,7 @@ function testEqOfPublicObjects2() returns string {
 
 
 
-type userA object {
+class userA {
     public int age = 0;
     public string name = "";
     public string address = "";
@@ -233,9 +233,9 @@ type userA object {
     function getAge () returns int {
         return self.age;
     }
-};
+}
 
-type userB object {
+class userB {
     public int age = 0;
     public string name = "";
     public string address = "";
@@ -247,9 +247,9 @@ type userB object {
     function getAge () returns int {
         return self.age;
     }
-};
+}
 
-type userFoo object {
+class userFoo {
     public int age = 0;
     public string name = "";
     public string address = "";
@@ -262,7 +262,7 @@ type userFoo object {
     function getAge () returns int {
         return self.age;
     }
-};
+}
 
 
 function testNonPublicTypedescEq() returns string|error {
@@ -279,7 +279,7 @@ function testNonPublicTypedescEq() returns string|error {
 }
 
 
-public type userPA object {
+public class userPA {
     public int age = 0;
     public string name = "";
     public string address = "";
@@ -292,9 +292,9 @@ public type userPA object {
     public function getAge () returns int {
         return self.age;
     }
-};
+}
 
-public type userPB object {
+public class userPB {
     public int age = 0;
     public string name = "";
     public string address = "";
@@ -307,9 +307,9 @@ public type userPB object {
     public function getAge () returns int {
         return self.age;
     }
-};
+}
 
-public type userPFoo object {
+public class userPFoo {
     public int age = 0;
     public string name = "";
     public string address = "";
@@ -322,7 +322,7 @@ public type userPFoo object {
     public function getAge () returns int {
         return self.age;
     }
-};
+}
 
 
 function testEqOfPublicObjectsInSamePackage () returns string {
@@ -357,7 +357,7 @@ function testRuntimeEqPublicObjects1() returns string {
     return uA.getName();
 }
 
-type personC object {
+class personC {
     public string name = "";
     public addressStruct address = new;
 
@@ -368,18 +368,18 @@ type personC object {
     function getAddress() returns string{
         return self.address.toString();
     }
-};
+}
 
-type addressStruct object {
+class addressStruct {
     public int no = 0;
     public string city = "";
 
     function toString() returns string {
         return self.no.toString() + self.city;
     }
-};
+}
 
-type officeAddressStruct object {
+class officeAddressStruct {
     public int no = 0;
     public string city = "";
     public string department = "";
@@ -387,7 +387,7 @@ type officeAddressStruct object {
     function toString() returns string{
         return self.department + self.no.toString() + self.city;
     }
-};
+}
 
 function testObjectEquivalencyWithArguments() returns [string, string, string] {
     personC p = new;
@@ -414,10 +414,10 @@ function testObjectEquivalencyWithArguments() returns [string, string, string] {
 
 type Foo "a" | "b" | "c";
 
-type Person object {
+class Person {
     string name = "";
 
-    function __init (string name) {
+    function init (string name) {
         self.name = name;
     }
 
@@ -425,13 +425,13 @@ type Person object {
         error err = error("Unsupported operation");
         panic err;
     }
-};
+}
 
-type Employee object {
+class Employee {
     string name = "";
     private string id = "";
 
-    function __init (string name, string id) {
+    function init (string name, string id) {
         self.id = id;
         self.name = name;
     }
@@ -439,7 +439,7 @@ type Employee object {
     function getPerson() returns Person {
         return self;
     }
-};
+}
 
 function testTupleMatchWithObjectEquivalency() returns string {
   future<[Foo, Person] | () | error> f = start getPerson();
@@ -463,26 +463,26 @@ function getPerson() returns [Foo, Person] | () | error {
     return [f,p];
 }
 
-public type ObjectWithoutNew object {
+public class ObjectWithoutNew {
     public string name = "";
     public string id = "";
 
     public function getPerson() returns ObjectWithoutNew {
         return self;
     }
-};
+}
 
-public type ObjectWithNew object {
+public class ObjectWithNew {
     public string name = "";
     public string id = "";
 
-    public function __init () {
+    public function init () {
     }
 
     public function getPerson() returns ObjectWithNew {
         return self;
     }
-};
+}
 
 function testObjectEqualityWithDefaultConstructor() returns [ObjectWithNew, ObjectWithoutNew] {
     ObjectWithoutNew obj1 = new();
@@ -494,43 +494,43 @@ function testObjectEqualityWithDefaultConstructor() returns [ObjectWithNew, Obje
     return [obj3, obj4];
 }
 
-type A object {
+class A {
 
-    public string field = "";
-    
-    function __init () {
-        self.field = "value A"; 
+    public string 'field = "";
+
+    function init () {
+        self.'field = "value A";
     }
 
     function foo(C c) returns A {
         return new ();
     }
-};
+}
 
-type B object {
+class B {
 
-    public string field = "";
-    
-    function __init () {
-        self.field = "value B"; 
+    public string 'field = "";
+
+    function init () {
+        self.'field = "value B";
     }
 
     function foo(D d) returns B {
         return new ();
     }
-};
+}
 
-type C object {
+class C {
     function foo(A c) returns C {
         return new ();
     }
-};
+}
 
-type D object {
+class D {
     function foo(B a) returns D {
         return new ();
     }
-};
+}
 
 function testObjectEqualityWithRecursiveTypes() returns [A, B] {
     A obj1 = new();
@@ -542,12 +542,12 @@ function testObjectEqualityWithRecursiveTypes() returns [A, B] {
     return [obj3, obj4];
 }
 
-public type PersonInOrder object {
+public class PersonInOrder {
     public int age = 0;
     public string name = "";
     public string address = "";
 
-    public function __init (string name, int age) {
+    public function init (string name, int age) {
         self.age = age;
         self.name = name;
     }
@@ -563,9 +563,9 @@ public type PersonInOrder object {
     public function getAddress() returns string {
         return self.address;
     }
-};
+}
 
-public type PersonNotInOrder object {
+public class PersonNotInOrder {
 
     public function getName() returns string {
         return self.name;
@@ -577,7 +577,7 @@ public type PersonNotInOrder object {
         return self.age;
     }
 
-    public function __init (string name, int age) {
+    public function init (string name, int age) {
         self.age = age;
         self.name = name;
     }
@@ -589,7 +589,7 @@ public type PersonNotInOrder object {
     }
 
     public string address = "";
-};
+}
 
 function testObjectMemberOrder() returns [PersonInOrder, PersonNotInOrder] {
     PersonInOrder p1 = new("John", 35);
@@ -601,28 +601,153 @@ function testObjectMemberOrder() returns [PersonInOrder, PersonNotInOrder] {
     return [p4, p2];
 }
 
-type ObjectWithAnyTypeVariables object {
+class ObjectWithAnyTypeVariables {
     public any x;
     public any y;
 
-    function __init() {
+    function init() {
         self.x = "B";
         self.y = 100;
     }
-};
+}
 
-type ObjectWithoutAnyTypeVariables object {
+class ObjectWithoutAnyTypeVariables {
     public string x;
     public int y;
 
-    function __init() {
+    function init() {
         self.x = "A";
         self.y = 12;
     }
-};
+}
 
 function testInherentTypeViolationWithNilType() {
     ObjectWithoutAnyTypeVariables o1 = new;
     ObjectWithAnyTypeVariables o2 = o1;
     o2.x = (); // panic
+}
+
+class NonClientObject {
+    public string name;
+    public string id = "";
+
+    function init(string name) {
+        self.name = name;
+    }
+    public function send(string message) returns error? {
+    }
+    public function receive(string message) {
+    }
+}
+
+client class ClientObjectWithoutRemoteMethod {
+    public string name;
+    public string id = "";
+
+    function init(string name) {
+        self.name = name;
+    }
+    public function send(string message) returns error? {
+    }
+    public function receive(string message) {
+    }
+}
+
+function testObjectAssignabilityBetweenNonClientAndClientObject() {
+    NonClientObject obj1 = new("NonClientObject");
+    ClientObjectWithoutRemoteMethod obj2 = new("ClientObjectWithoutRemoteMethod");
+
+    NonClientObject obj3 = obj2;
+    ClientObjectWithoutRemoteMethod obj4 = obj1;
+
+    assertEquality("NonClientObject", obj4.name);
+    assertEquality("ClientObjectWithoutRemoteMethod", obj3.name);
+}
+
+client class Email {
+    public remote function send(string message) returns error? {
+    }
+}
+
+class FakeEmail {
+    public function send(string message) returns error? {
+    }
+}
+
+type Message record {|
+    Email f;
+|};
+
+type Text record {|
+    FakeEmail f;
+|};
+
+function subtypingBetweenNonClientAndClientObject1() returns Email {
+    FakeEmail p = new();
+    any e = p;
+    Email email = <Email> e;
+    return email;
+}
+
+function subtypingBetweenNonClientAndClientObject2() returns any {
+    Message b = {f: new};
+    record {|
+        object {}...;
+    |} r = b;
+
+    r["f"] = new FakeEmail();
+    return r["f"];
+}
+
+function subtypingBetweenNonClientAndClientObject3() returns FakeEmail {
+    Email p = new();
+    any e = p;
+    FakeEmail email = <FakeEmail> e;
+    return email;
+}
+
+function subtypingBetweenNonClientAndClientObject4() returns any {
+    Text b = {f: new};
+    record {|
+        object {}...;
+    |} r = b;
+
+    r["f"] = new Email();
+    return r["f"];
+}
+
+function testSubtypingBetweenNonClientAndClientObject() {
+    Email|error err1 = trap subtypingBetweenNonClientAndClientObject1();
+    any|error err2 = trap subtypingBetweenNonClientAndClientObject2();
+    FakeEmail|error err3 = trap subtypingBetweenNonClientAndClientObject3();
+    any|error err4 = trap subtypingBetweenNonClientAndClientObject4();
+
+    error e1 = <error> err1;
+    error e2 = <error> err2;
+    error e3 = <error> err3;
+    error e4 = <error> err4;
+
+    assertEquality("incompatible types: 'ObjectEquivalencyTest:FakeEmail' cannot be cast to " +
+    "'ObjectEquivalencyTest:Email'", e1.detail()["message"]);
+    assertEquality("invalid value for record field 'f': expected value of type 'ObjectEquivalencyTest:Email', " +
+    "found 'ObjectEquivalencyTest:FakeEmail'", e2.detail()["message"]);
+    assertEquality("incompatible types: 'ObjectEquivalencyTest:Email' cannot be cast to " +
+    "'ObjectEquivalencyTest:FakeEmail'", e3.detail()["message"]);
+    assertEquality("invalid value for record field 'f': expected value of type 'ObjectEquivalencyTest:FakeEmail', " +
+    "found 'ObjectEquivalencyTest:Email'", e4.detail()["message"]);
+}
+
+const ASSERTION_ERROR_REASON = "AssertionError";
+
+function assertEquality(any|error expected, any|error actual) {
+    if (expected is anydata && actual is anydata && expected == actual) {
+        return;
+    }
+
+    if (expected === actual) {
+        return;
+    }
+
+    panic error(ASSERTION_ERROR_REASON,
+                 message = "expected '" + expected.toString() + "', found '" + actual.toString () + "'");
 }

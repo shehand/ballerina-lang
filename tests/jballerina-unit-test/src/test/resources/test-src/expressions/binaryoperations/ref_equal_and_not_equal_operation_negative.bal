@@ -90,22 +90,22 @@ type Person record {
     int area = 0;
 };
 
-type Abc object {
+class Abc {
     public string name;
     private int area;
 
-    public function __init(string name, int area) {
+    public function init(string name, int area) {
         self.name = name;
         self.area = area;
     }
-};
+}
 
-type Def object {
+class Def {
     public string name;
     private int id;
 
-    public function __init(string name, int id) {
+    public function init(string name, int id) {
         self.name = name;
         self.id = id;
     }
-};
+}

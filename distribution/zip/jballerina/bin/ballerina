@@ -141,19 +141,6 @@ if [ -z "$JAVA_HOME" ]; then
   exit 1
 fi
 
-# Ballerina test/debug command
-argsLength=$#
-args=($@)
-for (( i=0; i<argsLength; i++ )); do
-  if [  "${args[$i]}" = "test" ]; then
-    for (( j=0; j<argsLength; j++ )); do
-      if [ "${args[$j]}" = "--debug" ]; then
-        BAL_JAVA_DEBUG=${args[$j+1]}
-      fi
-    done
-  fi
-done
-
 # ----- Process the input command ----------------------------------------------
 
 if [ -n "${BAL_JAVA_DEBUG+set}" ]; then
@@ -270,7 +257,7 @@ elif [[ $1 == "run" ]] && [[ $2 == *.jar ]]; then # if 1st arg is "run" and 2nd 
         -XX:HeapDumpPath="$BALLERINA_HOME/heap-dump.hprof" \
         $JAVA_OPTS \
         -classpath "$BALLERINA_CLASSPATH" \
-        -Dballerina.home=$BALLERINA_HOME \
+        -Dballerina.home="$BALLERINA_HOME" \
         -Dballerina.version=${project.version} \
         -Djava.util.logging.config.class="org.ballerinalang.logging.util.LogConfigReader" \
         -Djava.util.logging.manager="org.ballerinalang.logging.BLogManager" \
@@ -288,7 +275,7 @@ else
         -XX:HeapDumpPath="$BALLERINA_HOME/heap-dump.hprof" \
         $JAVA_OPTS \
         -classpath "$BALLERINA_CLASSPATH" \
-        -Dballerina.home=$BALLERINA_HOME \
+        -Dballerina.home="$BALLERINA_HOME" \
         -Dballerina.version=${project.version} \
         -Djava.util.logging.config.class="org.ballerinalang.logging.util.LogConfigReader" \
         -Djava.util.logging.manager="org.ballerinalang.logging.BLogManager" \

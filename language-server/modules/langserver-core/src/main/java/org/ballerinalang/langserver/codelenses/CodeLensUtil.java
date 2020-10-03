@@ -15,27 +15,15 @@
  */
 package org.ballerinalang.langserver.codelenses;
 
-import org.ballerinalang.langserver.DocumentServiceOperationContext;
-import org.ballerinalang.langserver.LSContextOperation;
-import org.ballerinalang.langserver.compiler.CollectDiagnosticListener;
-import org.ballerinalang.langserver.compiler.DocumentServiceKeys;
-import org.ballerinalang.langserver.compiler.LSContext;
-import org.ballerinalang.langserver.compiler.LSModuleCompiler;
-import org.ballerinalang.langserver.compiler.common.LSCustomErrorStrategy;
-import org.ballerinalang.langserver.compiler.exception.CompilationFailedException;
-import org.ballerinalang.langserver.compiler.workspace.WorkspaceDocumentManager;
-import org.ballerinalang.util.diagnostic.DiagnosticListener;
+import org.ballerinalang.langserver.commons.LSContext;
+import org.ballerinalang.langserver.commons.codelenses.LSCodeLensesProviderException;
+import org.ballerinalang.langserver.commons.codelenses.spi.LSCodeLensesProvider;
 import org.eclipse.lsp4j.CodeLens;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.wso2.ballerinalang.compiler.tree.BLangCompilationUnit;
-import org.wso2.ballerinalang.compiler.tree.BLangPackage;
-import org.wso2.ballerinalang.compiler.util.CompilerContext;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Optional;
-
 
 /**
  * Provides code lenses related common functionalities.
@@ -48,50 +36,19 @@ public class CodeLensUtil {
     /**
      * Compile and get code lenses.
      *
-     * @param fileUri         file uri
-     * @param documentManager Document Manager
+     * @param codeLensContext LSContext
      * @return a list of code lenses
-     * @throws CompilationFailedException thrown when compilation error occurs
      */
-    public static List<CodeLens> compileAndGetCodeLenses(String fileUri, WorkspaceDocumentManager documentManager)
-            throws CompilationFailedException {
+    public static List<CodeLens> getCodeLenses(LSContext codeLensContext) {
         List<CodeLens> lenses = new ArrayList<>();
-        LSContext codeLensContext = new DocumentServiceOperationContext
-                .ServiceOperationContextBuilder(LSContextOperation.TXT_CODE_LENS)
-                .withCommonParams(null, fileUri, documentManager)
-                .build();
-        BLangPackage bLangPackage = LSModuleCompiler.getBLangPackage(codeLensContext, documentManager,
-                                                               LSCustomErrorStrategy.class, false, false);
-        // Source compilation has no errors, continue
-        Optional<BLangCompilationUnit> documentCUnit = bLangPackage.getCompilationUnits().stream()
-                .filter(cUnit -> (fileUri.endsWith(cUnit.getName())))
-                .findFirst();
-
-        CompilerContext compilerContext = codeLensContext.get(DocumentServiceKeys.COMPILER_CONTEXT_KEY);
-        final List<org.ballerinalang.util.diagnostic.Diagnostic> diagnostics = new ArrayList<>();
-        if (compilerContext.get(DiagnosticListener.class) instanceof CollectDiagnosticListener) {
-            CollectDiagnosticListener listener =
-                    (CollectDiagnosticListener) compilerContext.get(DiagnosticListener.class);
-            diagnostics.addAll(listener.getDiagnostics());
-            listener.clearAll();
-        }
-
-        codeLensContext.put(CodeLensesProviderKeys.BLANG_PACKAGE_KEY, bLangPackage);
-        codeLensContext.put(CodeLensesProviderKeys.FILE_URI_KEY, fileUri);
-        codeLensContext.put(CodeLensesProviderKeys.DIAGNOSTIC_KEY, diagnostics);
-
-        documentCUnit.ifPresent(cUnit -> {
-            codeLensContext.put(CodeLensesProviderKeys.COMPILATION_UNIT_KEY, cUnit);
-
-            List<LSCodeLensesProvider> providers = LSCodeLensesProviderFactory.getInstance().getProviders();
-            for (LSCodeLensesProvider provider : providers) {
-                try {
-                    lenses.addAll(provider.getLenses(codeLensContext));
-                } catch (LSCodeLensesProviderException e) {
-                    LOGGER.error("Error while retrieving lenses from: " + provider.getName());
-                }
+        List<LSCodeLensesProvider> providers = LSCodeLensesProviderHolder.getInstance().getProviders();
+        for (LSCodeLensesProvider provider : providers) {
+            try {
+                lenses.addAll(provider.getLenses(codeLensContext));
+            } catch (LSCodeLensesProviderException e) {
+                LOGGER.error("Error while retrieving lenses from: " + provider.getName());
             }
-        });
+        }
         return lenses;
     }
 }

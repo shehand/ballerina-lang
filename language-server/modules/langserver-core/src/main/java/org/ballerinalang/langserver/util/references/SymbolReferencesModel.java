@@ -22,7 +22,6 @@ import org.wso2.ballerinalang.compiler.util.diagnotic.DiagnosticPos;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Optional;
 import java.util.stream.Collectors;
 
 /**
@@ -51,8 +50,8 @@ public class SymbolReferencesModel {
         this.definitions.add(definition);
     }
 
-    public Optional<Reference> getReferenceAtCursor() {
-        return Optional.ofNullable(referenceAtCursor);
+    public Reference getReferenceAtCursor() {
+        return referenceAtCursor;
     }
 
     public void setReferenceAtCursor(Reference symbol) {
@@ -74,7 +73,9 @@ public class SymbolReferencesModel {
             this.position = position;
             this.symbol = symbol;
             this.bLangNode = bLangNode;
-            this.symbolPkgName = symbol.pkgID.nameComps.stream().map(Name::getValue).collect(Collectors.joining("."));
+            this.symbolPkgName = (symbol != null)
+                    ? symbol.pkgID.nameComps.stream().map(Name::getValue).collect(Collectors.joining("."))
+                    : "";
             this.compilationUnit = position.src.cUnitName;
             this.sourcePkgName = position.src.pkgID.name.value;
         }

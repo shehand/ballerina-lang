@@ -41,12 +41,12 @@ const EXPECTED_CLIENT_OBJECT_FAILURE_MESSAGE = "expected client object's ";
 // method-name := identifier
 // method-body := function-body-block | ;
 // metadata := [DocumentationString] annots
-type ClientObject client object {
+client class ClientObject {
     public string publicStringField;
     private int privateIntField;
     float defaultVisibilityFloatField;
 
-    function __init(string argOne, int argTwo, float argThree) {
+    function init(string argOne, int argTwo, float argThree) {
         self.publicStringField = argOne;
         self.privateIntField = argTwo;
         self.defaultVisibilityFloatField = argThree;
@@ -98,7 +98,7 @@ type ClientObject client object {
     remote function defaultVisibiltyRemoteMethodDefn() returns float {
         return self.defaultVisibilityFloatField;
     }
-};
+}
 
 public function ClientObject.publicMethodDecl(string argOne, int argTwo) returns float {
     self.publicStringField = argOne;

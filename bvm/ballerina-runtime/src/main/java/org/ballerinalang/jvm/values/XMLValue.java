@@ -16,20 +16,20 @@
 
 package org.ballerinalang.jvm.values;
 
-import org.apache.axiom.om.OMElement;
-import org.apache.axiom.om.OMNode;
+import org.ballerinalang.jvm.BallerinaXMLSerializer;
 import org.ballerinalang.jvm.XMLNodeType;
+import org.ballerinalang.jvm.api.values.BLink;
+import org.ballerinalang.jvm.api.values.BMap;
+import org.ballerinalang.jvm.api.values.BString;
+import org.ballerinalang.jvm.api.values.BXML;
+import org.ballerinalang.jvm.api.values.BXMLQName;
 import org.ballerinalang.jvm.types.BType;
 import org.ballerinalang.jvm.types.BTypes;
 import org.ballerinalang.jvm.util.exceptions.BallerinaException;
-import org.ballerinalang.jvm.values.api.BMap;
-import org.ballerinalang.jvm.values.api.BXML;
-import org.ballerinalang.jvm.values.api.BXMLQName;
-import org.ballerinalang.jvm.values.freeze.State;
-import org.ballerinalang.jvm.values.freeze.Status;
 
-import java.util.Iterator;
+import java.io.OutputStream;
 import java.util.List;
+import java.util.Map;
 
 import javax.xml.namespace.QName;
 
@@ -45,89 +45,14 @@ import javax.xml.namespace.QName;
  * <p>
  * <i>Note: This is an internal API and may change in future versions.</i>
  * </p>
- * 
- * @param <T> Type of the underlying impl
+ *
  * @since 0.995.0
  */
-public abstract class XMLValue<T> implements RefValue, BXML<T>, CollectionValue {
+public abstract class XMLValue implements RefValue, BXML, CollectionValue {
 
     BType type = BTypes.typeXML;
 
-    /**
-     * Start of a XML comment.
-     */
-    public static final String COMMENT_START = "<!--";
-
-    /**
-     * End of a XML Comment.
-     */
-    public static final String COMMENT_END = "-->";
-
-    /**
-     * Start of a XML processing instruction.
-     */
-    public static final String PI_START = "<?";
-
-    /**
-     * End of a XML processing instruction.
-     */
-    public static final String PI_END = "?>";
-
-    protected volatile Status freezeStatus = new Status(State.UNFROZEN);
-
-    /**
-     * Check whether the XML sequence is empty.
-     * 
-     * @return Flag indicating whether the XML sequence is empty
-     */
-    public abstract boolean isEmpty();
-
-    /**
-     * Check whether the XML sequence contains only a single element.
-     * 
-     * @return Flag indicating whether the XML sequence contains only a single element
-     */
-    public abstract boolean isSingleton();
-
-    /**
-     * Get the type of the XML as a {@link String}. Type can be one of "element", "text", "comment" or "pi".
-     * 
-     * @return Type of the XML as a {@link String}
-     */
-    public abstract String getItemType();
-
-    /**
-     * Get the fully qualified name of the element as a {@link String}.
-     * 
-     * @return fully qualified name of the element as a {@link String}.
-     */
-    public abstract String getElementName();
-
-    /**
-     * Get the text values in this XML.
-     * 
-     * @return text values in this XML.
-     */
-    public abstract String getTextValue();
-
-    /**
-     * Get the value of a single attribute as a string.
-     * 
-     * @param localName Local name of the attribute
-     * @param namespace Namespace of the attribute
-     * @return Value of the attribute
-     */
-    public abstract String getAttribute(String localName, String namespace);
-
-    /**
-     * Get the value of a single attribute as a string.
-     * 
-     * @param localName Local name of the attribute
-     * @param namespace Namespace of the attribute
-     * @param prefix Prefix of the namespace
-     * @return Value of the attribute
-     */
-    public abstract String getAttribute(String localName, String namespace, String prefix);
+    public abstract int size();
 
     /**
      * Get the value of a single attribute as a string.
@@ -135,7 +60,7 @@ public abstract class XMLValue<T> implements RefValue, BXML<T>, CollectionValue 
      * @param attributeName Qualified name of the attribute
      * @return Value of the attribute
      */
-    public String getAttribute(BXMLQName attributeName) {
+    public BString getAttribute(BXMLQName attributeName) {
         return getAttribute(attributeName.getLocalName(), attributeName.getUri(), attributeName.getPrefix());
     }
 
@@ -143,22 +68,26 @@ public abstract class XMLValue<T> implements RefValue, BXML<T>, CollectionValue 
      * Set the value of a single attribute. If the attribute already exsists, then the value will be updated.
      * Otherwise a new attribute will be added.
      * 
-     * @param namespace Namespace of the attribute
-     * @param prefix Namespace prefix of the attribute
-     * @param localName Local name of the attribute
+     * @param attributeName Qualified name of the attribute
      * @param value Value of the attribute
      */
-    public abstract void setAttribute(String localName, String namespace, String prefix, String value);
+    @Deprecated
+    public void setAttribute(BXMLQName attributeName, String value) {
+        setAttributeOnInitialization(attributeName.getLocalName(), attributeName.getUri(), attributeName.getPrefix(),
+                                     value);
+    }
 
     /**
      * Set the value of a single attribute. If the attribute already exsists, then the value will be updated.
      * Otherwise a new attribute will be added.
-     * 
+     *
      * @param attributeName Qualified name of the attribute
      * @param value Value of the attribute
      */
-    public void setAttribute(BXMLQName attributeName, String value) {
-        setAttribute(attributeName.getLocalName(), attributeName.getUri(), attributeName.getPrefix(), value);
+    @Deprecated
+    public void setAttribute(BXMLQName attributeName, BString value) {
+        setAttributeOnInitialization(attributeName.getLocalName(), attributeName.getUri(), attributeName.getPrefix(),
+                                     value.getValue());
     }
 
     /**
@@ -166,67 +95,14 @@ public abstract class XMLValue<T> implements RefValue, BXML<T>, CollectionValue 
      * 
      * @return Attributes as a {@link MapValueImpl}
      */
-    public abstract MapValue<String, ?> getAttributesMap();
+    public abstract MapValue<BString, ?> getAttributesMap();
 
     /**
      * Set the attributes of the XML{@link MapValueImpl}.
      * 
      * @param attributes Attributes to be set.
      */
-    public abstract void setAttributes(BMap<String, ?> attributes);
-
-    /**
-     * Get all the elements-type items, in the given sequence.
-     * 
-     * @return All the elements-type items, in the given sequence
-     */
-    public abstract XMLValue<?> elements();
-
-    /**
-     * Get all the elements-type items in the given sequence, that matches a given qualified name.
-     * 
-     * @param qname qualified name of the element
-     * @return All the elements-type items, that matches a given qualified name, from the this sequence.
-     */
-    public abstract XMLValue<?> elements(String qname);
-
-    /**
-     * Selects and concatenate all the children sequences of the elements in this sequence.
-     * 
-     * @return All the children sequences of the elements in this sequence
-     */
-    public abstract XMLValue<?> children();
-
-    /**
-     * Selects and concatenate all the children sequences that matches the given qualified name,
-     * in all the element-type items in this sequence. Only the children will be selected, but not
-     * the nested children.
-     * 
-     * @param qname qualified name of the children to filter
-     * @return All the children that matches the given qualified name, as a sequence
-     */
-    public abstract XMLValue<?> children(String qname);
-
-    /**
-     * Set the children of this XML. Any existing children will be removed.
-     * 
-     * @param seq XML Sequence to be set as the children
-     */
-    public abstract void setChildren(XMLValue<?> seq);
-
-    /**
-     * Add a XMl sequence to this XML as children.
-     * 
-     * @param seq XML Sequence to be added as the children
-     */
-    public abstract void addChildren(XMLValue<?> seq);
-
-    /**
-     * Strips any text items from the XML that are all whitespace.
-     *
-     * @return striped xml
-     */
-    public abstract XMLValue<?> strip();
+    public abstract void setAttributes(BMap<BString, ?> attributes);
 
     /**
      * Get the type of the XML.
@@ -236,42 +112,14 @@ public abstract class XMLValue<T> implements RefValue, BXML<T>, CollectionValue 
     public abstract XMLNodeType getNodeType();
 
     /**
-     * Slice and return a subsequence of the given XML sequence.
-     * 
-     * @param startIndex To slice
-     * @param endIndex To slice
-     * @return sliced sequence
-     */
-    public abstract XMLValue<?> slice(long startIndex, long endIndex);
-
-    /**
-     * Searches in children recursively for elements matching the name and returns a sequence containing them all.
-     * Does not search within a matched result.
-     * 
-     * @param qname Qualified name of the descendants to filter
-     * @return All the descendants that matches the given qualified name, as a sequence
-     */
-    public abstract XMLValue<?> descendants(String qname);
-
-    /**
-     * Get an item from the XML sequence, at the given index.
-     * 
-     * @param index Index of the item to retrieve
-     * @return Item at the given index in the sequence
-     */
-    public abstract XMLValue<?> getItem(int index);
-
-    /**
-     * Get the length of this XML sequence.
-     * 
-     * @return length of this XML sequence.
-     */
-    public abstract int size();
-
-    /**
      * Builds itself.
      */
     public abstract void build();
+
+    @Override
+    public String informalStringValue(BLink parent) {
+        return "`" + stringValue(parent) + "`";
+    }
 
     /**
      * {@inheritDoc}
@@ -280,6 +128,11 @@ public abstract class XMLValue<T> implements RefValue, BXML<T>, CollectionValue 
     public BType getType() {
         return type;
     }
+
+    protected abstract void setAttributesOnInitialization(BMap<BString, ?> attributes);
+
+    protected abstract void setAttributeOnInitialization(String localName, String namespace, String prefix,
+                                                         String value);
 
     // private methods
 
@@ -305,7 +158,7 @@ public abstract class XMLValue<T> implements RefValue, BXML<T>, CollectionValue 
         int rParenIndex = qname.indexOf('}');
 
         if (qname.startsWith("{") && rParenIndex > 0) {
-            localname = qname.substring(rParenIndex + 1, qname.length());
+            localname = qname.substring(rParenIndex + 1);
             nsUri = qname.substring(1, rParenIndex);
         } else {
             localname = qname;
@@ -317,47 +170,63 @@ public abstract class XMLValue<T> implements RefValue, BXML<T>, CollectionValue 
 
     /**
      * Recursively traverse and add the descendant with the given name to the descendants list.
-     * 
      * @param descendants List to add descendants
      * @param currentElement Current node
-     * @param qname Qualified name of the descendants to search
+     * @param qnames Qualified names of the descendants to search
      */
-    @SuppressWarnings("unchecked")
-    protected void addDescendants(List<XMLValue<?>> descendants, OMElement currentElement, String qname) {
-        Iterator<OMNode> childrenItr = currentElement.getChildren();
-        while (childrenItr.hasNext()) {
-            OMNode child = childrenItr.next();
-            if (child.getType() != OMNode.ELEMENT_NODE) {
-                continue;
+    protected void addDescendants(List<BXML> descendants, XMLItem currentElement, List<String> qnames) {
+        for (BXML child : currentElement.getChildrenSeq().children) {
+            if (child.getNodeType() == XMLNodeType.ELEMENT) {
+                String elemName = ((XMLItem) child).getQName().toString();
+                if (qnames.contains(elemName)) {
+                    descendants.add(child);
+                }
+                addDescendants(descendants, (XMLItem) child, qnames);
             }
-            if (qname.equals(((OMElement) child).getQName().toString())) {
-                descendants.add(new XMLItem(child));
-                continue;
-            }
-            addDescendants(descendants, (OMElement) child, qname);
         }
     }
 
-    /**
-     * Remove an attribute from the XML.
-     * 
-     * @param qname Qualified name of the attribute
-     */
-    public abstract void removeAttribute(String qname);
+    // TODO: These are bridge methods to invoke methods in BXML interface
+    // Fix in the JVM code gen to directly call overridden BXML methods
+    public void addChildren(XMLValue seq) {
+        addChildren((BXML) seq);
+    }
 
-    /**
-     * Remove children matching the given name from an XML.
-     * 
-     * @param qname Namespace qualified name of the children to be removed.
-     */
-    public abstract void removeChildren(String qname);
+    public void setChildren(XMLValue seq) {
+        setChildren((BXML) seq);
+    }
+
+    public abstract XMLValue children();
+
+    public abstract XMLValue children(String qname);
 
     /**
      * {@inheritDoc}
      */
-    public synchronized boolean isFrozen() {
-        return this.freezeStatus.isFrozen();
+    @Override
+    public Object frozenCopy(Map<Object, Object> refs) {
+        XMLValue copy = (XMLValue) copy(refs);
+        if (!copy.isFrozen()) {
+            copy.freezeDirect();
+        }
+        return copy;
     }
 
-    public abstract T value();
+    public abstract XMLValue getItem(int index);
+
+    @Override
+    public void serialize(OutputStream outputStream) {
+        try {
+            if (outputStream instanceof BallerinaXMLSerializer) {
+                ((BallerinaXMLSerializer) outputStream).write(this);
+            } else {
+                BallerinaXMLSerializer xmlSerializer = new BallerinaXMLSerializer(outputStream);
+                xmlSerializer.write(this);
+                xmlSerializer.flush();
+                xmlSerializer.close();
+            }
+        } catch (Throwable t) {
+            handleXmlException("error occurred during writing the message to the output stream: ", t);
+        }
+    }
 }

@@ -24,9 +24,9 @@ function funcInvocWithNonExistingNamedArgs() {
 function bar(int a, string b = "John", int... z) {
 }
 
-function funcInvocWitTooManyArgs() {
+function funcInvocWithInvalidIndividualRestArgWithVarArg() {
     int[] array = [1, 2, 3];
-    bar(5, "Alex", 6, ...array);
+    bar(5, "Alex", 6.0, ...array);
 }
 
 //function funcInvocAsRestArgs() returns [int, float, string, int, string, int[]] { // moved to different-function-signatures-negative.bal
@@ -85,7 +85,7 @@ function restArgTest() {
     normalFunction(1, "A", 2.2, bArray); // incompatible types: expected 'boolean', found 'boolean[]'
     normalFunction(1, "A", 2.2, ...bArray);
     normalFunction(1, "A", bArray); // incompatible types: expected 'float', found 'boolean[]'
-    normalFunction(1, "A", ...bArray);
+    normalFunction(1, "A", ...bArray); // incompatible types: expected '[float,boolean...]', found 'boolean[]'
     normalFunction(x = 1, y = "A", f = 2.2, bArray); // positional argument not allowed after named arguments
     normalFunction(x = 1, y = "A", f = 2.2, ...bArray); // rest argument not allowed after named arguments
 }
@@ -122,7 +122,7 @@ function getFloat() returns float {
 function testForwardReferencingParams1(int x, int y = z, int z = 12) { } // undefined symbol 'z'
 function testForwardReferencingParams2(float y = z * 2, float z = getFloat()) { } // undefined symbol 'z'
 
-type Foo object {
+class Foo {
     function testForwardReferencingParams1(int x, int y = z, int z = 12) { } // undefined symbol 'z'
     function testForwardReferencingParams2(float y = z * 2, float z = getFloat()) { } // undefined symbol 'z'
-};
+}

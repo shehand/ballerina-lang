@@ -80,8 +80,8 @@ public class TypeCastExpressionsTest {
     }
 
     @Test(expectedExceptions = BLangRuntimeException.class,
-            expectedExceptionsMessageRegExp = "error: \\{ballerina\\}TypeCastError message=incompatible " +
-                    "types: 'string\\|int\\|\\(\\)\\[2\\]' cannot be cast to 'string\\[2\\]'.*")
+            expectedExceptionsMessageRegExp = "error: \\{ballerina\\}TypeCastError \\{\"message\":\"incompatible " +
+                    "types: '\\(string\\|int\\|\\(\\)\\)\\[2\\]' cannot be cast to 'string\\[2\\]'.*")
     public void testArrayCastNegative() {
         BRunUtil.invoke(result, "testArrayCastNegative");
     }
@@ -94,7 +94,7 @@ public class TypeCastExpressionsTest {
     }
 
     @Test(expectedExceptions = BLangRuntimeException.class,
-            expectedExceptionsMessageRegExp = ".*incompatible types: 'xml' cannot be cast to 'json'.*")
+            expectedExceptionsMessageRegExp = ".*incompatible types: 'lang.xml:Text' cannot be cast to 'json'.*")
     public void testJsonCastNegative() {
         BRunUtil.invoke(result, "testJsonCastNegative");
     }
@@ -113,13 +113,15 @@ public class TypeCastExpressionsTest {
 
     @Test(expectedExceptions = BLangRuntimeException.class,
             expectedExceptionsMessageRegExp = ".*incompatible types: 'table<TableEmployee>' cannot be cast to " +
-                    "'table<TableEmployeeTwo>'.*")
+                    "'table<TableEmployeeTwo>'.*", enabled = false)
     public void testTableCastNegative() {
         BRunUtil.invoke(result, "testTableCastNegative");
     }
 
     @Test(expectedExceptions = BLangRuntimeException.class,
-            expectedExceptionsMessageRegExp = ".*incompatible types: 'string' cannot be cast to 'xml'.*")
+            expectedExceptionsMessageRegExp = ".*incompatible types: 'string' cannot be cast to 'xml\\" +
+                    "<lang\\.xml:Element" + "\\|lang\\.xml:Comment\\|lang\\.xml:ProcessingInstruction\\|" +
+                    "lang\\.xml:Text\\>'.*")
     public void testXmlCastNegative() {
         BRunUtil.invoke(result, "testXmlCastNegative");
     }
@@ -169,14 +171,14 @@ public class TypeCastExpressionsTest {
     }
 
     @Test(expectedExceptions = BLangRuntimeException.class,
-            expectedExceptionsMessageRegExp = "error: \\{ballerina\\}TypeCastError message=incompatible " +
+            expectedExceptionsMessageRegExp = "error: \\{ballerina\\}TypeCastError \\{\"message\":\"incompatible " +
                     "types: 'int' cannot be cast to 'string\\|boolean'.*")
     public void testDirectlyUnmatchedUnionToUnionCastNegativeOne() {
         BRunUtil.invoke(result, "testDirectlyUnmatchedUnionToUnionCastNegative_1");
     }
 
     @Test(expectedExceptions = BLangRuntimeException.class,
-            expectedExceptionsMessageRegExp = "error: \\{ballerina\\}TypeCastError message=incompatible " +
+            expectedExceptionsMessageRegExp = "error: \\{ballerina\\}TypeCastError \\{\"message\":\"incompatible " +
                     "types: 'string' cannot be cast to 'Lead\\|int'.*")
     public void testDirectlyUnmatchedUnionToUnionCastNegativeTwo() {
         BRunUtil.invoke(result, "testDirectlyUnmatchedUnionToUnionCastNegative_2");
@@ -211,16 +213,16 @@ public class TypeCastExpressionsTest {
         BValue[] returns = BRunUtil.invoke(result, "testBooleanAsBoolean", new BValue[0]);
         Assert.assertEquals(returns.length, 4);
         Assert.assertSame(returns[0].getClass(), BBoolean.class);
-        Assert.assertEquals(((BBoolean) returns[0]).booleanValue(), true, "invalid boolean representation as " +
+        Assert.assertTrue(((BBoolean) returns[0]).booleanValue(), "invalid boolean representation as " +
                 "boolean");
         Assert.assertSame(returns[1].getClass(), BBoolean.class);
-        Assert.assertEquals(((BBoolean) returns[1]).booleanValue(), true, "invalid boolean representation as " +
+        Assert.assertTrue(((BBoolean) returns[1]).booleanValue(), "invalid boolean representation as " +
                 "boolean");
         Assert.assertSame(returns[2].getClass(), BBoolean.class);
-        Assert.assertEquals(((BBoolean) returns[2]).booleanValue(), false, "invalid boolean representation as " +
+        Assert.assertFalse(((BBoolean) returns[2]).booleanValue(), "invalid boolean representation as " +
                 "boolean");
         Assert.assertSame(returns[3].getClass(), BBoolean.class);
-        Assert.assertEquals(((BBoolean) returns[3]).booleanValue(), false, "invalid boolean representation as " +
+        Assert.assertFalse(((BBoolean) returns[3]).booleanValue(), "invalid boolean representation as " +
                 "boolean");
     }
 
@@ -229,10 +231,10 @@ public class TypeCastExpressionsTest {
         BValue[] returns = BRunUtil.invoke(result, "testBooleanInUnionAsBoolean", new BValue[0]);
         Assert.assertEquals(returns.length, 2);
         Assert.assertSame(returns[0].getClass(), BBoolean.class);
-        Assert.assertEquals(((BBoolean) returns[0]).booleanValue(), true, "invalid boolean representation as " +
+        Assert.assertTrue(((BBoolean) returns[0]).booleanValue(), "invalid boolean representation as " +
                 "boolean");
         Assert.assertSame(returns[1].getClass(), BBoolean.class);
-        Assert.assertEquals(((BBoolean) returns[1]).booleanValue(), false, "invalid boolean representation as " +
+        Assert.assertFalse(((BBoolean) returns[1]).booleanValue(), "invalid boolean representation as " +
                 "boolean");
     }
 
@@ -251,7 +253,9 @@ public class TypeCastExpressionsTest {
     }
 
     @Test(expectedExceptions = BLangRuntimeException.class,
-            expectedExceptionsMessageRegExp = ".*incompatible types: 'int' cannot be cast to 'string\\|xml'.*")
+            expectedExceptionsMessageRegExp = ".*incompatible types: 'int' cannot be cast to 'string\\|xml\\" +
+            "<lang\\.xml:Element" + "\\|lang\\.xml:Comment\\|lang\\.xml:ProcessingInstruction\\|" +
+                    "lang\\.xml:Text\\>'.*")
     public void testFiniteTypeToRefTypeCastNegative() {
         BRunUtil.invoke(result, "testFiniteTypeToRefTypeCastNegative");
     }
@@ -292,7 +296,6 @@ public class TypeCastExpressionsTest {
                 {"testJsonCastPositive"},
                 {"testMapCastPositive"},
                 {"testRecordCastPositive"},
-                {"testTableCastPositive"},
                 {"testXmlCastPositive"},
                 {"testErrorCastPositive"},
                 {"testFunctionCastPositive"},

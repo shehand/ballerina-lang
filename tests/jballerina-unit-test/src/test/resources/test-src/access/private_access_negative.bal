@@ -1,6 +1,6 @@
-type Foo object {
+class Foo {
     public string s = "";
-};
+}
 
 type Bar record {
     string s = "";
@@ -17,7 +17,7 @@ object {    // No errors due to anon types.
 
          } anonObj = new;
 
-public type ParentFoo object {
+public class ParentFoo {
 
     public int i = 0;
     public ChildFoo c = new("");    // :23:5:: 'ChildFoo'
@@ -25,21 +25,21 @@ public type ParentFoo object {
     public Baz z = 1;               // :25:5:: 'Baz'
 
 
-    public function __init (int i, ChildFoo  c){    // :28:5:: 'ChildFoo'
+    public function init (int i, ChildFoo  c){    // :28:5:: 'ChildFoo'
         self.i = i;
         self.c = c;
     }
-};
+}
 
-type ChildFoo object {
+class ChildFoo {
 
     private string name = "";
 
 
-    function __init(string name) {
+    function init(string name) {
         self.name = name;
     }
-};
+}
 // :44:1:: 'Bar', :44:55:: 'Foo', :44:76:: 'Foo'
 public function fooFunc2 (string s, Bar r, int i = 4, Foo... fArg) returns Foo {
     Foo f = new ();
@@ -176,11 +176,11 @@ public function test7() returns record {
     return m;
 }
 
-type FooTypeObj object {
+class FooTypeObj {
 
     public string s = "";
 
-};
+}
 
 type BarTypeRecord record {
     string s = "";
@@ -195,11 +195,11 @@ public type TypeB BarTypeRecord;
 public type TypeC BazTypeFinite;
 
 
-public type FooTypePublicObj object {
+public class FooTypePublicObj {
 
     public string s = "";
 
-};
+}
 
 public type BarTypePublicRecord record {
     string s = "";

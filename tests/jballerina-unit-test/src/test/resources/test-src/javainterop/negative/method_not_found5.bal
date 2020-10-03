@@ -1,4 +1,4 @@
-import ballerinax/java;
+import ballerina/java;
 
 public function interopWithAnydataReturn() returns boolean {
     var a = acceptIntAnydataReturn(1);
@@ -21,6 +21,6 @@ public function interopWithAnydataReturn() returns boolean {
 }
 
 public function acceptIntAnydataReturn(int s) returns anydata= @java:Method {
-    class:"org/ballerinalang/nativeimpl/jvm/tests/StaticMethods",
+    'class:"org/ballerinalang/nativeimpl/jvm/tests/StaticMethods",
     name:"acceptIntStringAndUnionReturn"
 } external;

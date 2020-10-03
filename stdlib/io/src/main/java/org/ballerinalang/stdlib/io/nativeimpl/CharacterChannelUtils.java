@@ -20,16 +20,19 @@ package org.ballerinalang.stdlib.io.nativeimpl;
 
 import org.ballerinalang.jvm.JSONParser;
 import org.ballerinalang.jvm.XMLFactory;
+import org.ballerinalang.jvm.api.BStringUtils;
+import org.ballerinalang.jvm.api.values.BMap;
+import org.ballerinalang.jvm.api.values.BObject;
+import org.ballerinalang.jvm.api.values.BString;
 import org.ballerinalang.jvm.util.exceptions.BallerinaException;
-import org.ballerinalang.jvm.values.ObjectValue;
 import org.ballerinalang.jvm.values.XMLValue;
-import org.ballerinalang.jvm.values.utils.StringUtils;
 import org.ballerinalang.stdlib.io.channels.base.Channel;
 import org.ballerinalang.stdlib.io.channels.base.CharacterChannel;
 import org.ballerinalang.stdlib.io.readers.CharacterChannelReader;
 import org.ballerinalang.stdlib.io.utils.BallerinaIOException;
 import org.ballerinalang.stdlib.io.utils.IOConstants;
 import org.ballerinalang.stdlib.io.utils.IOUtils;
+import org.ballerinalang.stdlib.io.utils.PropertyUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -50,11 +53,11 @@ public class CharacterChannelUtils {
     private CharacterChannelUtils() {
     }
 
-    public static void initCharacterChannel(ObjectValue characterChannel, ObjectValue byteChannelInfo,
-            String encoding) {
+    public static void initCharacterChannel(BObject characterChannel, BObject byteChannelInfo,
+                                            BString encoding) {
         try {
             Channel byteChannel = (Channel) byteChannelInfo.getNativeData(IOConstants.BYTE_CHANNEL_NAME);
-            CharacterChannel bCharacterChannel = new CharacterChannel(byteChannel, encoding);
+            CharacterChannel bCharacterChannel = new CharacterChannel(byteChannel, encoding.getValue());
             characterChannel.addNativeData(CHARACTER_CHANNEL_NAME, bCharacterChannel);
         } catch (Exception e) {
             String message = "error occurred while converting byte channel to character channel: " + e.getMessage();
@@ -63,13 +66,14 @@ public class CharacterChannelUtils {
         }
     }
 
-    public static Object read(ObjectValue channel, long numberOfCharacters) {
+    public static Object read(BObject channel, long numberOfCharacters) {
         CharacterChannel characterChannel = (CharacterChannel) channel.getNativeData(CHARACTER_CHANNEL_NAME);
         if (characterChannel.hasReachedEnd()) {
             return IOUtils.createEoFError();
         } else {
             try {
-                return characterChannel.read((int) numberOfCharacters);
+                return BStringUtils
+                        .fromString(characterChannel.read((int) numberOfCharacters));
             } catch (BallerinaIOException e) {
                 log.error("error occurred while reading characters.", e);
                 return IOUtils.createError(e);
@@ -77,14 +81,14 @@ public class CharacterChannelUtils {
         }
     }
 
-    public static Object readJson(ObjectValue channel) {
+    public static Object readJson(BObject channel) {
         CharacterChannel charChannel = (CharacterChannel) channel.getNativeData(CHARACTER_CHANNEL_NAME);
         CharacterChannelReader reader = new CharacterChannelReader(charChannel);
         try {
-            Object returnValue = JSONParser.parse(reader);
+            Object returnValue = JSONParser.parse(reader, JSONParser.NonStringValueProcessingMode.FROM_JSON_STRING);
             if (returnValue instanceof String) {
 
-                return org.ballerinalang.jvm.StringUtils.fromString((String) returnValue);
+                return BStringUtils.fromString((String) returnValue);
             }
             return returnValue;
         } catch (BallerinaException e) {
@@ -93,7 +97,7 @@ public class CharacterChannelUtils {
         }
     }
 
-    public static Object readXml(ObjectValue channel) {
+    public static Object readXml(BObject channel) {
         CharacterChannel charChannel = (CharacterChannel) channel.getNativeData(CHARACTER_CHANNEL_NAME);
         CharacterChannelReader reader = new CharacterChannelReader(charChannel);
         try {
@@ -103,7 +107,27 @@ public class CharacterChannelUtils {
         }
     }
 
-    public static Object close(ObjectValue channel) {
+    public static Object readProperty(BObject channel, BString key, BString defaultValue) {
+        CharacterChannel charChannel = (CharacterChannel) channel.getNativeData(CHARACTER_CHANNEL_NAME);
+        CharacterChannelReader reader = new CharacterChannelReader(charChannel);
+        try {
+            return PropertyUtils.readProperty(reader, key, defaultValue, Integer.toString(charChannel.id()));
+        } catch (IOException e) {
+            return IOUtils.createError(e);
+        }
+    }
+
+    public static Object readAllProperties(BObject channel) {
+        CharacterChannel charChannel = (CharacterChannel) channel.getNativeData(CHARACTER_CHANNEL_NAME);
+        CharacterChannelReader reader = new CharacterChannelReader(charChannel);
+        try {
+            return PropertyUtils.readAllProperties(reader, Integer.toString(charChannel.id()));
+        } catch (IOException e) {
+            return IOUtils.createError(e);
+        }
+    }
+
+    public static Object close(BObject channel) {
         CharacterChannel charChannel = (CharacterChannel) channel.getNativeData(CHARACTER_CHANNEL_NAME);
         try {
             charChannel.close();
@@ -115,32 +139,44 @@ public class CharacterChannelUtils {
         return null;
     }
 
-    public static Object write(ObjectValue channel, String content, long startOffset) {
+    public static Object write(BObject channel, BString content, long startOffset) {
         CharacterChannel characterChannel = (CharacterChannel) channel.getNativeData(CHARACTER_CHANNEL_NAME);
         try {
-            return characterChannel.write(content, (int) startOffset);
+            return characterChannel.write(content.getValue(), (int) startOffset);
         } catch (IOException e) {
             return IOUtils.createError(e);
         }
     }
 
-    public static Object writeJson(ObjectValue characterChannelObj, Object content) {
+    public static Object writeJson(BObject characterChannelObj, Object content) {
         try {
             CharacterChannel characterChannel = (CharacterChannel) characterChannelObj
                     .getNativeData(CHARACTER_CHANNEL_NAME);
-            IOUtils.writeFull(characterChannel, StringUtils.getJsonString(content));
+            IOUtils.writeFull(characterChannel, BStringUtils.getJsonString(content));
         } catch (BallerinaIOException e) {
             return IOUtils.createError(e);
         }
         return null;
     }
 
-    public static Object writeXml(ObjectValue characterChannelObj, XMLValue<?> content) {
+    public static Object writeXml(BObject characterChannelObj, XMLValue content) {
         try {
             CharacterChannel characterChannel = (CharacterChannel) characterChannelObj
                     .getNativeData(CHARACTER_CHANNEL_NAME);
             IOUtils.writeFull(characterChannel, content.toString());
         } catch (BallerinaIOException e) {
+            return IOUtils.createError(e);
+        }
+        return null;
+    }
+
+    public static Object writeProperties(BObject characterChannelObj,
+                                         BMap<BString, BString> propertyMap, BString comment) {
+        try {
+            CharacterChannel characterChannel = (CharacterChannel) characterChannelObj
+                    .getNativeData(CHARACTER_CHANNEL_NAME);
+            PropertyUtils.writePropertyContent(characterChannel, propertyMap, comment);
+        } catch (IOException e) {
             return IOUtils.createError(e);
         }
         return null;

@@ -74,6 +74,8 @@ public enum InstructionKind {
     NEW_TABLE((byte) 51),
     NEW_TYPEDESC((byte) 52),
     NEW_STREAM((byte) 53),
+    TABLE_STORE((byte) 54),
+    TABLE_LOAD((byte) 55),
 
     // Binary expression related instructions.
     ADD((byte) 61),
@@ -104,7 +106,9 @@ public enum InstructionKind {
     BITWISE_XOR((byte) 85),
     BITWISE_LEFT_SHIFT((byte) 86),
     BITWISE_RIGHT_SHIFT((byte) 87),
-    BITWISE_UNSIGNED_RIGHT_SHIFT((byte) 88);
+    BITWISE_UNSIGNED_RIGHT_SHIFT((byte) 88),
+
+    PLATFORM((byte) 128);
 
     byte value;
 

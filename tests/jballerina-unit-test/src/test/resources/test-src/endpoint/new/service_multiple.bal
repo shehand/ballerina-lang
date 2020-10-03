@@ -15,7 +15,7 @@ service on ep, new PQR("pqr") {
     }
 }
 
-public type ABC object {
+public class ABC {
 
     *'object:Listener;
 
@@ -37,13 +37,13 @@ public type ABC object {
 
     public function __detach(service s) returns error? {
     }
-};
+}
 
-public type PQR object {
+public class PQR {
 
     *'object:Listener;
 
-    public function __init(string name){
+    public function init(string name){
     }
 
     public function __start() returns error? {
@@ -64,7 +64,7 @@ public type PQR object {
 
     public function __detach(service s) returns error? {
     }
-};
+}
 
 function test1 () returns [int, int] {
     return [startCount, attachCount];

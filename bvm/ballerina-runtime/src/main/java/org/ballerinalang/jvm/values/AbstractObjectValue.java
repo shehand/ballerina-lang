@@ -17,14 +17,19 @@
  */
 package org.ballerinalang.jvm.values;
 
-import org.ballerinalang.jvm.BallerinaErrors;
 import org.ballerinalang.jvm.TypeChecker;
-import org.ballerinalang.jvm.scheduling.Strand;
+import org.ballerinalang.jvm.api.BErrorCreator;
+import org.ballerinalang.jvm.api.BStringUtils;
+import org.ballerinalang.jvm.api.values.BLink;
+import org.ballerinalang.jvm.api.values.BString;
 import org.ballerinalang.jvm.types.BField;
 import org.ballerinalang.jvm.types.BObjectType;
-import org.ballerinalang.jvm.types.BStructureType;
+import org.ballerinalang.jvm.types.BPackage;
 import org.ballerinalang.jvm.types.BType;
 import org.ballerinalang.jvm.util.Flags;
+import org.ballerinalang.jvm.util.exceptions.BLangExceptionHelper;
+import org.ballerinalang.jvm.util.exceptions.BallerinaErrorReasons;
+import org.ballerinalang.jvm.util.exceptions.RuntimeErrors;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -32,6 +37,7 @@ import java.util.StringJoiner;
 
 import static org.ballerinalang.jvm.util.BLangConstants.OBJECT_LANG_LIB;
 import static org.ballerinalang.jvm.util.exceptions.BallerinaErrorReasons.INHERENT_TYPE_VIOLATION_ERROR_IDENTIFIER;
+import static org.ballerinalang.jvm.util.exceptions.BallerinaErrorReasons.INVALID_UPDATE_ERROR_IDENTIFIER;
 import static org.ballerinalang.jvm.util.exceptions.BallerinaErrorReasons.getModulePrefixedReason;
 
 /**
@@ -55,21 +61,6 @@ public abstract class AbstractObjectValue implements ObjectValue {
     }
 
     @Override
-    public abstract Object call(Strand strand, String funcName, Object... args);
-
-    @Override
-    public abstract Object get(String fieldName);
-
-    @Override
-    public abstract Object get(StringValue fieldName);
-
-    @Override
-    public abstract void set(String fieldName, Object value);
-
-    @Override
-    public abstract void set(StringValue fieldName, Object value);
-
-    @Override
     public void addNativeData(String key, Object data) {
         this.nativeData.put(key, data);
     }
@@ -85,42 +76,56 @@ public abstract class AbstractObjectValue implements ObjectValue {
     }
 
     @Override
-    public long getIntValue(String fieldName) {
+    public long getIntValue(BString fieldName) {
         return (long) get(fieldName);
     }
 
     @Override
-    public double getFloatValue(String fieldName) {
+    public double getFloatValue(BString fieldName) {
         return (double) get(fieldName);
     }
 
     @Override
-    public String getStringValue(String fieldName) {
-        return (String) get(fieldName);
+    public BString getStringValue(BString fieldName) {
+        return (BString) get(fieldName);
     }
 
     @Override
-    public String stringValue() {
+    public String stringValue(BLink parent) {
         return "object " + type.toString();
     }
 
     @Override
-    public boolean getBooleanValue(String fieldName) {
+    public String informalStringValue(BLink parent) {
+        return stringValue(parent);
+    }
+
+    @Override
+    public String expressionStringValue(BLink parent) {
+        BPackage pkg = type.getPackage();
+        String moduleLocalName = pkg.org != null && pkg.org.equals("$anon") ||
+                pkg.name == null ? type.getName() :
+                String.valueOf(BallerinaErrorReasons.getModulePrefixedReason(pkg.name, type.getName()));
+        return "object " + moduleLocalName + " " + this.hashCode();
+    }
+
+    @Override
+    public boolean getBooleanValue(BString fieldName) {
         return (boolean) get(fieldName);
     }
 
     @Override
-    public MapValueImpl getMapValue(String fieldName) {
+    public MapValueImpl getMapValue(BString fieldName) {
         return (MapValueImpl) get(fieldName);
     }
 
     @Override
-    public ObjectValue getObjectValue(String fieldName) {
+    public ObjectValue getObjectValue(BString fieldName) {
         return (ObjectValue) get(fieldName);
     }
 
     @Override
-    public ArrayValue getArrayValue(String fieldName) {
+    public ArrayValue getArrayValue(BString fieldName) {
         return (ArrayValue) get(fieldName);
     }
 
@@ -131,23 +136,28 @@ public abstract class AbstractObjectValue implements ObjectValue {
 
     @Override
     public Object copy(Map<Object, Object> refs) {
-        throw new UnsupportedOperationException();
+        return this;
+    }
+
+    @Override
+    public void freezeDirect() {
+        return;
     }
 
     @Override
     public Object frozenCopy(Map<Object, Object> refs) {
-        throw new UnsupportedOperationException();
+        return this;
     }
 
     @Override
     public String toString() {
         StringJoiner sj = new StringJoiner(", ", "{", "}");
-        for (Map.Entry<String, BField> field : ((BStructureType) this.type).getFields().entrySet()) {
+        for (Map.Entry<String, BField> field : this.type.getFields().entrySet()) {
             if (!Flags.isFlagOn(field.getValue().flags, Flags.PUBLIC)) {
                 continue;
             }
             String fieldName = field.getKey();
-            sj.add(fieldName + ":" + getStringValue(get(fieldName)));
+            sj.add(fieldName + ":" + getStringValue(get(BStringUtils.fromString(fieldName))));
         }
 
         return sj.toString();
@@ -163,15 +173,39 @@ public abstract class AbstractObjectValue implements ObjectValue {
         }
     }
 
+    protected void checkFieldUpdateOnInitialization(String fieldName, Object value) {
+        checkFieldUpdateType(fieldName, value);
+    }
+
     protected void checkFieldUpdate(String fieldName, Object value) {
+        if (type.isReadOnly()) {
+            throw BErrorCreator.createError(
+                    getModulePrefixedReason(OBJECT_LANG_LIB, INHERENT_TYPE_VIOLATION_ERROR_IDENTIFIER),
+                    BLangExceptionHelper.getErrorMessage(RuntimeErrors.INVALID_READONLY_VALUE_UPDATE));
+        }
+
+        BField field = type.getFields().get(fieldName);
+
+        if (Flags.isFlagOn(field.flags, Flags.FINAL)) {
+            throw BErrorCreator.createError(
+                    getModulePrefixedReason(OBJECT_LANG_LIB, INVALID_UPDATE_ERROR_IDENTIFIER),
+                    BLangExceptionHelper.getErrorMessage(RuntimeErrors.OBJECT_INVALID_FINAL_FIELD_UPDATE,
+                                                         fieldName, type));
+        }
+        checkFieldUpdateType(fieldName, value);
+    }
+
+    private void checkFieldUpdateType(String fieldName, Object value) {
         BType fieldType = type.getFields().get(fieldName).type;
         if (TypeChecker.checkIsType(value, fieldType)) {
             return;
         }
 
-        throw BallerinaErrors.createError(getModulePrefixedReason(OBJECT_LANG_LIB,
-                                                                  INHERENT_TYPE_VIOLATION_ERROR_IDENTIFIER),
-                "invalid value for object field '" + fieldName + "': expected value of type '" + fieldType +
-                        "', found '" + TypeChecker.getType(value) + "'");
+        throw BErrorCreator.createError(getModulePrefixedReason(OBJECT_LANG_LIB,
+                                                                INHERENT_TYPE_VIOLATION_ERROR_IDENTIFIER),
+                                        BStringUtils.fromString("invalid value for object field '" + fieldName +
+                                                                       "': expected value of type '" + fieldType +
+                                                                       "', found '" + TypeChecker.getType(value) +
+                                                                       "'"));
     }
 }

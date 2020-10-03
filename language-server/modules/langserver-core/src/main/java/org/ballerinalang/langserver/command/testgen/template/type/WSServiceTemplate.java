@@ -20,8 +20,7 @@ import org.ballerinalang.langserver.command.testgen.renderer.RendererOutput;
 import org.ballerinalang.langserver.command.testgen.renderer.TemplateBasedRendererOutput;
 import org.ballerinalang.langserver.command.testgen.template.AbstractTestTemplate;
 import org.ballerinalang.langserver.command.testgen.template.PlaceHolder;
-import org.ballerinalang.net.http.websocket.WebSocketConstants;
-import org.wso2.ballerinalang.compiler.tree.BLangAnnotationAttachment;
+import org.ballerinalang.langserver.commons.LSContext;
 import org.wso2.ballerinalang.compiler.tree.BLangPackage;
 import org.wso2.ballerinalang.compiler.tree.BLangService;
 import org.wso2.ballerinalang.compiler.tree.expressions.BLangTypeInit;
@@ -30,7 +29,6 @@ import java.util.Optional;
 import java.util.function.BiConsumer;
 
 import static io.netty.util.internal.StringUtil.LINE_FEED;
-import static org.ballerinalang.langserver.command.testgen.AnnotationConfigsProcessor.searchStringField;
 import static org.ballerinalang.langserver.common.utils.CommonUtil.LINE_SEPARATOR;
 
 /**
@@ -38,6 +36,7 @@ import static org.ballerinalang.langserver.common.utils.CommonUtil.LINE_SEPARATO
  *
  * @since 0.985.0
  */
+@Deprecated
 public class WSServiceTemplate extends AbstractTestTemplate {
     private final String serviceUri;
     private final boolean isSecure;
@@ -48,8 +47,9 @@ public class WSServiceTemplate extends AbstractTestTemplate {
 
     public WSServiceTemplate(BLangPackage builtTestFile, BLangService service,
                              BLangTypeInit init,
-                             BiConsumer<Integer, Integer> focusLineAcceptor) {
-        super(builtTestFile, focusLineAcceptor);
+                             BiConsumer<Integer, Integer> focusLineAcceptor,
+                             LSContext context) {
+        super(builtTestFile, focusLineAcceptor, context);
         String tempServiceUri = WS + DEFAULT_IP + ":" + DEFAULT_PORT;
         boolean isSecureTemp = isSecureService(init);
         String protocol = ((isSecureTemp) ? WSS : WS);
@@ -60,10 +60,12 @@ public class WSServiceTemplate extends AbstractTestTemplate {
         String serviceBasePath = "/" + service.name.value;
 
         // If service base path overridden by annotations
-        for (BLangAnnotationAttachment annotation : service.annAttachments) {
-            Optional<String> optionalPath = searchStringField(WebSocketConstants.ANNOTATION_ATTR_PATH, annotation);
-            serviceBasePath = optionalPath.orElse("");
-        }
+//        for (BLangAnnotationAttachment annotation : service.annAttachments) {
+//            Optional<String> optionalPath = searchStringField(WebSocketConstants.ANNOTATION_ATTR_PATH.getValue(),
+//                                                              annotation);
+//            Optional<String> optionalPath = Optional.empty();
+//            serviceBasePath = optionalPath.orElse("");
+//        }
         String serviceName = upperCaseFirstLetter(service.name.value);
         this.serviceUriStrName = getSafeName(lowerCaseFirstLetter(service.name.value) + "Uri");
         this.serviceChannelName = getSafeName(lowerCaseFirstLetter(service.name.value) + "Reply");

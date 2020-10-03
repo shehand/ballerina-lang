@@ -1,4 +1,4 @@
-type Person object {
+class Person {
     public int age = 3;
     public string name = "sample name";
 
@@ -46,7 +46,7 @@ type Person object {
         function (int a, float b) returns (int) foo = (x, y) => self.attachedFn3(x, y);
         return a + <int>b + foo(43, 10.2);
     }
-};
+}
 
 function test1() returns (int) {
     Person p = new;
@@ -94,11 +94,11 @@ function test7() returns (int) {
     return foo(43, 10.2);
 }
 
-public type FooObj object {
+public class FooObj {
     private (function(string[]) returns string) fp1;
     private (function(int[]) returns int) fp2;
 
-    function __init ((function(string[]) returns string) fp1, (function(int[]) returns int) fp2){
+    function init ((function(string[]) returns string) fp1, (function(int[]) returns int) fp2){
         self.fp1 = fp1;
         self.fp2 = fp2;
         string[] s = ["abc", "afg"];
@@ -116,7 +116,7 @@ public type FooObj object {
         var f = self.fp2;
         return f(vals);
     }
-};
+}
 
 
 function test8() returns [string, int] {
@@ -145,10 +145,10 @@ function test9() returns string {
     return o5.process(vals);
 }
 
-public type O1 object {
+public class O1 {
     private (function(string[]) returns string) fpO1;
 
-    function __init ((function(string[]) returns string) fpO1) {
+    function init ((function(string[]) returns string) fpO1) {
         self.fpO1 = fpO1;
     }
 
@@ -156,12 +156,12 @@ public type O1 object {
         var f = self.fpO1;
         return f(vals);
     }
-};
+}
 
-public type O2 object {
+public class O2 {
     private (function(string[]) returns string) fpO2;
 
-    function __init ((function(string[]) returns string) fpO2) {
+    function init ((function(string[]) returns string) fpO2) {
         self.fpO2 = fpO2;
     }
 
@@ -169,12 +169,12 @@ public type O2 object {
         var f = self.fpO2;
         return f(vals);
     }
-};
+}
 
-public type O3 object {
+public class O3 {
     private (function(string[]) returns string) fpO3;
 
-    function __init ((function(string[]) returns string) fpO3) {
+    function init ((function(string[]) returns string) fpO3) {
         self.fpO3 = fpO3;
     }
 
@@ -182,12 +182,12 @@ public type O3 object {
         var f = self.fpO3;
         return f(vals);
     }
-};
+}
 
-public type O4 object {
+public class O4 {
     private (function(string[]) returns string) fpO4;
 
-    function __init ((function(string[]) returns string) fpO4) {
+    function init ((function(string[]) returns string) fpO4) {
         self.fpO4 = fpO4;
     }
 
@@ -195,12 +195,12 @@ public type O4 object {
         var f = self.fpO4;
         return f(vals);
     }
-};
+}
 
-public type O5 object {
+public class O5 {
     private (function(string[]) returns string) fpO5;
 
-    function __init ((function(string[]) returns string) fpO5) {
+    function init ((function(string[]) returns string) fpO5) {
         self.fpO5 = fpO5;
     }
 
@@ -208,4 +208,4 @@ public type O5 object {
         var f = self.fpO5;
         return f(vals);
     }
-};
+}

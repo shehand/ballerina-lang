@@ -1,11 +1,11 @@
 import ballerina/io;
-import ballerinax/java;
+import ballerina/java;
 
 public function main() {
     io:println(getDriversAsString());
 }
 
 public function  getDriversAsString() returns handle = @java:Method {
-      class:"PrintDrivers"
+      'class:"PrintDrivers"
 } external;
 

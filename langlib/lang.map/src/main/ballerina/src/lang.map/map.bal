@@ -30,7 +30,7 @@ type Type1 any|error;
 #
 # + m - the map
 # + return - number of members in `m`
-public function length(map<any|error> m) returns int = external;
+public isolated function length(map<any|error> m) returns int = external;
 
 # Returns an iterator over a map.
 # The iterator will iterate over the members of the map not the keys.
@@ -39,8 +39,8 @@ public function length(map<any|error> m) returns int = external;
 #
 # + m - the map
 # + return - a new iterator object that will iterate over the members of `m`
-public function iterator(map<Type> m) returns abstract object {
-    public function next() returns record {|
+public isolated function iterator(map<Type> m) returns object {
+    public isolated function next() returns record {|
         Type value;
     |}?;
 } {
@@ -55,13 +55,13 @@ public function iterator(map<Type> m) returns abstract object {
 # + m - the map
 # + k - the key
 # + return - member with key `k`
-public function get(map<Type> m, string k) returns Type = external;
+public isolated function get(map<Type> m, string k) returns Type = external;
 
 # Returns a map containing [key, member] pair as the value for each key.
 #
 # + m - the map
 # + return - a new map of [key, member] pairs
-public function entries(map<Type> m) returns map<[string, Type]> = external;
+public isolated function entries(map<Type> m) returns map<[string, Type]> = external;
 
 // Functional iteration
 
@@ -70,11 +70,11 @@ public function entries(map<Type> m) returns map<[string, Type]> = external;
 #
 # + m - the map
 # + func - a function to apply to each member
-# + return - new map containing result of applying function 'func' to each member
+# + return - new map containing result of applying parameter `func` to each member
 public function 'map(map<Type> m, function(Type val) returns Type1 func) returns map<Type1> = external;
 
 # Applies a function to each member of a map.
-# The function 'func' is applied to each member of `m`.
+# The parameter `func` is applied to each member of `m`.
 #
 # + m - the map
 # + func - a function to apply to each member
@@ -104,23 +104,38 @@ public function reduce(map<Type> m, function(Type1 accum, Type val) returns Type
 # + return - the member of `m` that had key `k`
 # This removed the member of `m` with key `k` and returns it.
 # It panics if there is no such member.
-public function remove(map<Type> m, string k) returns Type = external;
+public isolated function remove(map<Type> m, string k) returns Type = external;
+
+# Removes a member of a map with a given key, if the map has member with the key.
+#
+# + m - the map
+# + k - the key
+# + return - the member of `m` that had key `k`, or `()` if `m` does not have a key `k`
+# If `m` has a member with key `k`, it removes and returns it;
+# otherwise it returns `()`.
+public isolated function removeIfHasKey(map<Type> m, string k) returns Type? = external;
 
 # Removes all members of a map.
 # This panics if any member cannot be removed.
 #
 # + m - the map
-public function removeAll(map<any|error> m) returns () = external;
+public isolated function removeAll(map<any|error> m) returns () = external;
 
 # Tests whether m has a member with key `k`.
 #
 # + m - the map
 # + k - the key
 # + return - true if m has a member with key `k`
-public function hasKey(map<Type> m, string k) returns boolean = external;
+public isolated function hasKey(map<Type> m, string k) returns boolean = external;
 
 # Returns a list of all the keys of map `m`.
 #
 # + m - the map
 # + return - a new list of all keys
-public function keys(map<any|error> m) returns string[] = external;
+public isolated function keys(map<any|error> m) returns string[] = external;
+
+# Returns a list of all the members of a map.
+#
+# + m - the map
+# + return - an array whose members are the members of `m`
+public isolated function toArray(map<Type> m) returns Type[] = external;

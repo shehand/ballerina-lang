@@ -19,6 +19,7 @@
 package org.ballerinalang.jvm.types;
 
 import org.ballerinalang.jvm.values.TypedescValue;
+import org.ballerinalang.jvm.values.TypedescValueImpl;
 
 /**
  * {@code BTypeType} represents type of type in Ballerina type system.
@@ -39,7 +40,7 @@ public class BTypedescType extends BType {
 
     @Override
     public <V extends Object> V getZeroValue() {
-        return (V) new TypedescValue(BTypes.typeNull);
+        return (V) new TypedescValueImpl(BTypes.typeNull);
     }
 
     @Override
@@ -52,7 +53,23 @@ public class BTypedescType extends BType {
         return TypeTags.TYPEDESC_TAG;
     }
 
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj) {
+            return true;
+        }
+        if (obj instanceof BTypedescType) {
+            return constraint.equals(((BTypedescType) obj).getConstraint());
+        }
+        return false;
+    }
+
     public BType getConstraint() {
         return constraint;
+    }
+
+    @Override
+    public boolean isReadOnly() {
+        return true;
     }
 }

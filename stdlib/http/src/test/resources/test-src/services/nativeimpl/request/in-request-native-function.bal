@@ -120,6 +120,16 @@ function testGetCookies(http:Request req) returns http:Cookie[] {
     return cookiesInRequest;
 }
 
+function testGetCookiesWithEmptyValue(http:Request req) returns http:Cookie[] {
+    http:Cookie cookie1 = new("SID1", "");
+    cookie1.domain = "google.com";
+    cookie1.path = "/sample";
+    http:Cookie[] cookiesToAdd = [cookie1];
+    req.addCookies(cookiesToAdd);
+    http:Cookie[] cookiesInRequest = req.getCookies();
+    return cookiesInRequest;
+}
+
 listener http:MockListener mockEP = new(9090);
 
 @http:ServiceConfig { basePath: "/hello" }
@@ -217,7 +227,7 @@ service hello on mockEP {
             res.setTextPayload("Error occurred");
             res.statusCode = 500;
         } else {
-            var name = returnResult.getTextValue();
+            var name = (returnResult/*).toString();
             res.setTextPayload(<@untainted string> name);
         }
         checkpanic caller->respond(res);
@@ -355,7 +365,7 @@ service hello on mockEP {
             res.setTextPayload("Error occurred");
             res.statusCode = 500;
         } else {
-            var name = <@untainted string> returnResult.getTextValue();
+            var name = <@untainted string> (returnResult/*).toString();
             res.setJsonPayload({ lang: name });
         }
         checkpanic caller->respond(res);

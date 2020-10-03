@@ -18,7 +18,9 @@
 apply from: "$rootDir/gradle/javaProject.gradle"
 
 configurations {
-    baloCreat
+    baloCreat {
+        transitive false
+    }
     baloImplementation {
         transitive false
     }
@@ -72,7 +74,7 @@ test {
     useTestNG() {
         suites 'src/test/resources/testng.xml'
     }
-    minHeapSize = "256m"
-    maxHeapSize = "1024m"
+    minHeapSize = "512m"
+    maxHeapSize = "2048m"
 }
 

@@ -14,21 +14,8 @@
 // specific language governing permissions and limitations
 // under the License.
 
-# Record type to hold the details of an error.
-#
-# + message - Specific error message of the error.
-# + cause - Any other error, which causes this error.
-public type Detail record {
-    string message;
-    error cause?;
-};
+# Specifies the time error, which occurs in the module.
+public type TimeError distinct error;
 
-# Error reason to specify the time error that occurs in the module
-public const TIME_ERROR_REASON = "{ballerina/time}TimeError";
-# Represents Time module related error
-public type Error error<TIME_ERROR_REASON, Detail>;
-
-function getInvalidStringError() returns Error {
-    error e = error(TIME_ERROR_REASON, message = "Invalid string returned from the format function");
-    return <Error>e;
-}
+# Represents the Time module related error.
+public type Error TimeError;

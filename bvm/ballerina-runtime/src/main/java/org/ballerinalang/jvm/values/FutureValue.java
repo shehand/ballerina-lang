@@ -17,14 +17,15 @@
   */
 package org.ballerinalang.jvm.values;
 
-import org.ballerinalang.jvm.scheduling.Strand;
-import org.ballerinalang.jvm.types.BFutureType;
-import org.ballerinalang.jvm.types.BType;
-import org.ballerinalang.jvm.values.api.BFuture;
-import org.ballerinalang.jvm.values.connector.CallableUnitCallback;
+ import org.ballerinalang.jvm.api.connector.CallableUnitCallback;
+ import org.ballerinalang.jvm.api.values.BFuture;
+ import org.ballerinalang.jvm.api.values.BLink;
+ import org.ballerinalang.jvm.scheduling.Strand;
+ import org.ballerinalang.jvm.types.BFutureType;
+ import org.ballerinalang.jvm.types.BType;
 
-import java.util.Map;
-import java.util.StringJoiner;
+ import java.util.Map;
+ import java.util.StringJoiner;
 
 /**
  * <p>
@@ -58,7 +59,7 @@ import java.util.StringJoiner;
      }
 
      @Override
-     public String stringValue() {
+     public String stringValue(BLink parent) {
          StringJoiner sj = new StringJoiner(",", "{", "}");
          sj.add("isDone:" + isDone);
          if (isDone) {
@@ -70,7 +71,12 @@ import java.util.StringJoiner;
          return "future " + sj.toString();
      }
 
-     @Override
+    @Override
+    public String expressionStringValue(BLink parent) {
+        return stringValue(parent);
+    }
+
+    @Override
      public BType getType() {
          return this.type;
      }
@@ -131,7 +137,7 @@ import java.util.StringJoiner;
 
     @Override
     public String toString() {
-        return stringValue();
+        return stringValue(null);
     }
 
 }

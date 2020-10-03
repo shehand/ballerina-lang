@@ -131,8 +131,8 @@ function populateTypes(jvm:ClassWriter cw, bir:TypeDef?[] typeDefs) returns stri
             mv.visitTypeInsn(CHECKCAST, OBJECT_TYPE);
             mv.visitInsn(DUP);
             addObjectFields(mv, bType.fields);
-            addObjectInitFunction(mv, bType.generatedConstructor, bType, indexMap, "$__init$", "setGeneratedInitializer");
-            addObjectInitFunction(mv, bType.constructor, bType, indexMap, "__init", "setInitializer");
+            addObjectInitFunction(mv, bType.generatedConstructor, bType, indexMap, "$init$", "setGeneratedInitializer");
+            addObjectInitFunction(mv, bType.constructor, bType, indexMap, "init", "setInitializer");
             addObjectAttachedFunctions(mv, bType.attachedFunctions, bType, indexMap);
         } else if (bType is bir:BServiceType) {
             mv.visitTypeInsn(CHECKCAST, OBJECT_TYPE);
@@ -317,7 +317,7 @@ function generateObjectValueCreateMethod(jvm:ClassWriter cw, bir:TypeDef?[] obje
         mv.visitVarInsn(ALOAD, tempVarIndex);
         mv.visitVarInsn(ALOAD, strandVarIndex);
 
-        mv.visitLdcInsn("$__init$");
+        mv.visitLdcInsn("$init$");
         mv.visitVarInsn(ALOAD, argsIndex);
 
         string methodDesc = io:sprintf("(L%s;L%s;[L%s;)L%s;", STRAND, STRING_VALUE, OBJECT, OBJECT);
@@ -406,14 +406,14 @@ function addRecordFields(jvm:MethodVisitor mv, bir:BRecordField?[] fields) {
     mv.visitMethodInsn(INVOKESPECIAL, LINKED_HASH_MAP, "<init>", "()V", false);
 
     foreach var optionalField in fields {
-        bir:BRecordField field = getRecordField(optionalField);
+        bir:BRecordField 'field = getRecordField(optionalField);
         mv.visitInsn(DUP);
 
         // Load field name
-        mv.visitLdcInsn(field.name.value);
+        mv.visitLdcInsn('field.name.value);
 
         // create and load field type
-        createRecordField(mv, field);
+        createRecordField(mv, 'field);
 
         // Add the field to the map
         mv.visitMethodInsn(INVOKEINTERFACE, MAP, "put",
@@ -432,18 +432,18 @@ function addRecordFields(jvm:MethodVisitor mv, bir:BRecordField?[] fields) {
 #
 # + mv - method visitor
 # + field - field Parameter Description
-function createRecordField(jvm:MethodVisitor mv, bir:BRecordField field) {
+function createRecordField(jvm:MethodVisitor mv, bir:BRecordField 'field) {
     mv.visitTypeInsn(NEW, BFIELD);
     mv.visitInsn(DUP);
 
     // Load the field type
-    loadType(mv, field.typeValue);
+    loadType(mv, 'field.typeValue);
 
     // Load field name
-    mv.visitLdcInsn(field.name.value);
+    mv.visitLdcInsn('field.name.value);
 
     // Load flags
-    mv.visitLdcInsn(field.flags);
+    mv.visitLdcInsn('field.flags);
     mv.visitInsn(L2I);
 
     mv.visitMethodInsn(INVOKESPECIAL, BFIELD, "<init>",
@@ -576,14 +576,14 @@ function addObjectFields(jvm:MethodVisitor mv, bir:BObjectField?[] fields) {
     mv.visitMethodInsn(INVOKESPECIAL, LINKED_HASH_MAP, "<init>", "()V", false);
 
     foreach var optionalField in fields {
-        bir:BObjectField field = getObjectField(optionalField);
+        bir:BObjectField 'field = getObjectField(optionalField);
         mv.visitInsn(DUP);
 
         // Load field name
-        mv.visitLdcInsn(field.name.value);
+        mv.visitLdcInsn('field.name.value);
 
         // create and load field type
-        createObjectField(mv, field);
+        createObjectField(mv, 'field);
 
         // Add the field to the map
         mv.visitMethodInsn(INVOKEINTERFACE, MAP, "put",
@@ -602,18 +602,18 @@ function addObjectFields(jvm:MethodVisitor mv, bir:BObjectField?[] fields) {
 #
 # + mv - method visitor
 # + field - object field
-function createObjectField(jvm:MethodVisitor mv, bir:BObjectField field) {
+function createObjectField(jvm:MethodVisitor mv, bir:BObjectField 'field) {
     mv.visitTypeInsn(NEW, BFIELD);
     mv.visitInsn(DUP);
 
     // Load the field type
-    loadType(mv, field.typeValue);
+    loadType(mv, 'field.typeValue);
 
     // Load field name
-    mv.visitLdcInsn(field.name.value);
+    mv.visitLdcInsn('field.name.value);
 
     // Load flags
-    mv.visitLdcInsn(field.flags);
+    mv.visitLdcInsn('field.flags);
     mv.visitInsn(L2I);
 
     mv.visitMethodInsn(INVOKESPECIAL, BFIELD, "<init>",
@@ -816,6 +816,9 @@ function loadType(jvm:MethodVisitor mv, bir:BType? bType) {
     } else if (bType is bir:BTableType) {
         loadTableType(mv, bType);
         return;
+    } else if (bType is bir:BStreamType) {
+        loadStreamType(mv, bType);
+        return;
     } else if (bType is bir:BErrorType) {
         loadErrorType(mv, bType);
         return;
@@ -921,6 +924,22 @@ function loadTableType(jvm:MethodVisitor mv, bir:BTableType bType) {
 
     // invoke the constructor
     mv.visitMethodInsn(INVOKESPECIAL, TABLE_TYPE, "<init>", io:sprintf("(L%s;)V", BTYPE), false);
+}
+
+# Generate code to load an instance of the given stream type
+# to the top of the stack.
+#
+# + bType - stream type to load
+function loadStreamType(jvm:MethodVisitor mv, bir:BStreamType bType) {
+    // Create an new stream type
+    mv.visitTypeInsn(NEW, STREAM_TYPE);
+    mv.visitInsn(DUP);
+
+    // Load the constraint type
+    loadType(mv, bType.sConstraint);
+
+    // invoke the constructor
+    mv.visitMethodInsn(INVOKESPECIAL, STREAM_TYPE, "<init>", io:sprintf("(L%s;)V", BTYPE), false);
 }
 
 # Generate code to load an instance of the given error type
@@ -1098,7 +1117,7 @@ function getTypeDesc(bir:BType bType, boolean useBString = false) returns string
     } else if (bType is bir:BTypeFloat) {
         return "D";
     } else if (bType is bir:BTypeString) {
-        return io:sprintf("L%s;", useBString ? I_STRING_VALUE : STRING_VALUE);
+        return io:sprintf("L%s;", useBString ? B_STRING_VALUE : STRING_VALUE);
     } else if (bType is bir:BTypeBoolean) {
         return "Z";
     } else if (bType is bir:BTypeNil) {
@@ -1115,6 +1134,8 @@ function getTypeDesc(bir:BType bType, boolean useBString = false) returns string
         return io:sprintf("L%s;", TYPEDESC_VALUE);
     } else if (bType is bir:BTableType) {
         return io:sprintf("L%s;", TABLE_VALUE);
+    } else if (bType is bir:BStreamType) {
+        return io:sprintf("L%s;", STREAM_VALUE);
     } else if (bType is bir:BTypeDecimal) {
         return io:sprintf("L%s;", DECIMAL_VALUE);
     } else if (bType is bir:BObjectType || bType is bir:BServiceType) {

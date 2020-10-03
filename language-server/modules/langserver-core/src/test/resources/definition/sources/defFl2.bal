@@ -31,13 +31,13 @@ type RecordInSameFile record {
 
 function testXMLAttributeWithCompoundAssignment() returns (string){
     xml x1 = xml `<root xmlns:ns3="http://sample.com/wso2/f"></root>`;
-    x1@[ns0:foo1] = "bar1";
-    var result = x1@[ns0:foo1];
-
-    if (result is string) {
-        result += "bar2";
-        return result;
-    }
+    //x1@[ns0:foo1] = "bar1";
+    //var result = x1@[ns0:foo1];
+    //
+    //if (result is string) {
+    //    result += "bar2";
+    //    return result;
+    //}
 
     return "";
 }
@@ -60,4 +60,10 @@ function functionWithParams(Foo param1, Foo param2 = {x: 12, y: "Hello"}, Foo...
     Foo[] restVar = param3;
     
     return testVar1;
+}
+
+function intToString(int convertField) returns string => convertField.toHexString();
+
+function testExprBodyFunction() {
+    string val = intToString(1234);
 }

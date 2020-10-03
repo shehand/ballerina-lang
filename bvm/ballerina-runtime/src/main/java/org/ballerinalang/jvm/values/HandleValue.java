@@ -17,9 +17,10 @@
  */
 package org.ballerinalang.jvm.values;
 
+import org.ballerinalang.jvm.api.values.BHandle;
+import org.ballerinalang.jvm.api.values.BLink;
 import org.ballerinalang.jvm.types.BType;
 import org.ballerinalang.jvm.types.BTypes;
-import org.ballerinalang.jvm.values.api.BHandle;
 
 import java.util.Map;
 
@@ -51,8 +52,13 @@ public class HandleValue implements BHandle, RefValue {
     }
 
     @Override
-    public String stringValue() {
+    public String stringValue(BLink parent) {
         return String.valueOf(value);
+    }
+
+    @Override
+    public String expressionStringValue(BLink parent) {
+        return stringValue(parent);
     }
 
     @Override
@@ -67,7 +73,12 @@ public class HandleValue implements BHandle, RefValue {
 
     @Override
     public Object copy(Map<Object, Object> refs) {
-        return null;
+        return this;
+    }
+
+    @Override
+    public void freezeDirect() {
+        return;
     }
 
     @Override

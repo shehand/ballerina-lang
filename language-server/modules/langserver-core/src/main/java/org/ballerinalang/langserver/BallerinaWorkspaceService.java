@@ -17,18 +17,17 @@ package org.ballerinalang.langserver;
 
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;
-import org.ballerinalang.langserver.client.config.BallerinaClientConfig;
-import org.ballerinalang.langserver.client.config.BallerinaClientConfigHolder;
-import org.ballerinalang.langserver.command.LSCommandExecutor;
-import org.ballerinalang.langserver.command.LSCommandExecutorException;
-import org.ballerinalang.langserver.command.LSCommandExecutorProvider;
+import org.ballerinalang.langserver.command.LSCommandExecutorProvidersHolder;
+import org.ballerinalang.langserver.commons.LSContext;
+import org.ballerinalang.langserver.commons.capability.LSClientCapabilities;
+import org.ballerinalang.langserver.commons.command.LSCommandExecutorException;
+import org.ballerinalang.langserver.commons.command.spi.LSCommandExecutor;
+import org.ballerinalang.langserver.commons.workspace.WorkspaceDocumentManager;
 import org.ballerinalang.langserver.compiler.DocumentServiceKeys;
 import org.ballerinalang.langserver.compiler.LSCompilerUtil;
-import org.ballerinalang.langserver.compiler.LSContext;
 import org.ballerinalang.langserver.compiler.LSModuleCompiler;
-import org.ballerinalang.langserver.compiler.common.LSCustomErrorStrategy;
-import org.ballerinalang.langserver.compiler.workspace.WorkspaceDocumentManager;
-import org.ballerinalang.langserver.diagnostic.DiagnosticsHelper;
+import org.ballerinalang.langserver.compiler.config.LSClientConfig;
+import org.ballerinalang.langserver.compiler.config.LSClientConfigHolder;
 import org.ballerinalang.langserver.exception.UserErrorException;
 import org.ballerinalang.langserver.symbols.SymbolFindingVisitor;
 import org.eclipse.lsp4j.DidChangeConfigurationParams;
@@ -62,15 +61,17 @@ import static org.ballerinalang.langserver.compiler.LSClientLogger.notifyUser;
 public class BallerinaWorkspaceService implements WorkspaceService {
     private BallerinaLanguageServer languageServer;
     private WorkspaceDocumentManager workspaceDocumentManager;
-    private DiagnosticsHelper diagnosticsHelper;
-    private Map<String, Boolean> experimentalClientCapabilities;
     private static final Gson GSON = new Gson();
-    private BallerinaClientConfigHolder configHolder = BallerinaClientConfigHolder.getInstance();
+    private LSClientConfigHolder configHolder = LSClientConfigHolder.getInstance();
+    private LSClientCapabilities clientCapabilities;
 
     BallerinaWorkspaceService(LSGlobalContext globalContext) {
         this.languageServer = globalContext.get(LSGlobalContextKeys.LANGUAGE_SERVER_KEY);
         this.workspaceDocumentManager = globalContext.get(LSGlobalContextKeys.DOCUMENT_MANAGER_KEY);
-        this.diagnosticsHelper = globalContext.get(LSGlobalContextKeys.DIAGNOSTIC_HELPER_KEY);
+    }
+
+    public void setClientCapabilities(LSClientCapabilities clientCapabilities) {
+        this.clientCapabilities = clientCapabilities;
     }
 
     @Override
@@ -86,9 +87,7 @@ public class BallerinaWorkspaceService implements WorkspaceService {
                     symbolsContext.put(DocumentServiceKeys.SYMBOL_LIST_KEY, symbols);
                     symbolsContext.put(DocumentServiceKeys.FILE_URI_KEY, path.toUri().toString());
                     List<BLangPackage> bLangPackage = LSModuleCompiler.getBLangPackages(symbolsContext,
-                                                                                        workspaceDocumentManager,
-                                                                                        LSCustomErrorStrategy.class,
-                                                                                        true, false, false);
+                            workspaceDocumentManager, true, false, false);
                     bLangPackage.forEach(aPackage -> aPackage.compUnits.forEach(compUnit -> {
                         String unitName = compUnit.getName();
                         String sourceRoot = LSCompilerUtil.getProjectRoot(path);
@@ -129,7 +128,13 @@ public class BallerinaWorkspaceService implements WorkspaceService {
         if (!(params.getSettings() instanceof JsonObject)) {
             return;
         }
-        configHolder.updateConfig(GSON.fromJson((JsonObject) params.getSettings(), BallerinaClientConfig.class));
+        JsonObject settings = (JsonObject) params.getSettings();
+        if (settings.get("ballerina") != null) {
+            configHolder.updateConfig(GSON.fromJson(settings.get("ballerina"), LSClientConfig.class));
+        } else {
+            // To support old plugins versions
+            configHolder.updateConfig(GSON.fromJson(settings, LSClientConfig.class));
+        }
     }
 
     @Override
@@ -143,11 +148,11 @@ public class BallerinaWorkspaceService implements WorkspaceService {
             LSContext executeCmdContext = new WorkspaceServiceOperationContext
                     .ServiceOperationContextBuilder(LSContextOperation.WS_EXEC_CMD)
                     .withExecuteCommandParams(params.getArguments(), workspaceDocumentManager, languageServer,
-                            diagnosticsHelper)
+                            clientCapabilities)
                     .build();
 
             try {
-                Optional<LSCommandExecutor> executor = LSCommandExecutorProvider.getInstance()
+                Optional<LSCommandExecutor> executor = LSCommandExecutorProvidersHolder.getInstance()
                         .getCommandExecutor(params.getCommand());
                 if (executor.isPresent()) {
                     return executor.get().execute(executeCmdContext);
@@ -159,49 +164,9 @@ public class BallerinaWorkspaceService implements WorkspaceService {
                 logError(msg, e, null, (Position) null);
             }
             logError("Operation 'workspace/executeCommand' failed!",
-                     new LSCommandExecutorException("No command executor found for '" + params.getCommand() + "'"),
-                     null, (Position) null);
+                    new LSCommandExecutorException("No command executor found for '" + params.getCommand() + "'"),
+                    null, (Position) null);
             return false;
         });
-    }
-
-    /**
-     * Sets experimental client capabilities.
-     *
-     * @param experimentalClientCapabilities a map of capabilities
-     */
-    public void setExperimentalClientCapabilities(Map<String, Boolean> experimentalClientCapabilities) {
-        this.experimentalClientCapabilities = experimentalClientCapabilities;
-    }
-
-    /**
-     * Returns experimental client capabilities.
-     *
-     * @return a map of capabilities
-     */
-    public Map<String, Boolean> getExperimentalClientCapabilities() {
-        return this.experimentalClientCapabilities;
-    }
-
-    /**
-     * Experimental capabilities.
-     */
-    public enum Experimental {
-        INTROSPECTION("introspection"), SHOW_TEXT_DOCUMENT("showTextDocument");
-
-        private final String value;
-
-        Experimental(String value) {
-            this.value = value;
-        }
-
-        /**
-         * Returns value.
-         *
-         * @return value
-         */
-        public String getValue() {
-            return value;
-        }
     }
 }

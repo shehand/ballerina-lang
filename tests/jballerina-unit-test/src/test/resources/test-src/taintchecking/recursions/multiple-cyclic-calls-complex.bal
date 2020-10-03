@@ -14,10 +14,10 @@
 // specific language governing permissions and limitations
 // under the License.
 
-public type Sched object {
+public class Sched {
     private function () processFunc;
 
-    public function __init(function () processFunc) {
+    public function init(function () processFunc) {
         self.processFunc = processFunc;
     }
 
@@ -27,4 +27,4 @@ public type Sched object {
         var val = self.sendTimerEvents();
         return ();
     }
-};
+}

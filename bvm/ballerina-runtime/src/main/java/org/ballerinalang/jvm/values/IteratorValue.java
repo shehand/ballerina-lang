@@ -17,9 +17,10 @@
  */
 package org.ballerinalang.jvm.values;
 
+import org.ballerinalang.jvm.api.values.BIterator;
+import org.ballerinalang.jvm.api.values.BLink;
 import org.ballerinalang.jvm.types.BType;
 import org.ballerinalang.jvm.types.BTypes;
-import org.ballerinalang.jvm.values.api.BIterator;
 
 import java.util.Map;
 
@@ -43,17 +44,22 @@ public interface IteratorValue extends RefValue, BIterator {
     }
 
     @Override
-    default String stringValue() {
+    default String stringValue(BLink parent) {
         return "iterator " + getType().toString();
     }
 
     @Override
-    public default Object copy(Map<Object, Object> refs) {
+    default String expressionStringValue(BLink parent) {
+        return stringValue(parent);
+    }
+
+    @Override
+    default Object copy(Map<Object, Object> refs) {
         throw new UnsupportedOperationException();
     }
 
     @Override
-    public default Object frozenCopy(Map<Object, Object> refs) {
+    default Object frozenCopy(Map<Object, Object> refs) {
         throw new UnsupportedOperationException();
     }
 }

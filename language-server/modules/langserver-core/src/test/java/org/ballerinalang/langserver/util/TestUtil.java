@@ -20,8 +20,22 @@ package org.ballerinalang.langserver.util;
 import com.google.gson.Gson;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
+import io.ballerina.tools.diagnostics.Diagnostic;
+import org.apache.commons.lang3.tuple.ImmutablePair;
+import org.apache.commons.lang3.tuple.Pair;
 import org.ballerinalang.langserver.BallerinaLanguageServer;
+import org.ballerinalang.langserver.DocumentServiceOperationContext;
+import org.ballerinalang.langserver.LSContextOperation;
+import org.ballerinalang.langserver.commons.LSContext;
+import org.ballerinalang.langserver.commons.semantichighlighter.SemanticHighlightingParams;
+import org.ballerinalang.langserver.commons.workspace.WorkspaceDocumentManager;
+import org.ballerinalang.langserver.compiler.LSCompilerCache;
+import org.ballerinalang.langserver.compiler.LSModuleCompiler;
 import org.ballerinalang.langserver.compiler.LSPackageLoader;
+import org.ballerinalang.langserver.compiler.exception.CompilationFailedException;
+import org.ballerinalang.langserver.compiler.workspace.WorkspaceDocumentManagerImpl;
+import org.ballerinalang.langserver.extensions.ballerina.semantichighlighter.HighlightingFailedException;
+import org.ballerinalang.langserver.extensions.ballerina.semantichighlighter.SemanticHighlightProvider;
 import org.eclipse.lsp4j.ClientCapabilities;
 import org.eclipse.lsp4j.CodeActionContext;
 import org.eclipse.lsp4j.CodeActionParams;
@@ -51,14 +65,23 @@ import org.eclipse.lsp4j.jsonrpc.Endpoint;
 import org.eclipse.lsp4j.jsonrpc.messages.ResponseError;
 import org.eclipse.lsp4j.jsonrpc.messages.ResponseMessage;
 import org.eclipse.lsp4j.jsonrpc.services.ServiceEndpoints;
+import org.wso2.ballerinalang.compiler.tree.BLangPackage;
 
 import java.io.IOException;
+import java.net.MalformedURLException;
+import java.net.URISyntaxException;
+import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Arrays;
+import java.util.List;
+import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.locks.Lock;
+
+import static org.ballerinalang.langserver.compiler.LSClientLogger.logError;
 
 /**
  * Common utils that are reused within test suits.
@@ -123,6 +146,43 @@ public class TestUtil {
         return getResponseString(result);
     }
 
+    /**
+     * Get semantic highlighting response.
+     *
+     * @param docManager Document manager
+     * @param filePath   Path of the Bal file
+     * @return {@link SemanticHighlightingParams}   Response as SemanticHighlightingParams
+     */
+    public static SemanticHighlightingParams getHighlightingResponse(
+            WorkspaceDocumentManager docManager, Path filePath) throws CompilationFailedException {
+
+        String docUri = filePath.toUri().toString();
+        SemanticHighlightingParams semanticHighlightingParams = null;
+
+        Path compilationPath;
+        try {
+            compilationPath = Paths.get(new URL(docUri).toURI());
+        } catch (URISyntaxException | MalformedURLException e) {
+            compilationPath = null;
+        }
+        if (compilationPath != null) {
+            Optional<Lock> lock = docManager.lockFile(compilationPath);
+            try {
+                LSContext context = new DocumentServiceOperationContext
+                        .ServiceOperationContextBuilder(LSContextOperation.TXT_DID_OPEN)
+                        .withCommonParams(null, docUri, docManager)
+                        .build();
+                semanticHighlightingParams = SemanticHighlightProvider.getHighlights(context, docManager);
+            } catch (HighlightingFailedException e) {
+                String msg = "Semantic highlighting failed!";
+                TextDocumentIdentifier identifier = new TextDocumentIdentifier(docUri);
+                logError(msg, e, identifier, (Position) null);
+            } finally {
+                lock.ifPresent(Lock::unlock);
+            }
+        }
+        return semanticHighlightingParams;
+    }
     /**
      * Get the textDocument/completion response.
      *
@@ -218,6 +278,7 @@ public class TestUtil {
      */
     public static String getCodeActionResponse(Endpoint serviceEndpoint, String filePath, Range range,
                                                CodeActionContext context) {
+        LSCompilerCache.clearAll();
         TextDocumentIdentifier identifier = getTextDocumentIdentifier(filePath);
         CodeActionParams codeActionParams = new CodeActionParams(identifier, range, context);
         CompletableFuture result = serviceEndpoint.request(CODE_ACTION, codeActionParams);
@@ -308,14 +369,25 @@ public class TestUtil {
         serviceEndpoint.notify("textDocument/didClose", new DidCloseTextDocumentParams(documentIdentifier));
     }
 
+
     /**
      * Initialize the language server instance to use.
      *
      * @return {@link Endpoint}     Service Endpoint
      */
     public static Endpoint initializeLanguageSever() {
+        return initializeLanguageSeverAndGetDocManager().getLeft();
+    }
+
+    /**
+     * Initialize the language server instance to use.
+     *
+     * @return {@link Endpoint}     Service Endpoint
+     */
+    public static Pair<Endpoint, WorkspaceDocumentManager> initializeLanguageSeverAndGetDocManager() {
         LSPackageLoader.clearHomeRepoPackages();
-        Endpoint endpoint = ServiceEndpoints.toEndpoint(new BallerinaLanguageServer());
+        BallerinaLanguageServer languageServer = new BallerinaLanguageServer();
+        Endpoint endpoint = ServiceEndpoints.toEndpoint(languageServer);
         InitializeParams params = new InitializeParams();
         ClientCapabilities capabilities = new ClientCapabilities();
         TextDocumentClientCapabilities textDocumentClientCapabilities = new TextDocumentClientCapabilities();
@@ -334,7 +406,7 @@ public class TestUtil {
         params.setCapabilities(capabilities);
         endpoint.request("initialize", params);
 
-        return endpoint;
+        return new ImmutablePair<>(endpoint, languageServer.getDocumentManager());
     }
 
     /**
@@ -417,5 +489,16 @@ public class TestUtil {
         }
 
         return GSON.toJson(jsonrpcResponse).replace("\r\n", "\n").replace("\\r\\n", "\\n");
+    }
+
+    public static List<Diagnostic> compileAndGetDiagnostics(Path sourcePath) throws CompilationFailedException {
+        WorkspaceDocumentManagerImpl documentManager = WorkspaceDocumentManagerImpl.getInstance();
+        LSContext context = new DocumentServiceOperationContext
+                .ServiceOperationContextBuilder(LSContextOperation.DIAGNOSTICS)
+                .withCommonParams(null, sourcePath.toUri().toString(), documentManager)
+                .build();
+
+        BLangPackage pkg = LSModuleCompiler.getBLangPackage(context, documentManager, true, true);
+        return pkg.getDiagnostics();
     }
 }

@@ -1,2 +1,0 @@
-// XML elements can contain child XML items. Ballerina allows you to access these
-// child elements conveniently using field-access and index-access expressions.

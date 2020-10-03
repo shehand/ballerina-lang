@@ -37,7 +37,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import static org.ballerinalang.openapi.utils.TypeMatchingUtil.delimeterizeUnescapedIdentifires;
+import static org.ballerinalang.openapi.utils.TypeExtractorUtil.escapeIdentifier;
 
 /**
  * Wrapper for {@link OpenAPI}.
@@ -57,6 +57,7 @@ public class BallerinaOpenApi implements BallerinaOpenApiObject<BallerinaOpenApi
     private Set<Map.Entry<String, BallerinaSchema>> schemas = null;
     private Components components = null;
     private Map<String, Object> extensions = null;
+    private static String pathName;
 
     /**
      * Build a {@link BallerinaOpenApi} object from a {@link OpenAPI} object.
@@ -109,24 +110,60 @@ public class BallerinaOpenApi implements BallerinaOpenApiObject<BallerinaOpenApi
         this.paths = new LinkedHashSet<>();
         Paths pathList = openAPI.getPaths();
         for (Map.Entry<String, PathItem> path : pathList.entrySet()) {
+            setPathName(path.getKey());
             BallerinaPath balPath = new BallerinaPath().buildContext(path.getValue(), openAPI);
             if (balPath.isNoOperationsForPath()) {
-                balPath.setResourceName(delimeterizeUnescapedIdentifires(path.getKey(), false));
+                balPath.setResourceName(escapeIdentifier(path.getKey()));
             } else {
                 balPath.getOperations().forEach(operation -> {
                     if (operation.getValue().getOperationId() == null) {
                         String pathName = path.getKey().substring(1); //need to drop '/' prefix from the key, ex:'/path'
                         String operationId = operation.getKey() + StringUtils.capitalize(pathName);
-                        operation.getValue().setOperationId(delimeterizeUnescapedIdentifires(
-                                CodegenUtils.normalizeForBIdentifier(operationId), false));
+                        operation.getValue().setOperationId(escapeIdentifier(CodegenUtils.normalizeForBIdentifier(
+                                operationId)));
                     } else {
                         String opId = operation.getValue().getOperationId();
-                        operation.getValue().setOperationId(delimeterizeUnescapedIdentifires(opId, false));
+                        operation.getValue().setOperationId(escapeIdentifier(opId));
                     }
                 });
             }
-            paths.add(new AbstractMap.SimpleEntry<>(path.getKey(), balPath));
+            
+            String resourcePath;
+            // Use ballerina string templating if there are path params.
+            if (hasPathParams(path.getValue())) {
+                resourcePath = "string `" + path.getKey().replace("{", "${") + "`";
+            } else {
+                resourcePath = "\"" + path.getKey() + "\"";
+            }
+            
+            paths.add(new AbstractMap.SimpleEntry<>(resourcePath, balPath));
         }
+    }
+    
+    /**
+     * Checks if there are any path parameters in the operations.
+     *
+     * @param path The path item in the OpenAPI spec.
+     * @return True if there are path parameters, else false.
+     */
+    private boolean hasPathParams(PathItem path) {
+        if (null != path.getParameters() && path.getParameters().size() > 0) {
+            return path.getParameters().stream()
+                    .anyMatch(parameter -> null != parameter.getIn() && parameter.getIn().equals("path"));
+        }
+    
+        if (path.readOperations().size() > 0) {
+            return path.readOperations().stream().anyMatch(operation -> {
+                if (null != operation.getParameters() && operation.getParameters().size() > 0) {
+                    return operation.getParameters().stream()
+                            .anyMatch(parameter -> null != parameter.getIn() && parameter.getIn().equals("path"));
+                }
+                
+                return false;
+            });
+        }
+        
+        return false;
     }
 
     /**
@@ -151,7 +188,7 @@ public class BallerinaOpenApi implements BallerinaOpenApiObject<BallerinaOpenApi
                     schema.setType(entry.getKey());
                 }
 
-                schemas.add(new AbstractMap.SimpleEntry<>(entry.getKey(), schema));
+                schemas.add(new AbstractMap.SimpleEntry<>(escapeIdentifier(entry.getKey()), schema));
             } catch (BallerinaOpenApiException e) {
                 // Ignore exception and try to build next schema. No need to break the flow for a failure of one schema.
             }
@@ -274,6 +311,14 @@ public class BallerinaOpenApi implements BallerinaOpenApiObject<BallerinaOpenApi
 
     public String getDefinitionPath() {
         return definitionPath;
+    }
+
+    public static void setPathName(String pathName) {
+        BallerinaOpenApi.pathName = pathName;
+    }
+
+    public static String getPathName() {
+        return  pathName;
     }
 
 }

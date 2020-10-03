@@ -9,7 +9,7 @@ public function open (string accessMode) returns (boolean) {
 
 # Represents a Person type in ballerina.
 # + name - name of the person.
-public type Person object {
+public class Person {
 
     private string name;
 
@@ -24,4 +24,17 @@ public type Person object {
     public function isMale() returns boolean {
         return true;
     }
+}
+
+# Documentation for Test annotation
+# + a - 'field a' documentation
+# + b - 'field b' documentation
+# + c - 'field c' documentation
+public type Tst record {
+    string a = "";
+    string b = "";
+    string c = "";
 };
+
+# Documentation for Test annotation
+public annotation Tst Test on function;

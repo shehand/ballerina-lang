@@ -23,6 +23,8 @@ import org.ballerinalang.test.util.BCompileUtil;
 import org.ballerinalang.test.util.CompileResult;
 import org.testng.annotations.Test;
 
+import static org.testng.Assert.assertEquals;
+
 /**
  * Syntax Errors test class for ballerina filers.
  * This class test error handling for violations of grammar.
@@ -64,17 +66,17 @@ public class InvalidSyntaxParserTest {
         CompileResult result = BCompileUtil.compile("test-src/parser/service-without-resource-name-negative.bal");
         BAssertUtil.validateError(result, 0,
                                   "mismatched input '('. expecting {'public', 'private', 'resource', 'function', " +
-                                          "'remote', '}', '@', DocumentationLineStart}", 6, 3);
-        BAssertUtil.validateError(result, 1, "mismatched input 'caller'. expecting {')', '[', '?', '|'}", 6, 16);
-        BAssertUtil.validateError(result, 2, "mismatched input ','. expecting '='", 6, 22);
-        BAssertUtil.validateError(result, 3, "mismatched input ')'. expecting '='", 6, 44);
+                                          "'remote', 'transactional', '}', '@', DocumentationLineStart}", 6, 3);
+        BAssertUtil.validateError(result, 1, "mismatched input 'caller'. expecting {')', '[', '?', '&', '|'}", 6, 16);
+        BAssertUtil.validateError(result, 2, "mismatched input ','. expecting ';'", 6, 22);
+        BAssertUtil.validateError(result, 3, "mismatched input ')'. expecting ';'", 6, 44);
     }
 
     @Test
     public void testParseMainFuncWithoutName() {
         CompileResult result = BCompileUtil.compile("test-src/parser/func-without-name-negative.bal");
-        BAssertUtil.validateError(result, 0, "mismatched input '{'. expecting {'[', '?', '|', Identifier}", 1, 30);
-        BAssertUtil.validateError(result, 1, "mismatched input ';'. expecting '='", 2, 7);
+        BAssertUtil.validateError(result, 0, "mismatched input '{'. expecting {'[', '?', '&', '|', Identifier}", 1, 30);
+        BAssertUtil.validateError(result, 1, "mismatched input ';'. expecting {'[', '?', '&', '|', Identifier}", 3, 6);
     }
 
     /**
@@ -84,7 +86,18 @@ public class InvalidSyntaxParserTest {
     @Test
     public void testServiceWithoutResourceParams() {
         CompileResult result = BCompileUtil.compile("test-src/parser/service-without-resource-params-negative.bal");
-        BAssertUtil.validateError(result, 0, "mismatched input '{'. expecting '('", 9, 29);
+        int index = 0;
+        BAssertUtil.validateError(result, index++, "extraneous input '{'", 5, 26);
+        BAssertUtil.validateError(result, index++, "mismatched input ':'. expecting ';'", 6, 16);
+        BAssertUtil.validateError(result, index++, "mismatched input '\"GET\"'. expecting {'service', 'function', " +
+                "'object', 'record', 'abstract', 'client', 'distinct', 'int', 'byte', 'float', 'decimal', 'boolean', " +
+                "'string', 'error', 'map', 'json', 'xml', 'table', 'stream', 'any', 'typedesc', 'future', 'anydata', " +
+                "'handle', 'readonly', 'never', '(', '[', Identifier}", 6, 18);
+        BAssertUtil.validateError(result, index++, "mismatched input ':'. expecting ';'", 7, 13);
+        BAssertUtil.validateError(result, index++, "invalid token '{'", 9, 29);
+        BAssertUtil.validateError(result, index++, "mismatched input '{'. expecting '('", 9, 29);
+        BAssertUtil.validateError(result, index++, "extraneous input '}'", 12, 1);
+        assertEquals(result.getErrorCount(), index);
     }
 
     @Test
@@ -97,6 +110,11 @@ public class InvalidSyntaxParserTest {
     public void testObjectAttachedFunctionWithInvalidSyntax() {
         CompileResult result = BCompileUtil.compile("test-src/parser/object-attached-func-with-invalid-syntax.bal");
         BAssertUtil.validateError(result, 0, "mismatched input '.'. expecting '('", 6, 17);
+        BAssertUtil.validateError(result, 1, "mismatched input '('. expecting {'[', '?', '&', '|', Identifier}", 6, 21);
+        BAssertUtil.validateError(result, 2, "extraneous input 'a'", 6, 26);
+        BAssertUtil.validateError(result, 3, "mismatched input 'returns'. expecting {'[', '?', '&', '|', Identifier}",
+                6, 29);
+        BAssertUtil.validateError(result, 4, "extraneous input '}'", 8, 1);
     }
 
     @Test
@@ -111,5 +129,21 @@ public class InvalidSyntaxParserTest {
         CompileResult result = BCompileUtil.compile("test-src/parser/resource-with-empty-reply-negative.bal");
         BAssertUtil.validateError(result, 0, "token recognition error at: '\\'", 3, 5);
         BAssertUtil.validateError(result, 0, "token recognition error at: '*'", 4, 15);
+    }
+
+    @Test
+    public void testListenerDeclarationWithDefinedDifferentType() {
+        CompileResult result = BCompileUtil.compile("test-src/parser/listener_declaration_type_reuse_negative.bal");
+        BAssertUtil.validateError(result, 0, "invalid assignment: 'listener' declaration is final", 22, 5);
+        BAssertUtil.validateError(result, 1, "incompatible types: expected 'ballerina/http:1.0.0:MockListener', found" +
+                " 'int'", 22, 9);
+        BAssertUtil.validateError(result, 2, "incompatible types: expected 'int', found " +
+                "'ballerina/http:1.0.0:MockListener'", 23, 9);
+        BAssertUtil.validateError(result, 3, "incompatible types: expected 'lang.object:Listener', found 'int'", 26,
+                                  14);
+        BAssertUtil.validateError(result, 4, "incompatible types: expected 'lang.object:Listener', found 'Person'",
+                                  29, 24);
+        BAssertUtil.validateError(result, 5, "incompatible types: expected 'lang.object:Listener', found 'other'", 31
+                , 23);
     }
 }

@@ -125,18 +125,18 @@ function assignFiniteValueAsDefaultParam(State cd = "on") returns State {
    return c.b ?: "off";
 }
 
-type Channel object {
+class Channel {
 
     public State? b;
 
-    function __init (State b = "off", boolean a = true){
+    function init (State b = "off", boolean a = true){
         self.b = b;
         State o =  "on";
         if(self.b == o) {
            int i = 4;
         }
     }
-};
+}
 
 type CombinedState "on"|"off"|int;
 
@@ -459,6 +459,43 @@ function testFiniteTypesWithDiscriminatedMembers() returns [any, any, any, any, 
     t|t2 d = 2.22f;
     t|t2 e = 3.33d;
     return [a, b, c, d, e];
+}
+
+type PositiveInt +3|+5;
+
+function testFiniteTypesWithPositiveIntegers() {
+    PositiveInt n = +3;
+    PositiveInt comparator = +3;
+    if (n == comparator) {
+       n = +5;
+    }
+    assertEquality(5,n);
+
+}
+
+type PositiveFloat +1.2|+1.5;
+
+function testFiniteTypesWithPositiveFloats() {
+    PositiveFloat n = +1.2;
+    PositiveFloat comparator = +1.2;
+    if (n == comparator) {
+       n = +1.5;
+    }
+    assertEquality(1.5,n);
+}
+
+const ASSERTION_ERROR_REASON = "TypeAssertionError";
+
+function assertEquality(any|error expected, any|error actual) {
+    if (expected is anydata && actual is anydata && expected == actual) {
+        return;
+    }
+    if (expected === actual) {
+        return;
+    }
+    typedesc<any|error> tActual = typeof actual;
+    panic error(ASSERTION_ERROR_REASON,
+                message = "expected '" + expected.toString() + "', found '" + tActual.toString() + "'");
 }
 
 //public const '\- = "-";

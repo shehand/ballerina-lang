@@ -1,11 +1,11 @@
 
-public type userPFoo object {
+public class userPFoo {
     public int age = 0;
     public string name = "";
     public string address = "";
     public string zipcode = "23468";
 
-    public function __init (int age, string name, string address) {
+    public function init (int age, string name, string address) {
         self.age = age;
         self.name = name;
         self.address = address;
@@ -18,4 +18,4 @@ public type userPFoo object {
     public function getAge () returns int {
         return self.age;
     }
-};
+}

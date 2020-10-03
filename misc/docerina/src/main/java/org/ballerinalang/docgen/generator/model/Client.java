@@ -15,20 +15,23 @@
  */
 package org.ballerinalang.docgen.generator.model;
 
-import java.util.ArrayList;
+import com.google.gson.annotations.Expose;
+
 import java.util.List;
 import java.util.stream.Collectors;
 
 /**
  * Represent documentation for a Client.
  */
-public class Client extends Object {
+public class Client extends BClass {
 
-    public List<Function> remoteMethods = new ArrayList<>();
+    @Expose
+    public List<Function> remoteMethods;
 
-    public Client(String name, String description, List<DefaultableVarible> fields, List<Function> methods) {
-        super(name, description, fields, methods);
-        this.remoteMethods = getRemoteMethods(methods);
+    public Client(String name, String description, boolean isDeprecated, List<DefaultableVariable> fields,
+            List<Function> methods) {
+        super(name, description, isDeprecated, fields, methods);
+        this.remoteMethods = getRemoteMethods();
         this.otherMethods = getOtherMethods(methods);
     }
 
@@ -39,7 +42,7 @@ public class Client extends Object {
                 .collect(Collectors.toList());
     }
 
-    public List<Function> getRemoteMethods(List<Function> methods) {
+    public List<Function> getRemoteMethods() {
         return this.methods.stream()
                 .filter(function -> function.isRemote)
                 .collect(Collectors.toList());

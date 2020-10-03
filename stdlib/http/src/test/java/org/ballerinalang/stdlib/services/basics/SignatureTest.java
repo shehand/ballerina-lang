@@ -18,10 +18,10 @@
 
 package org.ballerinalang.stdlib.services.basics;
 
+import io.ballerina.tools.diagnostics.Diagnostic;
 import org.ballerinalang.test.util.BAssertUtil;
 import org.ballerinalang.test.util.BCompileUtil;
 import org.ballerinalang.test.util.CompileResult;
-import org.ballerinalang.util.diagnostic.Diagnostic;
 import org.ballerinalang.util.exceptions.BLangRuntimeException;
 import org.testng.Assert;
 import org.testng.annotations.Test;
@@ -41,7 +41,7 @@ public class SignatureTest {
                 "test-src/services/signature/no-request-param.bal").getPath()).getAbsolutePath());
 
         Assert.assertEquals(compileResult.getErrorCount(), 1);
-        Assert.assertEquals(compileResult.getDiagnostics().clone()[0].getMessage(),
+        Assert.assertEquals(compileResult.getDiagnostics().clone()[0].message(),
                 "resource signature parameter count should be >= 2");
     }
 
@@ -51,8 +51,8 @@ public class SignatureTest {
                 "test-src/services/signature/no-con-param.bal").getPath()).getAbsolutePath());
 
         Assert.assertEquals(compileResult.getErrorCount(), 1);
-        Assert.assertEquals(compileResult.getDiagnostics().clone()[0].getMessage(),
-                "first parameter should be of type ballerina/http:Caller");
+        Assert.assertEquals(compileResult.getDiagnostics().clone()[0].message(),
+                "first parameter should be of type ballerina/http:1.0.0:Caller");
     }
 
     @Test()
@@ -61,8 +61,8 @@ public class SignatureTest {
                 "test-src/services/signature/with-res-param.bal").getPath()).getAbsolutePath());
 
         Assert.assertEquals(compileResult.getErrorCount(), 1);
-        Assert.assertEquals(compileResult.getDiagnostics().clone()[0].getMessage(),
-                "second parameter should be of type ballerina/http:Request");
+        Assert.assertEquals(compileResult.getDiagnostics().clone()[0].message(),
+                "second parameter should be of type ballerina/http:1.0.0:Request");
     }
 
     @Test()
@@ -71,8 +71,8 @@ public class SignatureTest {
                 "test-src/services/signature/int-param.bal").getPath()).getAbsolutePath());
 
         Assert.assertEquals(compileResult.getErrorCount(), 1);
-        Assert.assertEquals(compileResult.getDiagnostics().clone()[0].getMessage(),
-                "second parameter should be of type ballerina/http:Request");
+        Assert.assertEquals(compileResult.getDiagnostics().clone()[0].message(),
+                "second parameter should be of type ballerina/http:1.0.0:Request");
     }
 
     @Test()
@@ -95,10 +95,10 @@ public class SignatureTest {
                 "test-src/services/signature/mismatched-body-param.bal").getPath()).getAbsolutePath());
         Diagnostic[] diag = compileResult.getDiagnostics();
         Assert.assertEquals(diag.length, 2);
-        Assert.assertEquals(diag[0].getMessage(), "invalid resource parameter(s): cannot specify > 2 parameters " +
+        Assert.assertEquals(diag[0].message(), "invalid resource parameter(s): cannot specify > 2 parameters " +
                 "without specifying path config and/or body config in the resource annotation");
-        Assert.assertEquals(diag[1].getMessage(),
-                            "Invalid data binding param in the signature : expected 'person', but found 'ballerina'");
+        Assert.assertEquals(diag[1].message(),
+                "Invalid data binding param in the signature : expected 'person', but found 'ballerina'");
     }
 
     @Test
@@ -107,8 +107,8 @@ public class SignatureTest {
                 "test-src/services/signature/invalid-return.bal").getPath()).getAbsolutePath());
 
         Assert.assertEquals(compileResult.getErrorCount(), 1);
-        Assert.assertEquals(compileResult.getDiagnostics().clone()[0].getMessage(), "invalid resource function return" +
-                " type 'int', expected a subtype of 'error?' containing '()'");
+        Assert.assertEquals(compileResult.getDiagnostics().clone()[0].message(), "invalid resource " +
+                "function return type 'int', expected a subtype of 'error?' containing '()'");
     }
 
     @Test

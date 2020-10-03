@@ -245,7 +245,7 @@ function testUninitializedVarReferrencing() {
     }
 
     // uninitialized var in conversion
-    string|error str = string.constructFrom(a);
+    string|error str = a.cloneWithType(string);
 
     // uninitialized var XML
     xml x1 = xml`<foo id="{{a}}" xmlns:ns0="{{a}}">
@@ -263,10 +263,6 @@ function testUninitializedVarReferrencing() {
     // uninitialized var in function invocation, expression statement
     _ = m.hasKey(s);
     foo(a, s, s);
-
-    // uninitialized var in xml attribute access
-    xml x;
-    _ = x@[s];
 
     // uninitialized var in range expression
     //
@@ -297,14 +293,14 @@ function testDataflow_11() returns string {
 
 int globalVar = 4;
 
-type Foo object {
+class Foo {
     int a = globalVar;
     int b;
     int c;
     int d;
     int e;
 
-    function __init (int c, int f, int x, int e=4) {
+    function init (int c, int f, int x, int e=4) {
         self.a = globalVar;
         self.b = e;
         self.c = c;
@@ -328,7 +324,7 @@ type Foo object {
     function getD() returns int {
         return self.d;
     }
-};
+}
 
 function testIfFollowedByIf() returns int {
     int x;
@@ -404,38 +400,38 @@ function testUninitVsPartiallyInit() returns [string, string] {
     return [a, b];
 }
 
-type A object {
+class A {
     public int a;
     private int b;
     int c;
 
-    function __init() {
+    function init() {
         self.a = 1;
         self.b = 2;
         self.c = 3;
     }
-};
+}
 
-type B object {
+class B {
     public int a;
     private int b;
     int c;
 
-    function __init(int a, int b, int c) {
+    function init(int a, int b, int c) {
         self.a = a;
         self.b = b;
         self.c = c;
     }
-};
+}
 
-type C object {
+class C {
     public int a;
     private int b;
     int c;
 
-    function __init() {
+    function init() {
     }
-};
+}
 
 public type D record {
     string a;
@@ -519,11 +515,11 @@ function testDataflowWithNestedPanic_2() returns string {
     return msg;
 }
 
-type E object {
+class E {
     public int a;
     private int b;
     int c;
-};
+}
 
 type Age record {
     int age;
@@ -572,15 +568,15 @@ function testDataflow_12() returns string {
     return val;
 }
 
-type F object {
+class F {
     public int a;
     public int b;
     string c;
 
-    function __init() {
+    function init() {
         self.a = 1;
     }
-};
+}
 
 public function testDataFlow_13(){
     object { public string s; } o = new;

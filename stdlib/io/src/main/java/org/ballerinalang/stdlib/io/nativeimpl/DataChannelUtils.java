@@ -18,7 +18,9 @@
 
 package org.ballerinalang.stdlib.io.nativeimpl;
 
-import org.ballerinalang.jvm.values.ObjectValue;
+import org.ballerinalang.jvm.api.BStringUtils;
+import org.ballerinalang.jvm.api.values.BObject;
+import org.ballerinalang.jvm.api.values.BString;
 import org.ballerinalang.stdlib.io.channels.base.Channel;
 import org.ballerinalang.stdlib.io.channels.base.DataChannel;
 import org.ballerinalang.stdlib.io.channels.base.Representation;
@@ -62,9 +64,9 @@ public class DataChannelUtils {
         }
     }
 
-    public static void initReadableDataChannel(ObjectValue dataChannelObj, ObjectValue byteChannelObj, Object order) {
+    public static void initReadableDataChannel(BObject dataChannelObj, BObject byteChannelObj, BString order) {
         try {
-            ByteOrder byteOrder = getByteOrder((String) order);
+            ByteOrder byteOrder = getByteOrder(order.getValue());
             Channel channel = (Channel) byteChannelObj.getNativeData(IOConstants.BYTE_CHANNEL_NAME);
             DataChannel dataChannel = new DataChannel(channel, byteOrder);
             dataChannelObj.addNativeData(DATA_CHANNEL_NAME, dataChannel);
@@ -75,7 +77,7 @@ public class DataChannelUtils {
         }
     }
 
-    public static Object readInt16(ObjectValue dataChannelObj) {
+    public static Object readInt16(BObject dataChannelObj) {
         DataChannel channel = (DataChannel) dataChannelObj.getNativeData(DATA_CHANNEL_NAME);
         try {
             return channel.readLong(Representation.BIT_16).getValue();
@@ -85,7 +87,7 @@ public class DataChannelUtils {
         }
     }
 
-    public static Object readInt32(ObjectValue dataChannelObj) {
+    public static Object readInt32(BObject dataChannelObj) {
         DataChannel channel = (DataChannel) dataChannelObj.getNativeData(DATA_CHANNEL_NAME);
         try {
             return channel.readLong(Representation.BIT_32).getValue();
@@ -95,7 +97,7 @@ public class DataChannelUtils {
         }
     }
 
-    public static Object readInt64(ObjectValue dataChannelObj) {
+    public static Object readInt64(BObject dataChannelObj) {
         DataChannel channel = (DataChannel) dataChannelObj.getNativeData(DATA_CHANNEL_NAME);
         try {
             return channel.readLong(Representation.BIT_64).getValue();
@@ -105,7 +107,7 @@ public class DataChannelUtils {
         }
     }
 
-    public static Object readFloat32(ObjectValue dataChannelObj) {
+    public static Object readFloat32(BObject dataChannelObj) {
         DataChannel channel = (DataChannel) dataChannelObj.getNativeData(DATA_CHANNEL_NAME);
         try {
             return channel.readDouble(Representation.BIT_32);
@@ -115,7 +117,7 @@ public class DataChannelUtils {
         }
     }
 
-    public static Object readFloat64(ObjectValue dataChannelObj) {
+    public static Object readFloat64(BObject dataChannelObj) {
         DataChannel channel = (DataChannel) dataChannelObj.getNativeData(DATA_CHANNEL_NAME);
         try {
             return channel.readDouble(Representation.BIT_64);
@@ -125,7 +127,7 @@ public class DataChannelUtils {
         }
     }
 
-    public static Object readBool(ObjectValue dataChannelObj) {
+    public static Object readBool(BObject dataChannelObj) {
         DataChannel channel = (DataChannel) dataChannelObj.getNativeData(DATA_CHANNEL_NAME);
         try {
             return channel.readBoolean();
@@ -135,7 +137,7 @@ public class DataChannelUtils {
         }
     }
 
-    public static Object readString(ObjectValue dataChannelObj, long nBytes, String encoding) {
+    public static Object readString(BObject dataChannelObj, long nBytes, BString encoding) {
         DataChannel channel = (DataChannel) dataChannelObj.getNativeData(DATA_CHANNEL_NAME);
         if (channel.hasReachedEnd()) {
             if (log.isDebugEnabled()) {
@@ -144,7 +146,7 @@ public class DataChannelUtils {
             return IOUtils.createEoFError();
         } else {
             try {
-                return channel.readString((int) nBytes, encoding);
+                return BStringUtils.fromString(channel.readString((int) nBytes, encoding.getValue()));
             } catch (IOException e) {
                 String msg = "Error occurred while reading string: " + e.getMessage();
                 log.error(msg, e);
@@ -153,7 +155,7 @@ public class DataChannelUtils {
         }
     }
 
-    public static Object readVarInt(ObjectValue dataChannelObj) {
+    public static Object readVarInt(BObject dataChannelObj) {
         DataChannel channel = (DataChannel) dataChannelObj.getNativeData(DATA_CHANNEL_NAME);
         try {
             return channel.readLong(Representation.VARIABLE).getValue();
@@ -163,7 +165,7 @@ public class DataChannelUtils {
         }
     }
 
-    public static Object closeDataChannel(ObjectValue dataChannel) {
+    public static Object closeDataChannel(BObject dataChannel) {
         DataChannel channel = (DataChannel) dataChannel.getNativeData(DATA_CHANNEL_NAME);
         try {
             channel.close();
@@ -175,9 +177,9 @@ public class DataChannelUtils {
         return null;
     }
 
-    public static void initWritableDataChannel(ObjectValue dataChannelObj, ObjectValue byteChannelObj, Object order) {
+    public static void initWritableDataChannel(BObject dataChannelObj, BObject byteChannelObj, BString order) {
         try {
-            ByteOrder byteOrder = getByteOrder((String) order);
+            ByteOrder byteOrder = getByteOrder(order.getValue());
             Channel channel = (Channel) byteChannelObj.getNativeData(IOConstants.BYTE_CHANNEL_NAME);
             DataChannel dataChannel = new DataChannel(channel, byteOrder);
             dataChannelObj.addNativeData(DATA_CHANNEL_NAME, dataChannel);
@@ -188,7 +190,7 @@ public class DataChannelUtils {
         }
     }
 
-    public static Object writeInt16(ObjectValue dataChannelObj, long value) {
+    public static Object writeInt16(BObject dataChannelObj, long value) {
         DataChannel channel = (DataChannel) dataChannelObj.getNativeData(DATA_CHANNEL_NAME);
         try {
             channel.writeLong(value, Representation.BIT_16);
@@ -199,7 +201,7 @@ public class DataChannelUtils {
         return null;
     }
 
-    public static Object writeInt32(ObjectValue dataChannelObj, long value) {
+    public static Object writeInt32(BObject dataChannelObj, long value) {
         DataChannel channel = (DataChannel) dataChannelObj.getNativeData(DATA_CHANNEL_NAME);
         try {
             channel.writeLong(value, Representation.BIT_32);
@@ -210,7 +212,7 @@ public class DataChannelUtils {
         return null;
     }
 
-    public static Object writeInt64(ObjectValue dataChannelObj, long value) {
+    public static Object writeInt64(BObject dataChannelObj, long value) {
         DataChannel channel = (DataChannel) dataChannelObj.getNativeData(DATA_CHANNEL_NAME);
         try {
             channel.writeLong(value, Representation.BIT_64);
@@ -221,7 +223,7 @@ public class DataChannelUtils {
         return null;
     }
 
-    public static Object writeFloat32(ObjectValue dataChannelObj, double value) {
+    public static Object writeFloat32(BObject dataChannelObj, double value) {
         DataChannel channel = (DataChannel) dataChannelObj.getNativeData(DATA_CHANNEL_NAME);
         try {
             channel.writeDouble(value, Representation.BIT_32);
@@ -232,7 +234,7 @@ public class DataChannelUtils {
         return null;
     }
 
-    public static Object writeFloat64(ObjectValue dataChannelObj, double value) {
+    public static Object writeFloat64(BObject dataChannelObj, double value) {
         DataChannel channel = (DataChannel) dataChannelObj.getNativeData(DATA_CHANNEL_NAME);
         try {
             channel.writeDouble(value, Representation.BIT_64);
@@ -243,7 +245,7 @@ public class DataChannelUtils {
         return null;
     }
 
-    public static Object writeBool(ObjectValue dataChannelObj, boolean value) {
+    public static Object writeBool(BObject dataChannelObj, boolean value) {
         DataChannel channel = (DataChannel) dataChannelObj.getNativeData(IOConstants.DATA_CHANNEL_NAME);
         try {
             channel.writeBoolean(value);
@@ -254,10 +256,10 @@ public class DataChannelUtils {
         return null;
     }
 
-    public static Object writeString(ObjectValue dataChannelObj, String value, String encoding) {
+    public static Object writeString(BObject dataChannelObj, BString value, BString encoding) {
         DataChannel channel = (DataChannel) dataChannelObj.getNativeData(DATA_CHANNEL_NAME);
         try {
-            channel.writeString(value, encoding);
+            channel.writeString(value.getValue(), encoding.getValue());
         } catch (IOException e) {
             log.error("Error occurred while writing string.", e);
             return IOUtils.createError(e);
@@ -265,7 +267,7 @@ public class DataChannelUtils {
         return null;
     }
 
-    public static Object writeVarInt(ObjectValue dataChannelObj, long value) {
+    public static Object writeVarInt(BObject dataChannelObj, long value) {
         DataChannel channel = (DataChannel) dataChannelObj.getNativeData(DATA_CHANNEL_NAME);
         try {
             channel.writeLong(value, Representation.VARIABLE);

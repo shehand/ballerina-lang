@@ -65,22 +65,31 @@ public class OpenApiMesseges {
     public static final String DEFINITION_EXISTS = "There is already an OpenApi contract in the location.";
     public static final String EXPERIMENTAL_FEATURE = "Note: This is an experimental tool, which only" +
             " supports a limited set of functionality.";
+    public static final String MESSAGE_FOR_MISSING_INPUT = "An OpenApi definition file is required to generate the " +
+            "service. \nE.g: ballerina openapi --input <OpenApiContract> or <Ballerina file>";
+    public static final String MESSAGE_FOR_INVALID_MODULE = "The module provided is not found in the " +
+            "current location.";
 
     //TODO Update keywords if Ballerina Grammer changes
     private static final String[] KEYWORDS = new String[]{"abort", "aborted", "abstract", "all", "annotation",
             "any", "anydata", "boolean", "break", "byte", "catch", "channel", "check", "checkpanic", "client",
             "committed", "const", "continue", "decimal", "else", "error", "external", "fail", "final", "finally",
             "float", "flush", "fork", "function", "future", "handle", "if", "import", "in", "int", "is", "join",
-            "json", "listener", "lock", "match", "new", "object", "OBJECT_INIT", "onretry", "PARAMETER", "panic",
+            "json", "listener", "lock", "match", "new", "object", "OBJECT_INIT", "onretry", "parameter", "panic",
             "private", "public", "record", "remote", "resource", "retries", "retry", "return", "returns", "service",
             "source", "start", "stream", "string", "table", "transaction", "try", "type", "typedesc", "typeof",
             "trap", "throw", "wait", "while", "with", "worker", "var", "version", "xml", "xmlns", "BOOLEAN_LITERAL",
-            "NULL_LITERAL", "ascending", "descending", "foreach", "map", "group", "from", "default"};
+            "NULL_LITERAL", "ascending", "descending", "foreach", "map", "group", "from", "default", "field"};
+    
+    private static final String[] TYPES = new String[]{"int", "any", "anydata", "boolean", "byte", "float", "int",
+                                                       "json", "string", "table", "var", "xml"};
 
     public static final List<String> BAL_KEYWORDS;
+    public static final List<String> BAL_TYPES;
 
     static {
         BAL_KEYWORDS = Collections.unmodifiableList(Arrays.asList(KEYWORDS));
+        BAL_TYPES = Collections.unmodifiableList(Arrays.asList(TYPES));
     }
 
     private OpenApiMesseges() {

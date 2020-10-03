@@ -14,38 +14,38 @@
 // specific language governing permissions and limitations
 // under the License.
 
-public type Address abstract object {
+public type Address object {
     public string city;
 
     public function getCity() returns string;
 };
 
-public type StudentAddress object {
+public class StudentAddress {
     public string city;
 
-    public function __init(string city){
+    public function init(string city){
         self.city = city;
     }
 
     public function getCity() returns string {
         return self.city;
     }
-};
+}
 
-public type Employee object {
+public class Employee {
     public string city;
     public Address address;
 
-    function __init(string city, Address address) {
+    function init(string city, Address address) {
         self.city = city;
         self.address = address;
     }
 
     public function getCity() returns string {
         return self.city;
-        
+
     }
-};
+}
 
 public function testAbstractObjectInObject() returns Employee {
     // Initializing variable of object type Person

@@ -43,8 +43,9 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.stream.Stream;
 
+import javax.xml.stream.XMLStreamException;
+
 import static org.ballerinalang.stdlib.common.CommonTestUtils.getAbsoluteFilePath;
-import static org.ballerinalang.stdlib.io.utils.IOConstants.ErrorCode.EoF;
 
 /**
  * Tests I/O related functions.
@@ -204,7 +205,7 @@ public class IOTest {
 
         returns = BRunUtil.invoke(recordsInputOutputProgramFile, "nextRecord");
         BError error = (BError) returns[0];
-        Assert.assertEquals(error.getReason(), EoF.errorCode());
+        Assert.assertEquals(error.getMessage(), "EoF when reading from the channel");
         returns = BRunUtil.invoke(recordsInputOutputProgramFile, "hasNextRecord");
         hasNextRecord = (BBoolean) returns[0];
         Assert.assertFalse(hasNextRecord.booleanValue(), "Not expecting anymore records");
@@ -351,7 +352,7 @@ public class IOTest {
     }
 
     @Test(description = "Test 'writeXml' function in ballerina/io package")
-    public void testWriteXmlCharacters() {
+    public void testWriteXmlCharacters() throws XMLStreamException {
         String content = "<test>\n" + "\t\t<name>Foo</name>\n" + "\t</test>";
 
         String sourceToWrite = currentDirectoryPath + "/xmlCharsFile.xml";
@@ -359,7 +360,7 @@ public class IOTest {
         //Will initialize the channel
         BValue[] args = { new BString(sourceToWrite), new BString("UTF-8") };
         BRunUtil.invoke(characterInputOutputProgramFile, "initWritableChannel", args);
-        OMNode omNode = (OMNode) XMLFactory.parse(content).value();
+        OMNode omNode = (OMNode) XMLFactory.stringToOM(content);
         args = new BValue[] { new BXMLItem(omNode) };
         BValue[] result = BRunUtil.invoke(characterInputOutputProgramFile, "writeXml", args);
 
@@ -398,6 +399,75 @@ public class IOTest {
         BValue[] args = { new BString(content), new BString("UTF-8") };
         BValue[] result = BRunUtil.invoke(stringInputOutputProgramFile, "getXml", args);
         Assert.assertTrue(result[0].stringValue().contains("Foo"));
+    }
+
+    @Test(description = "Test 'readProperty' function in ballerina/io package")
+    public void testReadAvailableProperty() throws URISyntaxException {
+        String resourceToRead = "datafiles/io/text/person.properties";
+        BString readCharacters;
+
+        //Will initialize the channel
+        BValue[] initArgs = { new BString(getAbsoluteFilePath(resourceToRead)), new BString("UTF-8") };
+        BRunUtil.invoke(characterInputOutputProgramFile, "initReadableChannel", initArgs);
+
+        BValue[] testArgs = { new BString("name")};
+        BValue[] returns = BRunUtil.invoke(characterInputOutputProgramFile, "readAvailableProperty", testArgs);
+        readCharacters = (BString) returns[0];
+
+        String returnedString = readCharacters.stringValue();
+        String expectedString = "John Smith";
+        Assert.assertEquals(returnedString, expectedString);
+
+        BRunUtil.invoke(characterInputOutputProgramFile, "closeReadableChannel");
+    }
+
+    @Test(description = "Test 'readAllProperties' function in ballerina/io package")
+    public void testAllProperties() throws URISyntaxException {
+        String resourceToRead = "datafiles/io/text/person.properties";
+        BBoolean succeed;
+
+        //Will initialize the channel
+        BValue[] initArgs = { new BString(getAbsoluteFilePath(resourceToRead)), new BString("UTF-8") };
+        BRunUtil.invoke(characterInputOutputProgramFile, "initReadableChannel", initArgs);
+
+        BValue[] returns = BRunUtil.invoke(characterInputOutputProgramFile, "readAllProperties");
+        succeed = (BBoolean) returns[0];
+        Assert.assertTrue(succeed.booleanValue());
+
+        BRunUtil.invoke(characterInputOutputProgramFile, "closeReadableChannel");
+    }
+
+    @Test(description = "Negative test for 'readProperty' function in ballerina/io package")
+    public void testReadUnavailableProperty() throws URISyntaxException {
+        String resourceToRead = "datafiles/io/text/person.properties";
+        BBoolean succeed;
+
+        //Will initialize the channel
+        BValue[] initArgs = { new BString(getAbsoluteFilePath(resourceToRead)), new BString("UTF-8") };
+        BRunUtil.invoke(characterInputOutputProgramFile, "initReadableChannel", initArgs);
+
+        BValue[] testArgs = { new BString("key")};
+        BValue[] returns = BRunUtil.invoke(characterInputOutputProgramFile, "readUnavailableProperty", testArgs);
+        succeed = (BBoolean) returns[0];
+        Assert.assertTrue(succeed.booleanValue());
+
+        BRunUtil.invoke(characterInputOutputProgramFile, "closeReadableChannel");
+    }
+
+    @Test(description = "Test 'writeProperties' function in ballerina/io package")
+    public void testWriteProperties() throws URISyntaxException {
+        String sourceToWrite = currentDirectoryPath + "/tmp_person.properties";
+        BBoolean succeed;
+
+        //Will initialize the channel
+        BValue[] args = { new BString(sourceToWrite), new BString("UTF-8") };
+        BRunUtil.invoke(characterInputOutputProgramFile, "initWritableChannel", args);
+
+        BValue[] returns = BRunUtil.invoke(characterInputOutputProgramFile, "writePropertiesFromMap");
+        succeed = (BBoolean) returns[0];
+        Assert.assertTrue(succeed.booleanValue());
+
+        BRunUtil.invoke(characterInputOutputProgramFile, "closeWritableChannel");
     }
 
     private String readFileContent(String filePath) throws URISyntaxException {

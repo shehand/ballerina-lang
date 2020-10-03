@@ -18,7 +18,10 @@
 
 package org.ballerinalang.observe.nativeimpl;
 
-import org.ballerinalang.jvm.BallerinaValues;
+import org.ballerinalang.jvm.api.BStringUtils;
+import org.ballerinalang.jvm.api.BValueCreator;
+import org.ballerinalang.jvm.api.values.BMap;
+import org.ballerinalang.jvm.api.values.BString;
 import org.ballerinalang.jvm.observability.metrics.Counter;
 import org.ballerinalang.jvm.observability.metrics.DefaultMetricRegistry;
 import org.ballerinalang.jvm.observability.metrics.Gauge;
@@ -50,14 +53,14 @@ import java.util.Set;
  */
 @BallerinaFunction(
         orgName = "ballerina",
-        packageName = "observe",
+        packageName = "observe", version = "0.8.0",
         functionName = "getAllMetrics",
         returnType = @ReturnType(type = TypeKind.ARRAY),
         isPublic = true
 )
 public class GetAllMetrics {
 
-    private static final BType METRIC_TYPE = BallerinaValues
+    private static final BType METRIC_TYPE = BValueCreator
             .createRecordValue(ObserveNativeImplConstants.OBSERVE_PACKAGE_ID, ObserveNativeImplConstants.METRIC)
             .getType();
 
@@ -85,14 +88,14 @@ public class GetAllMetrics {
                 metricType = MetricConstants.GAUGE;
             }
             if (metricValue != null) {
-                MapValue<String, Object> metricStruct = BallerinaValues.createRecordValue(
+                BMap<BString, Object> metricStruct = BValueCreator.createRecordValue(
                         ObserveNativeImplConstants.OBSERVE_PACKAGE_ID, ObserveNativeImplConstants.METRIC);
-                metricStruct.put("name", metricId.getName());
-                metricStruct.put("desc", metricId.getDescription());
-                metricStruct.put("tags", getTags(metricId));
-                metricStruct.put("metricType", metricType);
-                metricStruct.put("value", metricValue);
-                metricStruct.put("summary", summary);
+                metricStruct.put(BStringUtils.fromString("name"), BStringUtils.fromString(metricId.getName()));
+                metricStruct.put(BStringUtils.fromString("desc"), BStringUtils.fromString(metricId.getDescription()));
+                metricStruct.put(BStringUtils.fromString("tags"), getTags(metricId));
+                metricStruct.put(BStringUtils.fromString("metricType"), BStringUtils.fromString(metricType));
+                metricStruct.put(BStringUtils.fromString("value"), metricValue);
+                metricStruct.put(BStringUtils.fromString("summary"), summary);
                 bMetrics.add(metricIndex, metricStruct);
                 metricIndex++;
             }
@@ -101,11 +104,11 @@ public class GetAllMetrics {
         return bMetrics;
     }
 
-    private static MapValue<String, Object> getTags(MetricId metricId) {
-        MapValue<String, Object> bTags = new MapValueImpl<>(new BMapType(BTypes.typeString));
+    private static MapValue<BString, Object> getTags(MetricId metricId) {
+        MapValue<BString, Object> bTags = new MapValueImpl<>(new BMapType(BTypes.typeString));
         Set<Tag> tags = metricId.getTags();
         for (Tag tag : tags) {
-            bTags.put(tag.getKey(), tag.getValue());
+            bTags.put(BStringUtils.fromString(tag.getKey()), BStringUtils.fromString(tag.getValue()));
         }
         return bTags;
     }

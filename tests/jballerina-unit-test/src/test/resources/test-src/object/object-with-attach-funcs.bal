@@ -5,14 +5,14 @@ public function testObjectWithAttachedFunc1 () returns [int, string, int, string
     return [a, b, p.year, p.month];
 }
 
-type Person object {
+class Person {
     public int age = 10;
     public string name = "sample name";
 
     int year = 50;
     string month = "february";
 
-    function __init (int year, int count, string name = "sample value1", string val1 = "default value") {
+    function init (int year, int count, string name = "sample value1", string val1 = "default value") {
         self.year = year;
         self.name = name;
         self.age = self.age + count;
@@ -23,4 +23,4 @@ type Person object {
         string val2 = value1 + self.month;
         return [count, val2];
     }
-};
+}

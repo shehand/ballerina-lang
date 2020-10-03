@@ -14,13 +14,13 @@
 // specific language governing permissions and limitations
 // under the License.
 
-public type employee object {
+public class employee {
 
     public int age = 0;
     public string name = "";
     public string address = "";
 
-    public function __init (string name, int a = 10) {
+    public function init (string name, int a = 10) {
         self.age = a;
         self.name = name;
     }
@@ -28,18 +28,18 @@ public type employee object {
     public function getAge() {
         self.age = 12;
     }
-};
+}
 
 // object with non-public initializer
-public type student object {
+public class student {
     public int age = 20;
     public string name = "";
     public string address = "";
 
-    function __init() {
+    function init() {
     }
 
     public function getAge() {
         self.age = 20;
     }
-};
+}

@@ -4,17 +4,17 @@ public function testObjectWithSimpleInit () returns [int, string, int, string] {
     return [p.age, p.name, p.year, p.month];
 }
 
-type Person object {
+class Person {
     public int age = 10;
     public string name = "";
 
     int year = 0;
     string month = "february";
 
-    function __init (int count, int year = 50, string name = "sample value1", string val1 = "default value") {
+    function init (int count, int year = 50, string name = "sample value1", string val1 = "default value") {
         self.year = year;
         self.name = name;
         self.age = self.age + count;
         self.month = val1;
     }
-};
+}

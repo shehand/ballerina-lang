@@ -49,7 +49,7 @@ public class CheckedExpressionOperatorTest {
         BValue[] returns = BRunUtil.invoke(result, "testSafeAssignmentBasics1", new BValue[]{});
         Assert.assertEquals(returns.length, 1);
         Assert.assertSame(returns[0].getClass(), BBoolean.class);
-        Assert.assertEquals(((BBoolean) returns[0]).booleanValue(), true, "Invalid boolean value returned.");
+        Assert.assertTrue(((BBoolean) returns[0]).booleanValue(), "Invalid boolean value returned.");
     }
 
     @Test(description = "Test basics of safe assignment statement")
@@ -87,7 +87,7 @@ public class CheckedExpressionOperatorTest {
         BValue[] returns = BRunUtil.invoke(result, "testSafeAssignOpInAssignmentStatement1", new BValue[]{});
         Assert.assertEquals(returns.length, 1);
         Assert.assertSame(returns[0].getClass(), BBoolean.class);
-        Assert.assertEquals(((BBoolean) returns[0]).booleanValue(), true, "Invalid boolean value returned.");
+        Assert.assertTrue(((BBoolean) returns[0]).booleanValue(), "Invalid boolean value returned.");
     }
 
     @Test(description = "Test basics of safe assignment statement")
@@ -105,7 +105,7 @@ public class CheckedExpressionOperatorTest {
         BValue[] returns = BRunUtil.invoke(result, "testSafeAssignOpInAssignmentStatement3", new BValue[]{});
         Assert.assertEquals(returns.length, 1);
         Assert.assertSame(returns[0].getClass(), BBoolean.class);
-        Assert.assertEquals(((BBoolean) returns[0]).booleanValue(), true, "Invalid boolean value returned.");
+        Assert.assertTrue(((BBoolean) returns[0]).booleanValue(), "Invalid boolean value returned.");
 
     }
 
@@ -114,7 +114,7 @@ public class CheckedExpressionOperatorTest {
         BValue[] returns = BRunUtil.invoke(result, "testSafeAssignOpInAssignmentStatement4", new BValue[]{});
         Assert.assertEquals(returns.length, 1);
         Assert.assertSame(returns[0].getClass(), BBoolean.class);
-        Assert.assertEquals(((BBoolean) returns[0]).booleanValue(), true, "Invalid boolean value returned.");
+        Assert.assertTrue(((BBoolean) returns[0]).booleanValue(), "Invalid boolean value returned.");
     }
 
     @Test(description = "Test basics of safe assignment statement")
@@ -132,7 +132,7 @@ public class CheckedExpressionOperatorTest {
         BValue[] returns = BRunUtil.invoke(result, "testSafeAssignOpInAssignmentStatement6", new BValue[]{});
         Assert.assertEquals(returns.length, 1);
         Assert.assertSame(returns[0].getClass(), BBoolean.class);
-        Assert.assertEquals(((BBoolean) returns[0]).booleanValue(), true, "Invalid boolean value returned.");
+        Assert.assertTrue(((BBoolean) returns[0]).booleanValue(), "Invalid boolean value returned.");
     }
 
     @Test(description = "Test basics of safe assignment statement")
@@ -248,7 +248,8 @@ public class CheckedExpressionOperatorTest {
         Assert.assertFalse(((BBoolean) returns[0]).booleanValue());
     }
 
-    @Test(description = "Test service resource that returns an error containing check expression")
+    @Test(description = "Test service resource that returns an error containing check expression",
+            groups = "brokenOnErrorChange")
     public void testSemanticErrorsWithResources() {
         CompileResult compile = BCompileUtil.compile(
                 "test-src/expressions/checkedexpr/checked_expr_within_resource.bal");

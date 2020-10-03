@@ -1,8 +1,8 @@
 {
     "name": "ballerina",
     "displayName": "Ballerina",
-    "description": "Intellisense, Diagram View, Debugging, code formatting and refactoring for Ballerina",
-    "version": "1.2.0-SNAPSHOT",
+    "description": "Language Intelligence, Diagram View, Debugging, code formatting and refactoring for Ballerina",
+    "version": "2.0.0-Preview4",
     "publisher": "ballerina",
     "repository": {
         "type": "git",
@@ -25,18 +25,9 @@
     "activationEvents": [
         "onLanguage:ballerina",
         "onCommand:ballerina.showExamples",
-        "onCommand:ballerina.showTraces",
         "workspaceContains:Ballerina.toml"
     ],
     "contributes": {
-        "views": {
-            "explorer": [
-                {
-                    "id": "ballerinaProjectTree",
-                    "name": "Ballerina Project Overview"
-                }
-            ]
-        },
         "languages": [
             {
                 "id": "ballerina",
@@ -81,6 +72,11 @@
                     "default": false,
                     "description": "If set to true debug msgs will be printed to Ballerina output channel"
                 },
+                "ballerina.goToDefinition.enableStandardLibraries": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "If uncheck/set to false navigation for the standard library content will be disabled"
+                },
                 "ballerina.traceLog": {
                     "type": "boolean",
                     "default": false,
@@ -96,15 +92,15 @@
                     "default": true,
                     "description": "If set to true ballerina documentation code lens feature will be allowed"
                 },
-                "ballerina.codeLens.services.enabled": {
+                "ballerina.dataMapper.enabled": {
                     "type": "boolean",
                     "default": false,
-                    "description": "If set to true ballerina services code lens feature will be allowed"
+                    "description": "If set to true ballerina data mapper code action feature will be allowed"
                 },
-                "ballerina.codeLens.endpoints.enabled": {
-                    "type": "boolean",
-                    "default": true,
-                    "description": "If set to true ballerina endpoints code lens feature will be allowed"
+                "ballerina.dataMapper.url": {
+                    "type": "string",
+                    "default": "https://datamapper.choreo.dev",
+                    "description": "URL of the host for data mapper back end"
                 }
             }
         },
@@ -205,15 +201,6 @@
         ],
         "commands": [
             {
-                "command": "ballerina.showFileOverview",
-                "title": "Show File Overview",
-                "icon": {
-                    "dark": "./resources/images/icons/design-view-inverse.svg",
-                    "light": "./resources/images/icons/design-view.svg"
-                },
-                "category": "Ballerina"
-            },
-            {
                 "command": "ballerina.showExamples",
                 "title": "Show Examples",
                 "category": "Ballerina"
@@ -229,79 +216,12 @@
                 "category": "Ballerina"
             },
             {
-                "command": "ballerina.showDocs",
-                "title": "Show Documentation Preview",
-                "icon": {
-                    "dark": "./resources/images/icons/documentation-inverse.svg",
-                    "light": "./resources/images/icons/documentation.svg"
-                },
-                "category": "Ballerina"
-            },
-            {
-                "command": "ballerina.showAPIEditor",
-                "title": "Show API Designer",
-                "icon": {
-                    "dark": "./resources/images/icons/api-design-inverse.svg",
-                    "light": "./resources/images/icons/api-design.svg"
-                },
-                "category": "Ballerina"
-            },
-            {
-                "command": "ballerina.showTraces",
-                "title": "Ballerina: Show Network logs"
-            },
-            {
-                "command": "ballerina.refreshProjectTree",
-                "title": "Refresh",
-                "icon": {
-                    "light": "./resources/images/icons/refresh.svg",
-                    "dark": "./resources/images/icons/refresh-inverse.svg"
-                }
-            },
-            {
                 "command": "ballerina.highlightSyntax",
                 "title": "Syntax Highlight",
                 "category": "Ballerina"
             }
         ],
-        "menus": {
-            "editor/title": [
-                {
-                    "when": "resourceLangId == ballerina",
-                    "command": "ballerina.showFileOverview",
-                    "group": "navigation"
-                },
-                {
-                    "when": "resourceLangId == ballerina",
-                    "command": "ballerina.showDocs",
-                    "group": "navigation"
-                }
-            ],
-            "editor/context": [
-                {
-                    "when": "resourceLangId == ballerina",
-                    "command": "ballerina.showFileOverview",
-                    "group": "navigation"
-                },
-                {
-                    "when": "resourceLangId == ballerina",
-                    "command": "ballerina.showDocs",
-                    "group": "navigation"
-                },
-                {
-                    "when": "resourceLangId == ballerina",
-                    "command": "ballerina.showAPIEditor",
-                    "group": "navigation"
-                }
-            ],
-            "view/title": [
-                {
-                    "command": "ballerina.refreshProjectTree",
-                    "when": "view == ballerinaProjectTree",
-                    "group": "navigation"
-                }
-            ]
-        }
+        "menus": {}
     },
     "main": "./dist/extension",
     "scripts": {
@@ -328,6 +248,7 @@
         "vscode-debugprotocol": "^1.34.0",
         "vscode-extension-telemetry": "^0.1.2",
         "vscode-languageclient": "5.1.1",
+        "vscode-languageserver-types": "^3.14.0",
         "ws": "^6.2.1"
     },
     "devDependencies": {

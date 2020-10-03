@@ -17,6 +17,9 @@
  */
 package org.ballerinalang.stdlib.io.nativeimpl;
 
+import org.ballerinalang.jvm.api.BStringUtils;
+import org.ballerinalang.jvm.api.values.BString;
+
 import java.nio.charset.Charset;
 import java.util.Scanner;
 
@@ -29,10 +32,10 @@ public class ReadlnAny {
 
     private static Scanner sc = new Scanner(System.in, Charset.defaultCharset().displayName());
 
-    public static String readln(Object result) {
+    public static BString readln(Object result) {
         if (result != null) {
             System.out.print(result.toString());
         }
-        return sc.nextLine();
+        return BStringUtils.fromString(sc.nextLine());
     }
 }

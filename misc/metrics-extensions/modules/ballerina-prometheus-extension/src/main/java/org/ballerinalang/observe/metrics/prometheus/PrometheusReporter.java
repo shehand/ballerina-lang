@@ -22,11 +22,14 @@ import org.ballerinalang.jvm.annotation.JavaSPIService;
 import org.ballerinalang.jvm.observability.ObservabilityConstants;
 import org.ballerinalang.jvm.observability.metrics.spi.MetricReporter;
 import org.ballerinalang.jvm.observability.tracer.InvalidConfigurationException;
+import org.ballerinalang.jvm.scheduling.StrandMetadata;
 import org.ballerinalang.jvm.services.EmbeddedExecutorProvider;
 import org.ballerinalang.jvm.services.spi.EmbeddedExecutor;
 
 import java.io.PrintStream;
 import java.util.Optional;
+
+import static org.ballerinalang.jvm.util.BLangConstants.BALLERINA_BUILTIN_PKG;
 
 /**
  * This is the reporter extension for the Prometheus.
@@ -38,12 +41,16 @@ public class PrometheusReporter implements MetricReporter {
 
     private static final PrintStream console = System.out;
     private static final String PROMETHEUS_PACKAGE = "prometheus";
+    private static final String PROMETHEUS_PACKAGE_VERSION = "0.0.0";
     private static final String PROMETHEUS_HOST_CONFIG = ObservabilityConstants.CONFIG_TABLE_METRICS
             + "." + PROMETHEUS_PACKAGE + ".host";
     private static final String PROMETHEUS_PORT_CONFIG = ObservabilityConstants.CONFIG_TABLE_METRICS + "."
             + PROMETHEUS_PACKAGE + ".port";
     private static final String DEFAULT_PROMETHEUS_HOST = "0.0.0.0";
     private static final String DEFAULT_PROMETHEUS_PORT = "9797";
+    private StrandMetadata metaData = new StrandMetadata(BALLERINA_BUILTIN_PKG, PROMETHEUS_PACKAGE,
+                                                         PROMETHEUS_PACKAGE_VERSION,
+                                                         "init");
 
     @Override
     public void init() throws InvalidConfigurationException {
@@ -52,7 +59,9 @@ public class PrometheusReporter implements MetricReporter {
         String port = ConfigRegistry.getInstance().getConfigOrDefault(PROMETHEUS_PORT_CONFIG,
                 DEFAULT_PROMETHEUS_PORT);
         EmbeddedExecutor executor = EmbeddedExecutorProvider.getInstance().getExecutor();
-        Optional<RuntimeException> prometheus = executor.executeService("prometheus");
+        Optional<RuntimeException> prometheus = executor.executeService(PROMETHEUS_PACKAGE,
+                                                                        PROMETHEUS_PACKAGE_VERSION,
+                                                                        null, metaData);
         if (prometheus.isPresent()) {
             console.println("ballerina: failed to start Prometheus HTTP listener " + hostname + ":" + port + " "
                     + prometheus.get().getMessage());

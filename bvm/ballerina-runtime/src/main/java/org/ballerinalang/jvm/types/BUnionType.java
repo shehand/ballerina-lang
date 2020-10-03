@@ -33,12 +33,16 @@ public class BUnionType extends BType {
     private Boolean nullable;
     private String cachedToString;
     private int typeFlags;
+    private final boolean readonly;
+    private BIntersectionType immutableType;
 
     /**
      * Create a {@code BUnionType} which represents the union type.
      */
+    @Deprecated
     public BUnionType() {
         super(null, null, Object.class);
+        this.readonly = false;
     }
 
     /**
@@ -48,13 +52,22 @@ public class BUnionType extends BType {
      * @param typeFlags flags associated with the type
      */
     public BUnionType(List<BType> memberTypes, int typeFlags) {
+        this(memberTypes, typeFlags, false);
+    }
+
+    public BUnionType(List<BType> memberTypes, int typeFlags, boolean readonly) {
         super(null, null, Object.class);
         this.memberTypes = memberTypes;
         this.typeFlags = typeFlags;
+        this.readonly = readonly;
     }
 
     public BUnionType(List<BType> memberTypes) {
-        this(memberTypes, 0);
+        this(memberTypes, false);
+    }
+
+    public BUnionType(List<BType> memberTypes, boolean readonly) {
+        this(memberTypes, 0, readonly);
         boolean nilable = false, isAnydata = true, isPureType = true;
         for (BType memberType : memberTypes) {
             nilable |= memberType.isNilable();
@@ -73,8 +86,12 @@ public class BUnionType extends BType {
         }
     }
 
+    public BUnionType(BType[] memberTypes, int typeFlags, boolean readonly) {
+        this(Arrays.asList(memberTypes), typeFlags, readonly);
+    }
+
     public BUnionType(BType[] memberTypes, int typeFlags) {
-        this(Arrays.asList(memberTypes), typeFlags);
+        this(memberTypes, typeFlags, false);
     }
 
     public List<BType> getMemberTypes() {
@@ -149,7 +166,7 @@ public class BUnionType extends BType {
                 return false;
             }
         }
-        return true;
+        return this.readonly == that.readonly;
     }
 
     @Override
@@ -192,5 +209,20 @@ public class BUnionType extends BType {
 
     public int getTypeFlags() {
         return this.typeFlags;
+    }
+
+    @Override
+    public boolean isReadOnly() {
+        return this.readonly;
+    }
+
+    @Override
+    public BType getImmutableType() {
+        return this.immutableType;
+    }
+
+    @Override
+    public void setImmutableType(BIntersectionType immutableType) {
+        this.immutableType = immutableType;
     }
 }

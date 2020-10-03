@@ -23,10 +23,28 @@
         <Package name="org.wso2.ballerinalang.compiler.codegen" />
     </Match>
     <Match>
+        <Package name="org.wso2.ballerinalang.compiler.bir.codegen" />
+    </Match>
+    <Match>
+        <Package name="org.wso2.ballerinalang.compiler.bir.codegen.interop" />
+    </Match>
+    <Match>
+        <Package name="org.wso2.ballerinalang.compiler.bir.codegen.internal" />
+    </Match>
+    <Match>
+        <Package name="org.wso2.ballerinalang.compiler.bir.emit" />
+    </Match>
+    <Match>
         <Package name="org.wso2.ballerinalang.compiler.desugar" />
     </Match>
     <Match>
         <Package name="org.wso2.ballerinalang.compiler.tree" />
+    </Match>
+    <Match>
+        <Package name="org.wso2.ballerinalang.compiler.tree.bindingpatterns" />
+    </Match>
+    <Match>
+        <Package name="org.wso2.ballerinalang.compiler.tree.matchpatterns" />
     </Match>
     <Match>
         <Package name="org.wso2.ballerinalang.compiler.parser" />
@@ -50,6 +68,9 @@
         <Package name="org.wso2.ballerinalang.compiler.tree.expressions" />
     </Match>
     <Match>
+        <Package name="org.wso2.ballerinalang.compiler.tree.clauses" />
+    </Match>
+    <Match>
         <Package name="org.wso2.ballerinalang.compiler.tree.statements" />
     </Match>
     <Match>
@@ -57,6 +78,22 @@
     </Match>
     <Match>
         <Package name="org.wso2.ballerinalang.compiler.packaging.converters" />
+    </Match>
+    <Match>
+        <Class name = "org.ballerinalang.toml.model.Library"/>
+        <Bug pattern="UWF_UNWRITTEN_FIELD"/>
+    </Match>
+    <Match>
+        <Class name = "org.ballerinalang.toml.model.Repository"/>
+        <Bug pattern="UWF_UNWRITTEN_FIELD, NM_CONFUSING"/>
+    </Match>
+    <Match>
+        <Class name = "org.ballerinalang.toml.model.Proxy"/>
+        <Bug pattern="NM_CONFUSING"/>
+    </Match>
+    <Match>
+        <Class name = "org.ballerinalang.toml.model.Platform"/>
+        <Bug pattern="UWF_UNWRITTEN_PUBLIC_OR_PROTECTED_FIELD"/>
     </Match>
     <Match>
         <Package name="org.wso2.ballerinalang.programfile" />
@@ -132,5 +169,41 @@
     <Match>
         <Class name="org.wso2.ballerinalang.compiler.semantics.model.types.BObjectType"/>
         <Bug pattern="BC_UNCONFIRMED_CAST"/>
+    </Match>
+    <Match>
+        <Class name="org.wso2.ballerinalang.compiler.bir.model.BIRNode$BIRAnnotationAttachment"/>
+        <Bug pattern="UWF_FIELD_NOT_INITIALIZED_IN_CONSTRUCTOR"/>
+    </Match>
+    <Match>
+        <Class name="org.wso2.ballerinalang.compiler.bir.model.BIRNode$BIRFunction"/>
+        <Bug pattern="UWF_FIELD_NOT_INITIALIZED_IN_CONSTRUCTOR"/>
+    </Match>
+    <Match>
+        <Class name="org.wso2.ballerinalang.compiler.bir.model.BIRNode$BIRFunction"/>
+        <Bug pattern="URF_UNREAD_PUBLIC_OR_PROTECTED_FIELD"/>
+    </Match>
+    <Match>
+        <Class name="org.wso2.ballerinalang.compiler.bir.model.BIRNode$BIRErrorEntry"/>
+        <Bug pattern="URF_UNREAD_PUBLIC_OR_PROTECTED_FIELD"/>
+    </Match>
+    <Match>
+        <Class name="org.wso2.ballerinalang.compiler.bir.model.BIRNode$BIRTypeDefinition"/>
+        <Bug pattern="URF_UNREAD_PUBLIC_OR_PROTECTED_FIELD"/>
+    </Match>
+    <Match>
+        <Class name="org.wso2.ballerinalang.compiler.bir.model.BIRNode$BIRVariableDcl"/>
+        <Bug pattern="URF_UNREAD_PUBLIC_OR_PROTECTED_FIELD"/>
+    </Match>
+    <Match>
+        <Class name="org.wso2.ballerinalang.compiler.semantics.model.symbols.BPackageSymbol"/>
+        <Bug pattern="URF_UNREAD_PUBLIC_OR_PROTECTED_FIELD"/>
+    </Match>
+    <Match>
+        <Class name="org.wso2.ballerinalang.compiler.semantics.analyzer.cyclefind.GlobalVariableRefAnalyzer"/>
+        <Bug pattern="BC_UNCONFIRMED_CAST, BC_UNCONFIRMED_CAST_OF_RETURN_VALUE"/>
+    </Match>
+    <Match>
+        <Class name="org.wso2.ballerinalang.compiler.diagnostic.DiagnosticComparator"/>
+        <Bug pattern="SE_COMPARATOR_SHOULD_BE_SERIALIZABLE"/>
     </Match>
 </FindBugsFilter>

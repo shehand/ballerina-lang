@@ -12,7 +12,7 @@ function testContains(string key) returns boolean {
     return config:contains(key);
 }
 
-function testGetAsMap(string key) returns map<any> {
+function testGetAsMap(string key) returns map<anydata> {
     return config:getAsMap(key);
 }
 
@@ -28,15 +28,38 @@ function testGetAsBoolean(string key) returns boolean {
     return config:getAsBoolean(key);
 }
 
-function testGetAsArray(string key) returns any[] {
+function testGetAsArray(string key) returns anydata[] {
     return config:getAsArray(key);
 }
 
 function testGetAsArray2(string key) returns int[] {
-    int[]|error ports = int[].constructFrom(config:getAsArray(key));
+    var keyArray = config:getAsArray(key);
+    int[]|error ports = keyArray.cloneWithType(IntArray);
     if (ports is int[]) {
         return ports;
     } else {
         panic ports;
     }
 }
+
+function testGetAsArray3(string key) returns map<anydata>[] {
+    var keyArray = config:getAsArray(key);
+    map<anydata>[]|error result = keyArray.cloneWithType(AnyMapArray);
+    if (result is error) {
+        panic result;
+    } else {
+        return result;
+    }
+}
+
+function testGetAsStringArray(string key) returns string[] {
+    return <string[] & readonly>config:getAsArray(key);
+}
+
+function testGetAsStringMap(string key) returns map<string> {
+    return <map<string> & readonly>config:getAsMap(key);
+}
+
+type IntArray int[];
+type AnyMapArray map<anydata>[];
+

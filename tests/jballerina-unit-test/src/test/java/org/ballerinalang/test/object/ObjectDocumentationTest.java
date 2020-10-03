@@ -16,17 +16,17 @@
  */
 package org.ballerinalang.test.object;
 
+import io.ballerina.tools.diagnostics.Diagnostic;
 import org.ballerinalang.model.tree.PackageNode;
 import org.ballerinalang.test.util.BAssertUtil;
 import org.ballerinalang.test.util.BCompileUtil;
 import org.ballerinalang.test.util.CompileResult;
-import org.ballerinalang.util.diagnostic.Diagnostic;
 import org.testng.Assert;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.Test;
 import org.wso2.ballerinalang.compiler.tree.BLangAnnotation;
+import org.wso2.ballerinalang.compiler.tree.BLangClassDefinition;
 import org.wso2.ballerinalang.compiler.tree.BLangMarkdownDocumentation;
-import org.wso2.ballerinalang.compiler.tree.BLangTypeDefinition;
 
 /**
  * Test cases for user defined documentation attachment in ballerina.
@@ -40,12 +40,12 @@ public class ObjectDocumentationTest {
     public void setup() {
     }
 
-    @Test(description = "Test doc annotation.")
+    @Test(description = "Test doc annotation.", groups = { "disableOnOldParser" })
     public void testDocAnnotation() {
         CompileResult compileResult = BCompileUtil.compile("test-src/object/object_annotation.bal");
-        Assert.assertEquals(0, compileResult.getWarnCount());
+        Assert.assertEquals(compileResult.getWarnCount(), 3);
         PackageNode packageNode = compileResult.getAST();
-        BLangMarkdownDocumentation docNode = ((BLangTypeDefinition) packageNode.getTypeDefinitions()
+        BLangMarkdownDocumentation docNode = ((BLangClassDefinition) packageNode.getClassDefinitions()
                 .get(0)).markdownDocumentationAttachment;
         Assert.assertNotNull(docNode);
         Assert.assertEquals(docNode.getDocumentation().replaceAll(CARRIAGE_RETURN_CHAR, EMPTY_STRING),
@@ -66,13 +66,13 @@ public class ObjectDocumentationTest {
         Assert.assertNotNull(docNode);
     }
 
-    @Test(description = "Test doc struct.")
+    @Test(description = "Test doc struct.", groups = { "disableOnOldParser" })
     public void testDocStruct() {
         CompileResult compileResult = BCompileUtil.compile("test-src/object/object_doc_annotation.bal");
-        Assert.assertEquals(0, compileResult.getWarnCount());
+        Assert.assertEquals(compileResult.getWarnCount(), 0);
         PackageNode packageNode = compileResult.getAST();
         BLangMarkdownDocumentation dNode =
-                ((BLangTypeDefinition) packageNode.getTypeDefinitions().get(0)).markdownDocumentationAttachment;
+                ((BLangClassDefinition) packageNode.getClassDefinitions().get(0)).markdownDocumentationAttachment;
         Assert.assertNotNull(dNode);
         Assert.assertEquals(dNode.getDocumentation().replaceAll(CARRIAGE_RETURN_CHAR, EMPTY_STRING),
                 "Documentation for Test struct\n");
@@ -88,11 +88,12 @@ public class ObjectDocumentationTest {
                 EMPTY_STRING), "struct `field c` documentation");
     }
 
-    @Test(description = "Test doc negative cases.")
+    @Test(description = "Test doc negative cases.", groups = { "disableOnOldParser" })
     public void testDocumentationNegative() {
-        CompileResult compileResult = BCompileUtil.compile("test-src/object/object_annotation_negative.bal");
-        Assert.assertEquals(compileResult.getErrorCount(), 0, getErrorString(compileResult.getDiagnostics()));
-        Assert.assertEquals(compileResult.getWarnCount(), 16);
+        CompileResult compileResult = BCompileUtil.compile("test-src/object/object_documentation_negative.bal");
+        Assert.assertEquals(compileResult.getErrorCount(), 0,
+                            getErrorString(compileResult.getDiagnostics()));
+        Assert.assertEquals(compileResult.getWarnCount(), 21);
         int i = 0;
         BAssertUtil.validateWarning(compileResult, i++, "field 'a' already documented", 6, 5);
         BAssertUtil.validateWarning(compileResult, i++, "no such documentable field 'c'", 8, 5);
@@ -109,7 +110,15 @@ public class ObjectDocumentationTest {
         BAssertUtil.validateWarning(compileResult, i++, "no such documentable parameter 'conn'", 79, 5);
         BAssertUtil.validateWarning(compileResult, i++, "parameter 'req' already documented", 85, 9);
         BAssertUtil.validateWarning(compileResult, i++, "no such documentable parameter 'reqest'", 86, 9);
-        BAssertUtil.validateWarning(compileResult, i, "no such documentable parameter 'testConstd'", 97, 5);
+        BAssertUtil.validateWarning(compileResult, i++, "no such documentable parameter 'testConstd'", 97, 5);
+        BAssertUtil.validateWarning(compileResult, i++, "field 'abc' already documented", 101, 5);
+        BAssertUtil.validateWarning(compileResult, i++, "invalid reference in documentation 'Baz' for type 'type'", 101,
+                                    75);
+        BAssertUtil.validateWarning(compileResult, i++, "invalid reference in documentation 'Baz' for type 'type'", 105,
+                                    33);
+        BAssertUtil.validateWarning(compileResult, i++, "undocumented field 'def'", 109, 5);
+        BAssertUtil.validateWarning(compileResult, i, "invalid reference in documentation 'Baz' for type 'type'", 112,
+                                    33);
     }
 
     private String getErrorString(Diagnostic[] diagnostics) {

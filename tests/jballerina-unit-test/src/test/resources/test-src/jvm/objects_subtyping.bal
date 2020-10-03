@@ -15,29 +15,28 @@
 // under the License.
 
 import testorg/subtyping;
-import ballerinax/java.jdbc;
 
-type Person1 object {
+class Person1 {
     public string name = "sample name";
     public int age = 10;
 
     int year = 50;
     string month = "february";
 
-    function __init(string name, int age) {
+    function init(string name, int age) {
         self.age = age;
         self.name = name;
     }
-};
+}
 
-type Employee1 object {
+class Employee1 {
     public string name = "no name";
     public int age = 3;
 
     int year = 2;
     string month = "idk";
-    
-    function __init(string name, int age) {
+
+    function init(string name, int age) {
         self.age = age;
         self.name = name;
         self.year = 50;
@@ -51,7 +50,7 @@ type Employee1 object {
     function getYear() returns int {
         return self.year;
     }
-};
+}
 
 function testAdditionalMethodsInSourceType() returns Person1 {
     Employee1 e = new("John Doe", 25);
@@ -65,19 +64,19 @@ function testCastingRuntimeError() returns Person1 {
     return e;
 }
 
-type AbstractPerson abstract object {
+type AbstractPerson object {
     public string name;
     public int age;
 
     public function toString() returns string;
 };
 
-type Student1 object {
+class Student1 {
     public string name = "";
     public int age = 0;
     public string school = "";
 
-    public function __init(string name, int age, string school) {
+    public function init(string name, int age, string school) {
         self.name = name;
         self.age = age;
         self.school = school;
@@ -86,7 +85,7 @@ type Student1 object {
     public function toString() returns string {
         return "Student1{" + self.name + ", " + self.age.toString() + ", " + self.school + "}";
     }
-};
+}
 
 function testSubtypingAPublicAbstractObject() returns string {
     AbstractPerson ap = new Student1("John Doe", 25, "Ballerina Academy");
@@ -98,13 +97,13 @@ function testSubtypingAPublicAbsObjectInAnotherModule() returns string {
     return ap.toString();
 }
 
-public type UniStudent1 object {
+public class UniStudent1 {
     public string name = "";
     public string school = "";
     public int age = 0;
     public string major;
 
-    public function __init(string name, string school, int age, string major) {
+    public function init(string name, string school, int age, string major) {
         self.name = name;
         self.age = age;
         self.school = school;
@@ -118,24 +117,24 @@ public type UniStudent1 object {
     public function getSchool() returns string {
         return self.school;
     }
-};
+}
 
 function testSubtypingAPublicObjectInAnotherModule() returns string {
     subtyping:Student s = new UniStudent1("Jane Doe", "BA", 22, "CS");
     return s.toString();
 }
 
-type AbstractAnimal abstract object {
+type AbstractAnimal object {
     float weight;
 
     function move(int distance) returns string;
 };
 
-type Dog object {
+class Dog {
     string name;
     float weight;
 
-    function __init(string name, float weight) {
+    function init(string name, float weight) {
         self.name = name;
         self.weight = weight;
     }
@@ -143,15 +142,42 @@ type Dog object {
     function move(int distance) returns string {
         return self.name + " walked " + distance.toString() + " meters";
     }
-};
+}
 
 function testSubtypingAnAbsObjectInSameModule() returns string {
     AbstractAnimal a = new Dog("Rocky", 10);
     return a.move(50);
 }
 
+//TODO Table remove - Fix
 // NOTE: There isn't a test case associated with this. Just want to ensure this scenario compiles fine.
-public function testReferencingObjectTypesAcrossModules() returns jdbc:Client {
-    jdbc:Client dbClient = subtyping:getClient();
-    return dbClient;
+//public function testReferencingObjectTypesAcrossModules() returns jdbc:Client {
+//    jdbc:Client dbClient = subtyping:getClient();
+//    return dbClient;
+//}
+
+public function testObjectAssignabilityBetweenNonClientAndClientObject() {
+    subtyping:NonClientObject obj1 = new subtyping:NonClientObject("NonClientObject");
+    subtyping:ClientObjectWithoutRemoteMethod o2 = new subtyping:ClientObjectWithoutRemoteMethod("ClientObjectWithoutRemoteMethod");
+
+    subtyping:NonClientObject obj3 = o2;
+    subtyping:ClientObjectWithoutRemoteMethod obj4 = obj1;
+
+    assertEquality("NonClientObject", obj4.name);
+    assertEquality("ClientObjectWithoutRemoteMethod", obj3.name);
+}
+
+const ASSERTION_ERROR_REASON = "AssertionError";
+
+function assertEquality(any|error expected, any|error actual) {
+    if (expected is anydata && actual is anydata && expected == actual) {
+        return;
+    }
+
+    if (expected === actual) {
+        return;
+    }
+
+    panic error(ASSERTION_ERROR_REASON,
+                 message = "expected '" + expected.toString() + "', found '" + actual.toString () + "'");
 }

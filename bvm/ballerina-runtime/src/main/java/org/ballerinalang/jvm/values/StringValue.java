@@ -17,12 +17,12 @@
  */
 package org.ballerinalang.jvm.values;
 
+import org.ballerinalang.jvm.api.values.BString;
 import org.ballerinalang.jvm.types.BType;
 import org.ballerinalang.jvm.types.BTypes;
-import org.ballerinalang.jvm.values.api.BString;
 
 /**
- * Interface representing ballerina strings.
+ * Class representing ballerina strings.
  *
  * @since 1.0.5
  */

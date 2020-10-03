@@ -127,7 +127,7 @@ public class MapAccessExprTest {
         Assert.assertEquals(returns.length, 1);
         Assert.assertSame(returns[0].getClass(), BBoolean.class);
 
-        Assert.assertEquals(((BBoolean) returns[0]).value(), new Boolean(true));
+        Assert.assertEquals(((BBoolean) returns[0]).value(), Boolean.TRUE);
     }
 
     @Test(description = "Test map has key negative.")
@@ -138,7 +138,7 @@ public class MapAccessExprTest {
         Assert.assertEquals(returns.length, 1);
         Assert.assertSame(returns[0].getClass(), BBoolean.class);
 
-        Assert.assertEquals(((BBoolean) returns[0]).value(), new Boolean(false));
+        Assert.assertEquals(((BBoolean) returns[0]).value(), Boolean.FALSE);
     }
 
     @Test(description = "Test get map values.")
@@ -153,21 +153,21 @@ public class MapAccessExprTest {
         Assert.assertEquals(returns[1].stringValue(), "Colombo");
     }
 
-    @Test(description = "Map access negative scenarios")
+    @Test(description = "Map access negative scenarios", groups = { "disableOnOldParser" })
     public void testNegativeSemantics() {
-        Assert.assertEquals(resultSemanticsNegative.getDiagnostics().length, 2);
+        Assert.assertEquals(resultSemanticsNegative.getDiagnostics().length, 4);
         int index = 0;
-        // testMapAccessWithIndex
-        BAssertUtil.validateError(resultSemanticsNegative, index++, "incompatible types: expected 'string', found " +
-                        "'int'", 4, 20);
-        // accessAllFields
-        BAssertUtil.validateError(resultSemanticsNegative, index++, "cannot get all fields from a map", 9, 13);
+        BAssertUtil.validateError(resultSemanticsNegative, index++,
+                "incompatible types: expected 'string', found " + "'int'", 4, 20);
+        BAssertUtil.validateError(resultSemanticsNegative, index++,
+                "invalid operation: type 'map' does not support field access", 9, 13);
+        BAssertUtil.validateError(resultSemanticsNegative, index++, "missing identifier", 9, 20);
+        BAssertUtil.validateError(resultSemanticsNegative, index++, "missing identifier", 9, 21);
     }
 
     @Test(description = "Map access negative scenarios")
     public void negativeTest() {
         Assert.assertEquals(resultNegative.getDiagnostics().length, 3);
-
         int index = 0;
 
         // uninitialized map access
@@ -186,15 +186,46 @@ public class MapAccessExprTest {
         Assert.assertSame(returns[1].getClass(), BBoolean.class);
         Assert.assertSame(returns[2].getClass(), BBoolean.class);
 
-        Assert.assertEquals(((BBoolean) returns[0]).value(), new Boolean(true));
-        Assert.assertEquals(((BBoolean) returns[1]).value(), new Boolean(true));
-        Assert.assertEquals(((BBoolean) returns[2]).value(), new Boolean(false));
+        Assert.assertEquals(((BBoolean) returns[0]).value(), Boolean.TRUE);
+        Assert.assertEquals(((BBoolean) returns[1]).value(), Boolean.TRUE);
+        Assert.assertEquals(((BBoolean) returns[2]).value(), Boolean.FALSE);
     }
 
     @Test(expectedExceptions = {BLangRuntimeException.class},
-            expectedExceptionsMessageRegExp = "error: \\{ballerina/lang.map\\}KeyNotFound message=cannot find key " +
-                    "'fname2'.*")
+            expectedExceptionsMessageRegExp = "error: \\{ballerina/lang.map\\}KeyNotFound \\{\"message\":\"cannot " +
+                    "find key 'fname2'.*")
     public void testMapRemoveNegative() {
         BRunUtil.invoke(compileResult, "testMapRemoveNegative");
+    }
+
+    @Test(description = "Test removeIfHasKey if key exists.")
+    public void testRemoveIfHasKeyPositive1() {
+        BValue[] returns = BRunUtil.invoke(compileResult, "testRemoveIfHasKeyPositive1");
+        Assert.assertTrue(((BBoolean) returns[0]).booleanValue(), "Expected booleans to be identified as equal");
+    }
+
+    @Test(description = "Test removeIfHasKey if key does not exist.")
+    public void testRemoveIfHasKeyNegative1() {
+        BValue[] returns = BRunUtil.invoke(compileResult, "testRemoveIfHasKeyNegative1");
+        Assert.assertFalse(((BBoolean) returns[0]).booleanValue(), "Expected booleans to be identified as equal");
+    }
+
+    @Test(description = "Test removeIfHasKey if key exists.")
+    public void testRemoveIfHasKeyPositive2() {
+        BValue[] returns = BRunUtil.invoke(compileResult, "testRemoveIfHasKeyPositive2");
+        Assert.assertTrue(((BBoolean) returns[0]).booleanValue(), "Expected booleans to be identified as equal");
+    }
+
+    @Test(description = "Test removeIfHasKey if key does not exist.")
+    public void testRemoveIfHasKeyNegative2() {
+        BValue[] returns = BRunUtil.invoke(compileResult, "testRemoveIfHasKeyNegative2");
+        Assert.assertFalse(((BBoolean) returns[0]).booleanValue(), "Expected booleans to be identified as equal");
+    }
+
+    @Test(description = "Test to check toString for map of maps.")
+    public void testMapToString() {
+        BValue[] returns = BRunUtil.invoke(compileResult, "testMapToString");
+        BString value = (BString) returns[0];
+        Assert.assertEquals(value.stringValue(), "typedesc map<map<json>>");
     }
 }

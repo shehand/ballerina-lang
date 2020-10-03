@@ -49,14 +49,14 @@ public class ByteAsIntTest {
 
     @Test(expectedExceptions = BLangRuntimeException.class,
             expectedExceptionsMessageRegExp = ".*error: \\{ballerina/lang.array\\}InherentTypeViolation " +
-                    "message=incompatible types: expected 'byte', found 'int'.*")
+                    "\\{\"message\":\"incompatible types: expected 'byte', found 'int'.*")
     public void testInherentTypeViolationForArray() {
         BRunUtil.invoke(result, "testInherentTypeViolationForArray");
     }
 
     @Test(expectedExceptions = BLangRuntimeException.class,
             expectedExceptionsMessageRegExp = ".*error: \\{ballerina/lang.map\\}InherentTypeViolation " +
-                    "message=invalid map insertion: expected value of type 'byte', found 'int'.*")
+                    "\\{\"message\":\"invalid map insertion: expected value of type 'byte', found 'int'.*")
     public void testInherentTypeViolationForMap() {
         BRunUtil.invoke(result, "testInherentTypeViolationForMap");
     }
@@ -71,5 +71,12 @@ public class ByteAsIntTest {
                 {"testBytesInIntMap"},
                 {"testByteStructuredTypeAsIntStructuredType"}
         };
+    }
+
+    @Test
+    public void testByteArrayCastToIntArray() {
+        BRunUtil.invoke(result, "testByteArrayCastToIntArray");
+        BRunUtil.invoke(result, "testDowncastOfByteArrayCastToIntArray");
+        BRunUtil.invoke(result, "testInherentTypeViolationOfByteArrayCastToIntArray");
     }
 }

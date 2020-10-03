@@ -1,85 +1,79 @@
 /*
- * Copyright (c) 2019, WSO2 Inc. (http://wso2.com) All Rights Reserved.
- * <p>
- * WSO2 Inc. licenses this file to you under the Apache License,
- * Version 2.0 (the "License"); you may not use this file except
- * in compliance with the License.
- * You may obtain a copy of the License at
- * <p>
- * http://www.apache.org/licenses/LICENSE-2.0
- * <p>
- * Unless required by applicable law or agreed to in writing,
- * software distributed under the License is distributed on an
- * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
- * KIND, either express or implied.  See the License for the
- * specific language governing permissions and limitations
- * under the License.
+ *  Copyright (c) 2020, WSO2 Inc. (http://www.wso2.org) All Rights Reserved.
+ *
+ *  WSO2 Inc. licenses this file to you under the Apache License,
+ *  Version 2.0 (the "License"); you may not use this file except
+ *  in compliance with the License.
+ *  You may obtain a copy of the License at
+ *
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *  Unless required by applicable law or agreed to in writing,
+ *  software distributed under the License is distributed on an
+ *  "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ *  KIND, either express or implied.  See the License for the
+ *  specific language governing permissions and limitations
+ *  under the License.
  */
-
 package org.ballerinalang.jvm.types;
 
-import org.ballerinalang.jvm.TypeChecker;
 import org.ballerinalang.jvm.values.TableValue;
+import org.ballerinalang.jvm.values.TableValueImpl;
 
 /**
- * {@code BTableType} represents a type of a table in Ballerina.
- * <p>
- * Tables are defined using the table keyword as follows:
- * table tableName
- * <p>
- * All tables are unbounded in length and support column based indexing.
+ * {@code BTableType} represents tabular data in Ballerina.
  *
- * @since 0.995.0
+ * @since 1.3.0
  */
-@SuppressWarnings("unchecked")
 public class BTableType extends BType {
 
     private BType constraint;
+    private BType keyType;
+    private String[] fieldNames;
 
-    /**
-     * Create a table type from the given name.
-     *
-     * @param typeName string name of the type.
-     * @param constraint constraint type which particular table is bound to.
-     * @param pkg package for the type.
-     */
-    public BTableType(String typeName, BType constraint, BPackage pkg) {
-        super(typeName, pkg, TableValue.class);
-        this.constraint = constraint;
-    }
+    private final boolean readonly;
+    private BIntersectionType immutableType;
 
-    public BTableType(BType constraint) {
+    public BTableType(BType constraint, String[] fieldNames, boolean readonly) {
         super(TypeConstants.TABLE_TNAME, null, TableValue.class);
         this.constraint = constraint;
+        this.fieldNames = fieldNames;
+        this.keyType = null;
+        this.readonly = readonly;
     }
 
-    /**
-     * Returns element types which this table is constrained to.
-     *
-     * @return constraint type.
-     */
+    public BTableType(BType constraint, BType keyType, boolean readonly) {
+        super(TypeConstants.TABLE_TNAME, null, TableValue.class);
+        this.constraint = constraint;
+        this.keyType = keyType;
+        this.readonly = readonly;
+    }
+
+    public BTableType(BType constraint, boolean readonly) {
+        super(TypeConstants.TABLE_TNAME, null, TableValue.class);
+        this.constraint = constraint;
+        this.readonly = readonly;
+    }
+
     public BType getConstrainedType() {
         return constraint;
     }
 
-    /**
-     * Returns element type which this table contains.
-     *
-     * @return element type.
-     * @deprecated use {@link #getConstrainedType()} instead.
-     */
-    @Deprecated
-    public BType getElementType() {
-        return constraint;
+    public BType getKeyType() {
+        return keyType;
+    }
+
+    public String[] getFieldNames() {
+        return fieldNames;
     }
 
     @Override
-    public <V extends Object> V getZeroValue() {
-        return (V) new TableValue(this, null, null);
+    public <V> V getZeroValue() {
+        return (V) new TableValueImpl<BAnydataType, V>(new BTableType(constraint, readonly));
     }
 
     @Override
-    public <V extends Object> V getEmptyValue() {
+    public <V> V getEmptyValue() {
         return getZeroValue();
     }
 
@@ -90,11 +84,26 @@ public class BTableType extends BType {
 
     @Override
     public String toString() {
-        if (constraint == BTypes.typeAnydata) {
-            return super.toString();
+        if (constraint == null) {
+            return readonly ? super.toString().concat(" & readonly") : super.toString();
         }
 
-        return "table" + "<" + constraint.getName() + ">";
+        StringBuilder keyStringBuilder = new StringBuilder();
+        String stringRep;
+        if (fieldNames != null) {
+            for (String fieldName : fieldNames) {
+                if (!keyStringBuilder.toString().equals("")) {
+                    keyStringBuilder.append(", ");
+                }
+                keyStringBuilder.append(fieldName);
+            }
+            stringRep = super.toString() + "<" + constraint.getName() + "> key(" + keyStringBuilder.toString() + ")";
+        } else {
+            stringRep = super.toString() + "<" + constraint.getName() + ">" +
+                    ((keyType != null) ? (" key<" + keyType + ">") : "");
+        }
+
+        return readonly ? stringRep.concat(" & readonly") : stringRep;
     }
 
     @Override
@@ -104,10 +113,33 @@ public class BTableType extends BType {
         }
 
         BTableType other = (BTableType) obj;
-        if (constraint == other.constraint) {
+        if (constraint == other.constraint && keyType == other.keyType) {
             return true;
         }
 
-        return TypeChecker.checkIsType(constraint, other.constraint);
+        if (constraint == null || other.constraint == null) {
+            return false;
+        }
+
+        if (keyType == null || other.keyType == null) {
+            return false;
+        }
+
+        return constraint.equals(other.constraint) && keyType.equals(other.keyType);
+    }
+
+    @Override
+    public boolean isReadOnly() {
+        return this.readonly;
+    }
+
+    @Override
+    public BType getImmutableType() {
+        return this.immutableType;
+    }
+
+    @Override
+    public void setImmutableType(BIntersectionType immutableType) {
+        this.immutableType = immutableType;
     }
 }

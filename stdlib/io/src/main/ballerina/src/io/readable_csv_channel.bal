@@ -14,10 +14,10 @@
 // specific language governing permissions and limitations
 // under the License.
 
-import ballerinax/java;
+import ballerina/java;
 
 # Represents a ReadableCSVChannel which could be used to read records from CSV file.
-public type ReadableCSVChannel object {
+public class ReadableCSVChannel {
     private ReadableTextRecordChannel? dc;
 
     # Constructs a CSV channel from a CharacterChannel to read/write CSV records.
@@ -25,7 +25,7 @@ public type ReadableCSVChannel object {
     # + byteChannel - The CharacterChannel, which will represent the content in the CSV file
     # + fs - Field separator, which will separate between the records in the CSV file
     # + nHeaders - Number of headers, which should be skipped prior to reading records
-    public function __init(ReadableCharacterChannel byteChannel, public Separator fs = ",", public int nHeaders = 0) {
+    public function init(ReadableCharacterChannel byteChannel, Separator fs = ",", int nHeaders = 0) {
         if (fs == TAB) {
             self.dc = new ReadableTextRecordChannel(byteChannel, fmt = "TDF");
         } else if (fs == COLON) {
@@ -38,9 +38,12 @@ public type ReadableCSVChannel object {
         self.skipHeaders(nHeaders);
     }
 
-    # Skips the given number of headers.
-    #
-    # + nHeaders - Number of headers which should be skipped
+# Skips the given number of headers.
+# ```ballerina
+# readableCSVChannel.skipHeaders(5);
+# ```
+#
+# + nHeaders - The number of headers, which should be skipped
     function skipHeaders(int nHeaders) {
         int count = MINIMUM_HEADER_COUNT;
         while (count < nHeaders) {
@@ -49,22 +52,28 @@ public type ReadableCSVChannel object {
         }
     }
 
-    # Indicates whether there's another record which could be read.
-    #
-    # + return - True if there's a record
+# Indicates whether there's another record, which could be read.
+# ```ballerina
+# boolean hasNext = readableCSVChannel.hasNext();
+# ```
+#
+# + return - True if there's a record
     public function hasNext() returns boolean {
         var recordChannel = self.dc;
         if (recordChannel is ReadableTextRecordChannel) {
             return recordChannel.hasNext();
         } else {
-            GenericError e = error(GENERIC_ERROR, message = "channel not initialized");
+            GenericError e = GenericError("channel not initialized");
             panic e;
         }
     }
 
-    # Gets the next record from the CSV file.
-    #
-    # + return - List of fields in the CSV or `Error` if any error occurred
+# Gets the next record from the CSV file.
+# ```ballerina
+# string[]|io:Error? record = readableCSVChannel.getNext();
+# ```
+#
+# + return - List of fields in the CSV or else an `io:Error`
     public function getNext() returns @tainted string[]|Error? {
         if(self.dc is ReadableTextRecordChannel){
             var result = <ReadableTextRecordChannel> self.dc;
@@ -73,9 +82,12 @@ public type ReadableCSVChannel object {
         return ();
     }
 
-    # Closes a given CSVChannel.
-    #
-    # + return - Returns `Error` if any error occurred
+# Closes a given `CSVChannel`.
+# ```ballerina
+# io:Error? err = readableCSVChannel.close();
+# ```
+#
+# + return - `io:Error` if any error occurred
     public function close() returns Error? {
         if(self.dc is ReadableTextRecordChannel){
             var result = <ReadableTextRecordChannel> self.dc;
@@ -84,17 +96,23 @@ public type ReadableCSVChannel object {
         return ();
     }
 
-    # Returns a table which corresponds to the CSV records.
-    #
-    # + structType - The object the CSV records should be deserialized
-    # + return - Table which represents CSV records or `Error` if any error occurred
-    public function getTable(typedesc<record {}> structType) returns @tainted table<record {}>|Error {
-        return getTableExtern(self, structType);
+# Returns a table, which corresponds to the CSV records.
+# ```ballerina
+# var tblResult1 = readableCSVChannel.getTable(Employee);
+# var tblResult2 = readableCSVChannel.getTable(Employee, ["id", "name"]);
+# ```
+#
+# + structType - The object in which the CSV records should be deserialized
+# + fieldNames - The names of the fields used as the (composite)key of the table
+# + return - Table, which represents the CSV records or else an `io:Error`
+    public function getTable(typedesc<record {}> structType, string[] fieldNames = [])
+    returns @tainted table<record {}>|Error {
+        return getTableExtern(self, structType, fieldNames);
     }
-};
+}
 
-function getTableExtern(ReadableCSVChannel csvChannel, typedesc<record {}> structType)
+function getTableExtern(ReadableCSVChannel csvChannel, typedesc<record {}> structType, string[] fieldNames)
             returns @tainted table<record {}>|Error = @java:Method {
     name: "getTable",
-    class: "org.ballerinalang.stdlib.io.nativeimpl.GetTable"
+    'class: "org.ballerinalang.stdlib.io.nativeimpl.GetTable"
 } external;

@@ -8,12 +8,13 @@ function invalidRestField() {
     Person p = { name: "John", age: 20, "height": 6, "employed": false, "city": "Colombo" };
 }
 
-type PersonA record {
+type PersonA record {|
     string name = "";
     int age = 0;
-};
+    anydata|json...;
+|};
 
-function emptyRecordForAnyRestField() {
+function ambiguousEmptyRecordForRestField() {
     PersonA p = { name:"John", "misc": {} };
 }
 
@@ -21,9 +22,9 @@ type Pet record {
     Animal lion;
 };
 
-type Bar object {
+class Bar {
     int a = 0;
-};
+}
 
 function testInvalidRestFieldAddition() {
     PersonA p = {};
@@ -39,7 +40,7 @@ type Qux record {
     string s;
 };
 
-type MyError error<string>;
+type MyError error;
 
 function testErrorAdditionForInvalidRestField() {
     error e1 = error("test reason");

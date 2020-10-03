@@ -66,14 +66,14 @@ function testArrayFieldInRecord() returns BarRec {
     return rec;
 }
 
-type BarObj object {
+class BarObj {
     Foo[] fArr;
 
-    function __init() {
+    function init() {
         Foo[*] arr = [1, 2];
         self.fArr = arr;
     }
-};
+}
 
 function testArrayFieldInObject() returns BarObj {
     BarObj obj = new;
@@ -112,25 +112,25 @@ function testArraysOfCyclicDependentTypes2() returns B1[] {
     return arr;
 }
 
-type P1 object {
+class P1 {
     Q1 q;
     string p1;
 
-    function __init() {
+    function init() {
         self.q = new;
         self.p1 = "P1";
     }
-};
+}
 
-type Q1 object {
+class Q1 {
     P1 p;
     string q1;
 
-    function __init() {
+    function init() {
         self.p = new;
         self.q1 = "Q1";
     }
-};
+}
 
 function testArraysOfCyclicDependentTypes3() returns P1[] {
     P1[] arr = [];
@@ -152,4 +152,108 @@ function testGetFromFrozenArray() returns int {
     }
 
     return -1;
+}
+
+class Age {
+    public int age;
+    public function init(int age) {
+    	 self.age = age;
+    }
+}
+
+function testObjectDynamicArrayFilling() {
+    Age[] y = [];
+    y[0] = new(5);
+    y[1] = new(5);
+    assertArrayLengthPanic(2, y);
+}
+
+type AbstractPersonObject object {
+    public string fName;
+    public string lName;
+    function getFullName() returns string;
+};
+
+class Employee {
+    *AbstractPersonObject;
+    function init(string fname, string lname) {
+        self.fName = fname;
+        self.lName = lname;
+    }
+    function getFullName() returns string {
+        return self.fName + " " + self.lName;
+    }
+}
+
+function createAbstractObjectEmptyArray() {
+    AbstractPersonObject[5][] y = [];
+    AbstractPersonObject e1 = new Employee("John", "Doe");
+    y[0] = [e1];
+    AbstractPersonObject[][5] r = [];
+    r[0] = [e1, e1, e1, e1, e1];
+    assertArrayLengthPanic(5, r[0]);
+    assertArrayLengthPanic(1, y[0]);
+}
+
+function assertArrayLengthPanic(int expected, any[] arr, string message = "Array length did not match") {
+    int actual = arr.length();
+    if (expected != actual) {
+        panic error(message + " Expected : " + expected.toString() + " Actual : " + actual.toString());
+    }
+}
+
+const TYPEDESC_ARRAY = "typedesc int[][2]";
+
+function testMultidimensionalArrayString() {
+    int[][2] arr = [];
+    typedesc<any> t = typeof arr;
+    assertEquality(TYPEDESC_ARRAY, t.toString());
+
+}
+
+function testArrayMapString() {
+    map<Foo>[2][] arr = [];
+    typedesc<any> t = typeof arr;
+    assertEquality("typedesc map<Foo>[2][]", t.toString());
+
+}
+
+function testArrayUnionType() {
+    (int|string[4][3])[][2][4] arr = [];
+    typedesc<any> t = typeof arr;
+    assertEquality("typedesc (int|string[4][3])[][2][4]", t.toString());
+}
+
+function testArrayTupleType() {
+    [string[2],int,float[3][4]][][] arr = [];
+    typedesc<any> t = typeof arr;
+    assertEquality("typedesc [string[2],int,float[3][4]][][]", t.toString());
+}
+
+const ASSERTION_ERROR_REASON = "AssertionError";
+
+function assertEquality(any|error expected, any|error actual) {
+    if expected is anydata && actual is anydata && expected == actual {
+        return;
+    }
+    if expected === actual {
+        return;
+    }
+    panic error(ASSERTION_ERROR_REASON,
+                message = "expected '" + expected.toString() + "', found '" + actual.toString () + "'");
+}
+
+function testUpdatingJsonTupleViaArrayTypedVar() {
+    [json...] a = [];
+    json[] b = a;
+
+    b[0] = {hello: "world"};
+    b[1] = 2;
+
+    assertArrayLengthPanic(2, b);
+
+    if a[0] == <map<json>> {hello: "world"} && a[1] == 2 {
+        return;
+    }
+    panic error("AssertionError", message = "expected 'hello=world 2', found '" + a.toString() +"'");
 }

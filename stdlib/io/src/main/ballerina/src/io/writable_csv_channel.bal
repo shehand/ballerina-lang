@@ -15,27 +15,27 @@
 // under the License.
 
 
-# Represents record separator of the CSV file.
+# Represents the record separator of the CSV file.
 public const string CSV_RECORD_SEPARATOR = "\n";
 
 
-# Represents colon separator which should be used to identify colon separated files.
+# Represents the colon separator, which should be used to identify colon-separated files.
 public const string FS_COLON = ":";
 
 
-# Represents minimum number of headers which will be included in CSV.
+# Represents the minimum number of headers, which will be included in the CSV.
 public const int MINIMUM_HEADER_COUNT = 0;
 
 
-# Represents a WritableCSVChannel which could be used to write records from CSV file.
-public type WritableCSVChannel object {
+# Represents a WritableCSVChannel, which could be used to write records from the CSV file.
+public class WritableCSVChannel {
     private WritableTextRecordChannel? dc;
 
-    # Constructs a CSV channel from a CharacterChannel to read/write CSV records.
-
-    # + channel - The CharacterChannel, which will represent the content in the CSV file
-    # + fs - Field separator which will separate between the records in the CSV
-    public function __init(WritableCharacterChannel characterChannel, public Separator fs = ",") {
+    # Constructs a CSV channel from a `CharacterChannel` to read/write CSV records.
+    #
+    # + CharacterChannel - The `CharacterChannel`, which will represent the content in the CSV file
+    # + fs - Field separator, which will separate the records in the CSV
+    public function init(WritableCharacterChannel characterChannel, Separator fs = ",") {
         if (fs == TAB) {
             self.dc = new WritableTextRecordChannel(characterChannel, fmt = "TDF");
         } else if (fs == COLON) {
@@ -47,10 +47,13 @@ public type WritableCSVChannel object {
         }
     }
 
-    # Writes record to a given CSV file.
-
-    # + csvRecord - A record to be written to the channel
-    # + return - Returns an `Error` if the record could not be written properly
+# Writes the record to a given CSV file.
+# ```ballerina
+# io:Error err = csvChannel.write(record);
+# ```
+#
+# + csvRecord - A record to be written to the channel
+# + return - An `io:Error` if the record could not be written properly
     public function write(string[] csvRecord) returns Error? {
         if(self.dc is WritableTextRecordChannel){
             var result = <WritableTextRecordChannel> self.dc;
@@ -59,9 +62,12 @@ public type WritableCSVChannel object {
         return ();
     }
 
-    # Closes a given CSVChannel.
-
-    # + return - Nil or `Error` if any error occurred
+# Closes a given `CSVChannel`.
+# ```ballerina
+# io:Error? err = csvChannel.close();
+# ```
+#
+# + return - `()` or else `io:Error` if any error occurred
     public function close() returns Error? {
         if(self.dc is WritableTextRecordChannel){
             var result = <WritableTextRecordChannel> self.dc;
@@ -69,4 +75,4 @@ public type WritableCSVChannel object {
         }
         return ();
     }
-};
+}

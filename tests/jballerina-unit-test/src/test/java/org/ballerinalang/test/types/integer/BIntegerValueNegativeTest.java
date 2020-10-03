@@ -26,12 +26,13 @@ import org.testng.annotations.Test;
 /**
  * Test class for negative integer tests.
  */
+@Test(groups = { "disableOnOldParser" })
 public class BIntegerValueNegativeTest {
 
     @Test
     public void testIntegerValue() {
         CompileResult compileResult = BCompileUtil.compile("test-src/types/integer/integer-value-negative.bal");
-        Assert.assertEquals(compileResult.getErrorCount(), 8);
+        Assert.assertEquals(compileResult.getErrorCount(), 9);
 
         int index = 0;
         String expectedError = "Hexadecimal '0xFFFFFFFFFFFFFFFF' too large";
@@ -46,18 +47,19 @@ public class BIntegerValueNegativeTest {
         expectedError = "Integer '-9999999999999999999' too small";
         BAssertUtil.validateError(compileResult, index++, expectedError, 6, 13);
 
-        expectedError = "mismatched input 'int'. expecting {'is', ';', '?', '+', '-', '*', '/', '%', '==', " +
-                "'!=', '>', '<', '>=', '<=', '&&', '||', '===', '!==', '&', '^', '...', '|', '?:', '->>', '..<'}";
-        BAssertUtil.validateError(compileResult, index++, expectedError, 13, 5);
+        expectedError = "missing semicolon token";
+        BAssertUtil.validateError(compileResult, index++, expectedError, 12, 1);
 
-        expectedError = "extraneous input '672'";
-        BAssertUtil.validateError(compileResult, index++, expectedError, 13, 14);
+        expectedError = "leading zeros in numeric literals";
+        BAssertUtil.validateError(compileResult, index++, expectedError, 13, 13);
 
-        expectedError = "extraneous input '912'";
-        BAssertUtil.validateError(compileResult, index++, expectedError, 14, 14);
+        expectedError = "leading zeros in numeric literals";
+        BAssertUtil.validateError(compileResult, index++, expectedError, 14, 13);
 
-        expectedError = "mismatched input '}'. expecting {'is', ';', '?', '+', '-', '*', '/', '%', '==', '!=', " +
-                "'>', '<', '>=', '<=', '&&', '||', '===', '!==', '&', '^', '...', '|', '?:', '->>', '..<'}";
-        BAssertUtil.validateError(compileResult, index, expectedError, 18, 1);
+        expectedError = "missing semicolon token";
+        BAssertUtil.validateError(compileResult, index++, expectedError, 18, 1);
+
+        expectedError = "invalid qualifier 'public'";
+        BAssertUtil.validateError(compileResult, index++, expectedError, 21, 8);
     }
 }

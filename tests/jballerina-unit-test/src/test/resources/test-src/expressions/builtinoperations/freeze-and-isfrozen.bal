@@ -13,6 +13,7 @@
 // KIND, either express or implied.  See the License for the
 // specific language governing permissions and limitations
 // under the License.
+import ballerina/lang.'xml as xmllib;
 
 final string FREEZE_ERROR_OCCURRED = "error occurred on freeze: ";
 final string FREEZE_SUCCESSFUL = "freeze successful";
@@ -55,67 +56,67 @@ function testStringFreeze(string a) returns [boolean, boolean] {
 function testBasicTypeNullableUnionFreeze() returns [boolean, boolean] {
     int? i = 5;
     anydata j = i.cloneReadOnly();
-    boolean equals = i == j;
+    boolean 'equals = i == j;
     boolean isFrozen = i.isReadOnly() && j.isReadOnly();
 
     string? k = "hello world";
     string? l = k.cloneReadOnly();
-    equals = l == k;
+    'equals = l == k;
     isFrozen = l.isReadOnly() && k.isReadOnly();
 
     float? f = -1.29;
     j = f.cloneReadOnly();
-    equals = f == j;
+    'equals = f == j;
     isFrozen = f.isReadOnly() && j.isReadOnly();
 
     decimal dec = 123.9;
     decimal? d = dec;
     j = d.cloneReadOnly();
-    equals = d == j;
+    'equals = d == j;
     isFrozen = d.isReadOnly() && j.isReadOnly();
 
     boolean? b = ();
     j = b.cloneReadOnly();
-    equals = d == b;
+    'equals = d == b;
     isFrozen = d.isReadOnly() && b.isReadOnly();
 
     int|string? m = "hello ballerina";
     j = m.cloneReadOnly();
-    equals = m == j;
+    'equals = m == j;
     isFrozen = m.isReadOnly() && j.isReadOnly();
 
-    return [equals, isFrozen];
+    return ['equals, isFrozen];
 }
 
 function testBasicTypeUnionFreeze() returns [boolean, boolean] {
     int|string i = 5;
     anydata j = i.cloneReadOnly();
-    boolean equals = i == j;
+    boolean 'equals = i == j;
     boolean isFrozen = i.isReadOnly() && j.isReadOnly();
 
     boolean|float|int k = 123.2;
     boolean|float|int|decimal l = k.cloneReadOnly();
-    equals = l == k;
+    'equals = l == k;
     isFrozen = k.isReadOnly() && l.isReadOnly();
-    return [equals, isFrozen];
+    return ['equals, isFrozen];
 }
 
 function testBasicTypesAsJsonFreeze() returns boolean {
     json a = 5;
     json b = a.cloneReadOnly();
-    boolean equals = a == b;
+    boolean 'equals = a == b;
 
     a = 5.1;
     b = a.cloneReadOnly();
-    equals = equals && a == b;
+    'equals = 'equals && a == b;
 
     a = "Hello from Ballerina";
     b = a.cloneReadOnly();
-    equals = equals && a == b;
+    'equals = 'equals && a == b;
 
     a = true;
     b = a.cloneReadOnly();
-    return equals && a == b;
+    return 'equals && a == b;
 }
 
 function testIsFrozenOnStructuralTypes() returns [boolean, boolean]|error {
@@ -124,32 +125,31 @@ function testIsFrozenOnStructuralTypes() returns [boolean, boolean]|error {
 
     anydata[] a = [1, "hi", 2.0, false, m, (), e];
     [int, string, Employee] t = [1, "Em", e];
-    
+
     json j = { name: "Em", dataType: "json" };
     xml x = xml `<bookItem>The Lost World</bookItem>`;
 
-    table<Employee> empTable = table {
-        { key id, name },
-        [
-            { 1, "Mary" },
-            { 2, "John" },
-            { 3, "Jim" }
-        ]
-    };
+    //table<Employee> empTable = table {
+    //    { key id, name },
+    //    [
+    //        { 1, "Mary" },
+    //        { 2, "John" },
+    //        { 3, "Jim" }
+    //    ]
+    //};
 
     byte byteVal = 255;
     map<anydata> m1 = { intVal: 1, byteVal: byteVal, floatVal: 200.1, stringVal: "Ballerina says freeze",
-        booleanVal: false, arrayVal: a, mapVal: m, tupleVal: t, jsonVal: j, xmlVal: x, tableVal: empTable };
+        booleanVal: false, arrayVal: a, mapVal: m, tupleVal: t, jsonVal: j, xmlVal: x };
 
     boolean isFrozenBeforeFreeze = m.isReadOnly() || a.isReadOnly() || m1.isReadOnly() || e.isReadOnly() || t.isReadOnly() ||
-                                    j.isReadOnly() || x.isReadOnly() || empTable.isReadOnly();
+                                    j.isReadOnly() || x.isReadOnly();
 
     map<anydata> m2 = m1.cloneReadOnly();
     map<anydata> m3 = <map<anydata>>m2["mapVal"];
     boolean isFrozenAfterFreeze = m3.isReadOnly() && m2["arrayVal"].isReadOnly() && m2.isReadOnly() &&
                                    m3["rec"].isReadOnly() && m2["tupleVal"].isReadOnly() &&
-                                   m2["jsonVal"].isReadOnly() && m2["xmlVal"].isReadOnly() &&
-                                   m2["tableVal"].isReadOnly();
+                                   m2["jsonVal"].isReadOnly() && m2["xmlVal"].isReadOnly() ;
     return [isFrozenBeforeFreeze, isFrozenAfterFreeze];
 }
 
@@ -232,39 +232,42 @@ function testRemovalFromFrozenInnerJson() {
     _ = j4.remove("name");
 }
 
-function testFrozenXmlAppendChildren() {
-    xml x1 = xml `<book>The Lost World</book>`;
-    xml x2 = xml `<author>Doyle</author>`;
-
-    xml x3 = x1.cloneReadOnly();
-    x3.appendChildren(x2);
-}
-
-function testFrozenXmlRemoveChildren() {
-    xml x1 = xml `<book>The Lost World<author>Doyle</author></book>`;
-    xml x2 = x1.cloneReadOnly();
-    x2.removeChildren("author");
-}
-
-function testFrozenXmlRemoveAttribute() {
-    xml x1 = xml `<book attr="one">The Lost World</book>`;
-    xml x2 = x1.cloneReadOnly();
-    x2.removeAttribute("attr");
-}
-
-function testFrozenXmlSetAttributes() {
-    map<anydata> m = { attr1: "one", attr2: "two"};
-    xml x1 = xml `<book>The Lost World</book>`;
-    xml x2 = x1.cloneReadOnly();
-    x2.setAttributes(m);
-}
-
 function testFrozenXmlSetChildren() {
     xml x1 = xml `<book>The Lost World</book>`;
     xml x2 = xml `<author>Doyle</author>`;
 
-    xml x3 = x1.cloneReadOnly();
+    xmllib:Element x3 = <xmllib:Element> x1.cloneReadOnly();
     x3.setChildren(x2);
+}
+
+function testFrozenXmlSetChildrenDeep() {
+    xml x1 = xml `<book><name>The Lost World</name><authors></authors></book>`;
+    xml x2 = xml `<author>Doyle</author>`;
+
+    xmllib:Element x3 = <xmllib:Element> x1.cloneReadOnly();
+    xml author = x3.getChildren().strip()[1];
+    xmllib:Element authorEm = <xmllib:Element> author;
+    authorEm.setChildren(x2);
+}
+
+function testXMLItemsCloneReadOnly() {
+    xml x0 = xmllib:concat(xml `<hello>world</hello>`,
+                        xml `<!-- comment text -->`,
+                        xml `<?PIT data?>`,
+                        xml `<item><child>String Content <sub></sub>More Str</child><child></child></item>`);
+
+    assertFalse((x0.<hello>).isReadOnly());
+    assertTrue((x0.<hello>/*).isReadOnly()); // Sequence containing text item
+    assertFalse(x0[1].isReadOnly());
+    assertFalse(x0[2].isReadOnly());
+    assertTrue((x0/**/<child>/*)[0].isReadOnly()); // Text item
+
+    xml x1 = x0.cloneReadOnly();
+    assertTrue((x1.<hello>).isReadOnly());
+    assertTrue((x1.<hello>/*).isReadOnly());
+    assertTrue(x1[1].isReadOnly());
+    assertTrue(x1[2].isReadOnly());
+    assertTrue((x1/**/<child>/*)[0].isReadOnly());
 }
 
 function testFrozenMapUpdate() {
@@ -373,30 +376,22 @@ function testFrozenInnerRecordUpdate() {
 }
 
 function testFrozenTableAddition() {
-    table<Employee> empTable = table {
-        { key id, name },
-        [
-            { 1, "Mary" },
-            { 2, "John" },
-            { 3, "Jim" }
-        ]
-    };
-    Employee e = { id: 5, name: "Anne" };
-    table<Employee> empTable2  = empTable.cloneReadOnly();
-    checkpanic empTable2.add(e);
+    table<Employee1> key(id) empTable = table [
+            { id: 1, name: "Mary" },
+            { id: 2, name: "John" },
+            { id: 3, name: "Jim" }
+        ];
+    Employee1 e = { id: 5, name: "Anne" };
+    empTable.add(e);
 }
 
 function testFrozenTableRemoval() {
-    table<Employee> empTable = table {
-        { key id, name },
-        [
-            { 1, "Mary" },
-            { 2, "John" },
-            { 3, "Jim" }
-        ]
-    };
-    table<Employee> empTable2 = empTable.cloneReadOnly();
-    _ = checkpanic empTable2.remove(isIdTwo);
+    table<Employee1> key(id) empTable = table [
+            { id: 1, name: "Mary" },
+            { id: 2, name: "John" },
+            { id: 3, name: "Jim" }
+        ];
+    var rm = empTable.remove(2);
 }
 
 function testSimpleUnionFreeze() returns boolean {
@@ -490,6 +485,11 @@ type Employee record {|
     string name;
 |};
 
+type Employee1 record {
+    readonly int id;
+    string name;
+};
+
 type DeptEmployee record {|
     int id;
     string name;
@@ -505,3 +505,17 @@ type FreezeAllowedDepartment record {|
     string head;
     (int)...;
 |};
+
+function assertTrue(boolean value) {
+    if !(value) {
+        error e = error("AssertionError", message = "expected: true, found: " + value.toString());
+        panic e;
+    }
+}
+
+function assertFalse(boolean value) {
+    if (value) {
+        error e = error("AssertionError", message = "expected: false, found: " + value.toString());
+        panic e;
+    }
+}

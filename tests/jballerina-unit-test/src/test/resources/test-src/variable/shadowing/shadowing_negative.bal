@@ -40,7 +40,7 @@ function formatName(any a) returns any {
     return a;
 }
 
-type User object {
+class User {
 
     public string name = "";
 
@@ -50,7 +50,7 @@ type User object {
         string name = "";
         xmlns "http://sample.com/wso2/a4" as ns;
     }
-};
+}
 
 service ser = service {
 
@@ -103,4 +103,38 @@ function testNestedLambdaFunctions() returns string {
 
 function testFuncParams(string param) {
     string param = "This is invalid";
+}
+
+type Person record {
+    string name = "Smith";
+};
+string Person = "Smith"; // This variable name equals type name 'Person'
+
+function testTypeNameAsVariableInSameScope1() {
+}
+
+const Student = "Anne";
+class Student { // This type name equals const name 'Student'
+    int studentId = 0;
+}
+
+function testTypeNameAsVariableInSameScope2() {
+}
+
+const Person1 = "Person";
+const Person2 = "Person";
+type Person Person1 | Person2; // This type name equals const name 'Person'
+
+class Vehicle {
+    string name = "Car";
+}
+
+function testTypeNameAsVariableInDifferentScope1() {
+    string Vehicle = "Van";
+    Vehicle vehicle = new;
+}
+
+string returnVal = "Return value";
+
+function testVarAsReturnType() returns returnVal {
 }

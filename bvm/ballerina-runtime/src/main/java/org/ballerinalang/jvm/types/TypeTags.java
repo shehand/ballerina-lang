@@ -44,7 +44,8 @@ public class TypeTags {
     public static final int SERVICE_TAG = ENDPOINT_TAG + 1;
     public static final int ARRAY_TAG = SERVICE_TAG + 1;
     public static final int UNION_TAG = ARRAY_TAG + 1;
-    public static final int PACKAGE_TAG = UNION_TAG + 1;
+    public static final int INTERSECTION_TAG = UNION_TAG + 1;
+    public static final int PACKAGE_TAG = INTERSECTION_TAG + 1;
     public static final int NONE_TAG = PACKAGE_TAG + 1;
     public static final int VOID_TAG = NONE_TAG + 1;
     public static final int XMLNS_TAG = VOID_TAG + 1;
@@ -55,11 +56,64 @@ public class TypeTags {
     public static final int ITERATOR_TAG = ERROR_TAG + 1;
     public static final int TUPLE_TAG = ITERATOR_TAG + 1;
     public static final int FUTURE_TAG = TUPLE_TAG + 1;
-    public static final int INTERMEDIATE_COLLECTION = FUTURE_TAG + 1;
-    public static final int FINITE_TYPE_TAG = INTERMEDIATE_COLLECTION + 1;
+    public static final int FINITE_TYPE_TAG = FUTURE_TAG + 1;
     public static final int OBJECT_TYPE_TAG = FINITE_TYPE_TAG + 1;
     public static final int BYTE_ARRAY_TAG = OBJECT_TYPE_TAG + 1;
     public static final int FUNCTION_POINTER_TAG = BYTE_ARRAY_TAG + 1;
     public static final int CHANNEL_TAG = FUNCTION_POINTER_TAG + 1;
     public static final int HANDLE_TAG = FUNCTION_POINTER_TAG + 1;
+    public static final int READONLY_TAG = HANDLE_TAG + 1;
+
+    // Subtypes
+    public static final int SIGNED32_INT_TAG = READONLY_TAG + 1;
+    public static final int SIGNED16_INT_TAG = SIGNED32_INT_TAG + 1;
+    public static final int SIGNED8_INT_TAG = SIGNED16_INT_TAG + 1;
+    public static final int UNSIGNED32_INT_TAG = SIGNED8_INT_TAG + 1;
+    public static final int UNSIGNED16_INT_TAG = UNSIGNED32_INT_TAG + 1;
+    public static final int UNSIGNED8_INT_TAG = UNSIGNED16_INT_TAG + 1;
+    public static final int CHAR_STRING_TAG = UNSIGNED8_INT_TAG + 1;
+    public static final int XML_ELEMENT_TAG = CHAR_STRING_TAG + 1;
+    public static final int XML_PI_TAG = XML_ELEMENT_TAG + 1;
+    public static final int XML_COMMENT_TAG = XML_PI_TAG + 1;
+    public static final int XML_TEXT_TAG = XML_COMMENT_TAG + 1;
+    public static final int NEVER_TAG = XML_TEXT_TAG + 1;
+
+    public static boolean isIntegerTypeTag(int tag) {
+
+        // TODO : Fix byte type. Ideally, byte belongs to here. But we have modeled it differently.
+        switch (tag) {
+            case INT_TAG:
+            case SIGNED32_INT_TAG:
+            case SIGNED16_INT_TAG:
+            case SIGNED8_INT_TAG:
+            case UNSIGNED32_INT_TAG:
+            case UNSIGNED16_INT_TAG:
+            case UNSIGNED8_INT_TAG:
+                return true;
+        }
+        return false;
+    }
+
+    public static boolean isXMLTypeTag(int tag) {
+
+        switch (tag) {
+            case XML_TAG:
+            case XML_ELEMENT_TAG:
+            case XML_COMMENT_TAG:
+            case XML_PI_TAG:
+            case XML_TEXT_TAG:
+                return true;
+        }
+        return false;
+    }
+
+    public static boolean isStringTypeTag(int tag) {
+
+        switch (tag) {
+            case STRING_TAG:
+            case CHAR_STRING_TAG:
+                return true;
+        }
+        return false;
+    }
 }

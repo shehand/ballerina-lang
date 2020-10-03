@@ -17,14 +17,14 @@
 import ballerina/io;
 import ballerina/jvm;
 import ballerina/bir;
-import ballerinax/java;
+import ballerina/java;
 
 type ErrorHandlerGenerator object {
     jvm:MethodVisitor mv;
     BalToJVMIndexMap indexMap;
     string currentPackageName;
 
-    function __init(jvm:MethodVisitor mv, BalToJVMIndexMap indexMap, string currentPackageName) {
+    function init(jvm:MethodVisitor mv, BalToJVMIndexMap indexMap, string currentPackageName) {
         self.mv = mv;
         self.indexMap = indexMap;
         self.currentPackageName = currentPackageName;
@@ -189,17 +189,17 @@ function print(string message) {
 
 public function getSystemErrorStream() returns handle = @java:FieldGet {
     name:"err",
-    class:"java/lang/System"
+    'class:"java/lang/System"
 } external;
 
 public function printToErrorStream(handle receiver, handle message) = @java:Method {
     name:"println",
-    class:"java/io/PrintStream",
+    'class:"java/io/PrintStream",
     paramTypes:["java.lang.String"]
 } external;
 
 public function exit(int status) = @java:Method {
-    class:"java/lang/System"
+    'class:"java/lang/System"
 } external;
 
 type DiagnosticLog record {|

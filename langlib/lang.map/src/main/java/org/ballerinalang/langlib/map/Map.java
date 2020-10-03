@@ -18,7 +18,10 @@
 
 package org.ballerinalang.langlib.map;
 
+import org.ballerinalang.jvm.runtime.AsyncUtils;
+import org.ballerinalang.jvm.scheduling.Scheduler;
 import org.ballerinalang.jvm.scheduling.Strand;
+import org.ballerinalang.jvm.scheduling.StrandMetadata;
 import org.ballerinalang.jvm.types.BFunctionType;
 import org.ballerinalang.jvm.types.BMapType;
 import org.ballerinalang.jvm.values.FPValue;
@@ -29,28 +32,40 @@ import org.ballerinalang.natives.annotations.Argument;
 import org.ballerinalang.natives.annotations.BallerinaFunction;
 import org.ballerinalang.natives.annotations.ReturnType;
 
+import java.util.concurrent.atomic.AtomicInteger;
+
+import static org.ballerinalang.jvm.util.BLangConstants.BALLERINA_BUILTIN_PKG_PREFIX;
+import static org.ballerinalang.jvm.util.BLangConstants.MAP_LANG_LIB;
+import static org.ballerinalang.util.BLangCompilerConstants.MAP_VERSION;
+
 /**
  * Native implementation of lang.map:map(map&lt;Type&gt;, function).
  *
  * @since 1.0
  */
 @BallerinaFunction(
-        orgName = "ballerina", packageName = "lang.map", functionName = "map",
+        orgName = "ballerina", packageName = "lang.map", version = MAP_VERSION, functionName = "map",
         args = {@Argument(name = "m", type = TypeKind.MAP), @Argument(name = "func", type = TypeKind.FUNCTION)},
         returnType = {@ReturnType(type = TypeKind.MAP)},
         isPublic = true
 )
 public class Map {
 
+    private static final StrandMetadata METADATA = new StrandMetadata(BALLERINA_BUILTIN_PKG_PREFIX, MAP_LANG_LIB,
+                                                                      MAP_VERSION, "map");
+
     public static MapValue map(Strand strand, MapValue<?, ?> m, FPValue<Object, Object> func) {
         BMapType newMapType = new BMapType(((BFunctionType) func.getType()).retType);
-        MapValue newMap = new MapValueImpl(newMapType);
-
-        m.entrySet().forEach(entry -> {
-            Object newVal = func.apply(new Object[]{strand, entry.getValue(), true});
-            newMap.put(entry.getKey(), newVal);
-        });
-
+        MapValue<Object, Object> newMap = new MapValueImpl<>(newMapType);
+        int size = m.size();
+        AtomicInteger index = new AtomicInteger(-1);
+        AsyncUtils
+                .invokeFunctionPointerAsyncIteratively(func, null, METADATA, size,
+                                                       () -> new Object[]{strand,
+                                                               m.get(m.getKeys()[index.incrementAndGet()]), true},
+                                                       result -> newMap
+                                                               .put(m.getKeys()[index.get()], result),
+                                                       () -> newMap, Scheduler.getStrand().scheduler);
         return newMap;
     }
 }

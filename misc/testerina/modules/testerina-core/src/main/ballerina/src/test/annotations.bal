@@ -32,26 +32,44 @@ public type TestConfig record {
 };
 
 # Configuration of the function to be mocked.
-#
-# + moduleName - Name of the module that the function to be mocked resides in
+# + moduleName - Name of the module of the function to be mocked
 # + functionName - Name of the function to be mocked
 public type MockConfig record {
     string moduleName = ".";
     string functionName = "";
 };
 
-public annotation TestConfig Config on function;
+public type AfterSuiteConfig record {
+    boolean alwaysRun = false;
+};
 
-public annotation MockConfig Mock on function;
+public type BeforeGroupsConfig record {
+    string[] value = [];
+};
+
+public type AfterGroupsConfig record {
+    string[] value = [];
+};
+
+public annotation TestConfig Config on function;
 
 # Identifies beforeSuite function.
 public annotation BeforeSuite on function;
 
 # Identifies afterSuite function.
-public annotation AfterSuite on function;
+public annotation AfterSuiteConfig AfterSuite on function;
+
+# Identifies beforeGroup function.
+public annotation BeforeGroupsConfig BeforeGroups on function;
+
+# Identifies afterGroup function.
+public annotation AfterGroupsConfig AfterGroups on function;
 
 # Identifies beforeTest function.
 public annotation BeforeEach on function;
 
 # Identifies afterTest function.
 public annotation AfterEach on function;
+
+# Identifies the MockFunction object
+public const annotation MockConfig Mock on source var, function;

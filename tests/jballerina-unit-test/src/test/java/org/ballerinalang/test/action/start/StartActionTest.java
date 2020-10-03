@@ -18,26 +18,61 @@ package org.ballerinalang.test.action.start;
 
 import org.ballerinalang.test.util.BAssertUtil;
 import org.ballerinalang.test.util.BCompileUtil;
+import org.ballerinalang.test.util.BRunUtil;
 import org.ballerinalang.test.util.CompileResult;
 import org.testng.Assert;
+import org.testng.annotations.BeforeClass;
+import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 /**
- * Start action negative test cases.
+ * Start action test cases.
  */
 public class StartActionTest {
 
-    @Test (description = "Test negative start action usage")
+    private CompileResult result;
+
+    @BeforeClass
+    public void setup() {
+        result = BCompileUtil.compile("test-src/action/start/start_action.bal");
+    }
+
+    @Test(description = "Test negative start action usage", groups = { "disableOnOldParser" })
     public void testStartActionNegative() {
-        CompileResult negativeResult = BCompileUtil.compile("test-src/action/start/start-action-negative.bal");
-        Assert.assertEquals(negativeResult.getErrorCount(), 8);
-        BAssertUtil.validateError(negativeResult, 0, "action invocation as an expression not allowed here", 37, 23);
-        BAssertUtil.validateError(negativeResult, 1, "action invocation as an expression not allowed here", 38, 38);
-        BAssertUtil.validateError(negativeResult, 2, "action invocation as an expression not allowed here", 39, 43);
-        BAssertUtil.validateError(negativeResult, 3, "action invocation as an expression not allowed here", 56, 37);
-        BAssertUtil.validateError(negativeResult, 4, "action invocation as an expression not allowed here", 58, 49);
-        BAssertUtil.validateError(negativeResult, 5, "action invocation as an expression not allowed here", 71, 17);
-        BAssertUtil.validateError(negativeResult, 6, "action invocation as an expression not allowed here", 72, 28);
-        BAssertUtil.validateError(negativeResult, 7, "action invocation as an expression not allowed here", 76, 25);
+        CompileResult result = BCompileUtil.compile("test-src/action/start/start-action-negative.bal");
+        int indx = 0;
+        BAssertUtil.validateError(result, indx++, "action invocation as an expression not allowed here", 37, 17);
+        BAssertUtil.validateError(result, indx++, "action invocation as an expression not allowed here", 38, 32);
+        BAssertUtil.validateError(result, indx++, "action invocation as an expression not allowed here", 39, 32);
+        BAssertUtil.validateError(result, indx++, "action invocation as an expression not allowed here", 39, 37);
+        BAssertUtil.validateError(result, indx++, "'wait' cannot be used with actions", 53, 14);
+        BAssertUtil.validateError(result, indx++, "invalid expression in start action", 53, 14);
+        BAssertUtil.validateError(result, indx++, "action invocation as an expression not allowed here", 56, 37);
+        BAssertUtil.validateError(result, indx++, "'wait' cannot be used with actions", 58, 26);
+        BAssertUtil.validateError(result, indx++, "action invocation as an expression not allowed here", 58, 49);
+        BAssertUtil.validateError(result, indx++, "action invocation as an expression not allowed here", 71, 17);
+        BAssertUtil.validateError(result, indx++, "'wait' cannot be used with actions", 72, 18);
+        BAssertUtil.validateError(result, indx++, "action invocation as an expression not allowed here", 72, 28);
+        BAssertUtil.validateError(result, indx++, "action invocation as an expression not allowed here", 76, 25);
+        BAssertUtil.validateError(result, indx++, "'wait' cannot be used with actions", 90, 27);
+        BAssertUtil.validateError(result, indx++, "missing close paren token", 97, 1);
+        BAssertUtil.validateError(result, indx++, "missing identifier", 97, 1);
+        BAssertUtil.validateError(result, indx++, "missing open paren token", 97, 1);
+        BAssertUtil.validateError(result, indx++, "missing semicolon token", 97, 1);
+        BAssertUtil.validateError(result, indx++, "invalid expression in start action", 100, 5);
+        Assert.assertEquals(result.getErrorCount(), indx);
+    }
+
+    @Test(dataProvider = "FuncList")
+    public void testStartAction(String funcName) {
+        BRunUtil.invoke(result, funcName);
+    }
+
+    @DataProvider(name = "FuncList")
+    public Object[][] getFunctionNames() {
+        return new Object[][]{
+                {"testRecFieldFuncPointerAsyncCall"},
+                {"testObjectMethodsAsAsyncCalls"}
+        };
     }
 }

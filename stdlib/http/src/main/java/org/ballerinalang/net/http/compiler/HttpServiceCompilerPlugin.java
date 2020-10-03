@@ -22,6 +22,7 @@ import org.ballerinalang.mime.util.MimeUtil;
 import org.ballerinalang.model.tree.AnnotationAttachmentNode;
 import org.ballerinalang.model.tree.ServiceNode;
 import org.ballerinalang.model.tree.expressions.ExpressionNode;
+import org.ballerinalang.model.tree.expressions.RecordLiteralNode;
 import org.ballerinalang.net.http.websocket.WebSocketConstants;
 import org.ballerinalang.util.diagnostic.Diagnostic;
 import org.ballerinalang.util.diagnostic.DiagnosticLog;
@@ -31,6 +32,7 @@ import org.wso2.ballerinalang.compiler.tree.expressions.BLangListConstructorExpr
 import org.wso2.ballerinalang.compiler.tree.expressions.BLangRecordLiteral;
 import org.wso2.ballerinalang.compiler.tree.expressions.BLangSimpleVarRef;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import static org.ballerinalang.net.http.HttpConstants.ANN_CONFIG_ATTR_COMPRESSION;
@@ -66,7 +68,7 @@ public class HttpServiceCompilerPlugin extends AbstractCompilerPlugin {
         // This is done on the assumption of resources does not mix each other (HTTP and WebSocket)
         if (resources.size() > 0 &&
                 resources.get(0).getParameters().size() > 0 &&
-                WebSocketConstants.FULL_WEBSOCKET_CALLER_NAME.equals(
+                WebSocketConstants.WEBSOCKET_CALLER_NAME.equals(
                         resources.get(0).getParameters().get(0).type.toString())) {
             return;
         }
@@ -83,8 +85,7 @@ public class HttpServiceCompilerPlugin extends AbstractCompilerPlugin {
                                        serviceNode.getName().getValue());
         }
         resources.forEach(res -> {
-            ResourceSignatureValidator.validate(res.getParameters(), dlog, res.pos);
-            ResourceSignatureValidator.validateResourceAnnotation(res, dlog);
+            ResourceSignatureValidator.validate(res, dlog, res.pos);
         });
     }
 
@@ -93,21 +94,26 @@ public class HttpServiceCompilerPlugin extends AbstractCompilerPlugin {
         if (annotation.getExpression() == null) {
             return;
         }
-        List<BLangRecordLiteral.BLangRecordKeyValue> annotationValues =
-                ((BLangRecordLiteral) annotation.getExpression()).keyValuePairs;
+        List<BLangRecordLiteral.BLangRecordKeyValueField> annotationValues = new ArrayList<>();
+        for (RecordLiteralNode.RecordField field : ((BLangRecordLiteral) annotation.getExpression()).fields) {
+            annotationValues.add((BLangRecordLiteral.BLangRecordKeyValueField) field);
+        }
+
         int compressionConfigCount = 0;
 
-        for (BLangRecordLiteral.BLangRecordKeyValue keyValue : annotationValues) {
+        for (BLangRecordLiteral.BLangRecordKeyValueField keyValue : annotationValues) {
             // Validate compression configuration
-            if (checkMatchingConfigKey(keyValue, ANN_CONFIG_ATTR_COMPRESSION)) {
+            if (checkMatchingConfigKey(keyValue, ANN_CONFIG_ATTR_COMPRESSION.getValue())) {
                 if (compressionConfigCount++ == 1) {
                     dlog.logDiagnostic(Diagnostic.Kind.ERROR, serviceNode.getPosition(),
                                        "Invalid multiple configurations for compression");
                     return;
                 }
-                for (BLangRecordLiteral.BLangRecordKeyValue compressionConfig
-                        : ((BLangRecordLiteral) keyValue.valueExpr).getKeyValuePairs()) {
-                    if (checkMatchingConfigKey(compressionConfig, ANN_CONFIG_ATTR_COMPRESSION_CONTENT_TYPES)) {
+                for (RecordLiteralNode.RecordField field : ((BLangRecordLiteral) keyValue.valueExpr).getFields()) {
+                    BLangRecordLiteral.BLangRecordKeyValueField compressionConfig =
+                            (BLangRecordLiteral.BLangRecordKeyValueField) field;
+                    if (checkMatchingConfigKey(compressionConfig,
+                                               ANN_CONFIG_ATTR_COMPRESSION_CONTENT_TYPES.getValue())) {
                         BLangListConstructorExpr valueArray = (BLangListConstructorExpr) compressionConfig.valueExpr;
                         if (valueArray.getExpressions().isEmpty()) {
                             break;
@@ -126,7 +132,7 @@ public class HttpServiceCompilerPlugin extends AbstractCompilerPlugin {
         }
     }
 
-    private boolean checkMatchingConfigKey(BLangRecordLiteral.BLangRecordKeyValue keyValue, String key) {
+    private boolean checkMatchingConfigKey(BLangRecordLiteral.BLangRecordKeyValueField keyValue, String key) {
         return ((BLangSimpleVarRef) (keyValue.key).expr).variableName.getValue().equals(key);
     }
 }

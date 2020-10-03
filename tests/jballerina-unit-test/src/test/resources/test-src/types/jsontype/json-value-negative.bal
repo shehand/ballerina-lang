@@ -3,13 +3,13 @@ type DummyType record {
 };
 
 function testJsonArrayWithUnsupportedtypes() returns (json) {
-    table<DummyType> dt = table{};
+    table<DummyType> dt = table [];
     json j = ["a", "b", "c", dt];
     return j;
 }
 
 function testJsonInitWithUnsupportedtypes() returns (json) {
-    table<DummyType> dt = table{};
+    table<DummyType> dt = table [];
     json j = { "name": "Supun", "value": dt };
     return j;
 }
@@ -42,10 +42,10 @@ type PersonWithTypedesc record {
     typedesc<any> t;
 };
 
-type Obj object {
+class Obj {
     int i;
 
-    function __init() {
+    function init() {
         self.i = 0;
     }
-};
+}

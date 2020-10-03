@@ -18,6 +18,8 @@
 
 package org.ballerinalang.stdlib.crypto;
 
+import org.ballerinalang.jvm.api.BStringUtils;
+import org.ballerinalang.jvm.api.values.BString;
 import org.ballerinalang.jvm.types.BPackage;
 
 import static org.ballerinalang.jvm.util.BLangConstants.BALLERINA_BUILTIN_PKG_PREFIX;
@@ -32,7 +34,7 @@ public class Constants {
     // Name of the Ballerina crypto module, used to create struct instances.
     public static final String CRYPTO_PACKAGE = "ballerina/crypto";
 
-    public static final BPackage CRYPTO_PACKAGE_ID = new BPackage(BALLERINA_BUILTIN_PKG_PREFIX, "crypto");
+    public static final BPackage CRYPTO_PACKAGE_ID = new BPackage(BALLERINA_BUILTIN_PKG_PREFIX, "crypto", "1.0.0");
 
     // Record used to reference to a private key.
     public static final String PRIVATE_KEY_RECORD = "PrivateKey";
@@ -53,10 +55,10 @@ public class Constants {
     public static final String NATIVE_DATA_PUBLIC_KEY_CERTIFICATE = "NATIVE_DATA_PUBLIC_KEY_CERTIFICATE";
 
     // Path field in KEY_STORE_RECORD record.
-    public static final String KEY_STORE_RECORD_PATH_FIELD = "path";
+    public static final BString KEY_STORE_RECORD_PATH_FIELD = BStringUtils.fromString("path");
 
     // Password field in KEY_STORE_RECORD record.
-    public static final String KEY_STORE_RECORD_PASSWORD_FIELD = "password";
+    public static final BString KEY_STORE_RECORD_PASSWORD_FIELD = BStringUtils.fromString("password");
 
     // Algorithm field in PRIVATE_KEY_RECORD.
     public static final String PRIVATE_KEY_RECORD_ALGORITHM_FIELD = "algorithm";
@@ -91,14 +93,11 @@ public class Constants {
     // SigningAlgorithm field in CERTIFICATE_RECORD.
     public static final String CERTIFICATE_RECORD_SIGNATURE_ALG_FIELD = "signingAlgorithm";
 
-    // Error record for crypto module.
-    public static final String CRYPTO_ERROR = "CryptoError";
+    // Crypto error type ID
+    static final String CRYPTO_ERROR = "CryptoError";
 
     // Message field within error record.
     public static final String MESSAGE = "message";
-
-    // Error code for crypto error
-    public static final String CRYPTO_ERROR_CODE = "{ballerina/crypto}Error";
 
     // PKCS12 keystore type
     public static final String KEYSTORE_TYPE_PKCS12 = "PKCS12";

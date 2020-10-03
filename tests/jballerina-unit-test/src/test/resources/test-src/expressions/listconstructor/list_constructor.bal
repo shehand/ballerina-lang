@@ -35,3 +35,97 @@ function testListConstructorExpr() returns boolean {
         && fooArr[0] == "DDD"
         && fooArr[1] == 444;
 }
+
+function testListConstructorAutoFillExpr() {
+    int[8] arrOfEightInts = [1, 2, 3];
+    int sum = 0;
+    int i = 0;
+
+    while (i < 8) {
+        sum += arrOfEightInts[i];
+        i = i + 1;
+    }
+
+    if (sum != 6) {
+        panic error("Invalid sum of int array");
+    }
+}
+
+const TYPEDESC_ARRAY_ANY = "typedesc any[]";
+
+function testListConstructorWithAnyACET() {
+    any a = [1, 2];
+    typedesc<any> ta = typeof a;
+    assertEquality(TYPEDESC_ARRAY_ANY, ta.toString());
+
+    any|any[] b = [];
+    ta = typeof b;
+    assertEquality(TYPEDESC_ARRAY_ANY, ta.toString());
+}
+
+const TYPEDESC_ARRAY_ANYDATA = "typedesc anydata[]";
+
+function testListConstructorWithAnydataACET() {
+    anydata a = [];
+    typedesc<any> ta = typeof a;
+    assertEquality(TYPEDESC_ARRAY_ANYDATA, ta.toString());
+
+    anydata|string[]|anydata[] b = ["hi", 1, 2.0];
+    ta = typeof b;
+    assertEquality(TYPEDESC_ARRAY_ANYDATA, ta.toString());
+}
+
+const TYPEDESC_ARRAY_JSON = "typedesc json[]";
+
+function testListConstructorWithJsonACET() {
+    json a = [true, 1, 2.0d];
+    typedesc<any> ta = typeof a;
+    assertEquality(TYPEDESC_ARRAY_JSON, ta.toString());
+
+    json|string b = ["hello", 1, 2.0, false];
+    ta = typeof b;
+    assertEquality(TYPEDESC_ARRAY_JSON, ta.toString());
+}
+
+function testTypeWithReadOnlyInUnionCET() {
+    [int, string] tp = [1, "ballerina"];
+    readonly|(int|[int, string])[] val = [1, [1, "foo"], tp, tp];
+
+    assertEquality(true, <any> val is (int|[int, string])[]);
+    assertEquality(false, val is (int|[int, string])[] & readonly);
+
+    (int|[int, string])[] arr = <(int|[int, string])[]> val;
+
+    assertEquality(1, arr[0]);
+    assertEquality(true, arr[1] is [int, string]);
+    assertEquality(<[int, string]> [1, "foo"], arr[1]);
+    assertEquality(tp, arr[2]);
+    assertEquality(tp, arr[3]);
+
+    // Updates should be allowed.
+    arr[0] = tp;
+    [int, string] tempTup = <[int, string]> arr[1];
+    tempTup[0] = 2;
+    tempTup = <[int, string]> arr[2];
+    tempTup[0] = 3;
+
+    assertEquality(<[int, string]> [3, "ballerina"], arr[0]);
+    assertEquality(<[int, string]> [3, "ballerina"], arr[2]);
+    assertEquality(<[int, string]> [3, "ballerina"], arr[3]);
+    assertEquality(<[int, string]> [2, "foo"], arr[1]);
+}
+
+const ASSERTION_ERROR_REASON = "AssertionError";
+
+function assertEquality(any|error expected, any|error actual) {
+    if expected is anydata && actual is anydata && expected == actual {
+        return;
+    }
+
+    if expected === actual {
+        return;
+    }
+
+    panic error(ASSERTION_ERROR_REASON,
+                message = "expected '" + expected.toString() + "', found '" + actual.toString () + "'");
+}

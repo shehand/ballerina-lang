@@ -67,7 +67,7 @@ class ErrorMessages {
     }
 
     static String undocumentedFieldInRecordParam(String fieldName, String paramName, String method, String path) {
-        return String.format("The '%s' field in the record type of the parameter '%s' " +
+        return String.format("The '%s' field in the '%s' type record of the parameter " +
                         "is not documented in the OpenAPI contract for the method '%s' of the path '%s'",
                 fieldName, paramName, method, path);
     }
@@ -77,4 +77,45 @@ class ErrorMessages {
                         "for the method '%s' of the path '%s' which is documented in the OpenAPI contract",
                 fieldName, paramName, operation, path);
     }
+
+    static String tagFilterEnable() {
+        return String.format("Both Tags and excludeTags fields include the same tag(s). Make sure to use one" +
+                " field of tag filtering when using the openapi annotation. ");
+    }
+
+    static String operationFilterEnable() {
+        return String.format("Both Operations and excludeOperations fields include" +
+                " the same operation(s). Make sure to use one field of operation filtering" +
+                " when using the openapi annotation.");
+    }
+
+    static String typeMismatching(String fieldName, String openapiType, String ballerinType,
+                                  String method, String path) {
+        return String.format("Type mismatch with parameter '%s' for the method" +
+                        " '%s' of the path '%s'.In OpenAPI contract its type is '%s' and resources type is '%s'. ",
+                fieldName, method,  path, openapiType, ballerinType);
+    }
+
+    static String typeMismatchingRecord(String fieldName, String paramName, String openapiType, String ballerinType,
+                                        String method, String path) {
+        return String.format("Type mismatching '%s' field in the record type of the parameter '%s' for the method" +
+                        " '%s' of the path '%s'.In OpenAPI contract its type is '%s' and resources type is '%s'. ",
+                fieldName, paramName, method,  path, openapiType , ballerinType);
+    }
+
+    static String typeMismatchOneOfObject(String fieldName, String paramName, String openapiType, String ballerinType,
+                                          String method, String path) {
+        return String.format("Type mismatch with '%s' field in the object type of the parameter '%s' for the method" +
+        " '%s' of the path '%s'.OpenAPI object schema expected '%s' type and resources has '%s' type for field.",
+                fieldName, paramName, method,  path, openapiType, ballerinType);
+    }
+
+    static String typeMismatchOneOfRecord(String fieldName, String paramName, String openapiType, String ballerinType,
+                                          String method, String path) {
+        return String.format("Type mismatch with '%s' field in the record type of the parameter '%s' " +
+                        "for the method '%s' of the path '%s'.OpenAPI object schema expected '%s' " +
+                        "type and resources has '%s' type for field.",
+                fieldName, paramName, method,  path, openapiType, ballerinType);
+    }
+
 }

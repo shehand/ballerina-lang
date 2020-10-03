@@ -17,6 +17,8 @@
 */
 package org.ballerinalang.net.http;
 
+import org.ballerinalang.jvm.api.BStringUtils;
+import org.ballerinalang.jvm.api.values.BString;
 import org.ballerinalang.jvm.transactions.TransactionConstants;
 import org.ballerinalang.jvm.types.AttachedFunction;
 import org.ballerinalang.jvm.types.BType;
@@ -36,8 +38,8 @@ import static org.ballerinalang.net.http.HttpConstants.ANN_FIELD_PATH_PARAM_ORDE
 import static org.ballerinalang.net.http.HttpConstants.ANN_NAME_INTERRUPTIBLE;
 import static org.ballerinalang.net.http.HttpConstants.ANN_NAME_PARAM_ORDER_CONFIG;
 import static org.ballerinalang.net.http.HttpConstants.ANN_NAME_RESOURCE_CONFIG;
-import static org.ballerinalang.net.http.HttpConstants.HTTP_PACKAGE_PATH;
 import static org.ballerinalang.net.http.HttpConstants.PACKAGE_BALLERINA_BUILTIN;
+import static org.ballerinalang.net.http.HttpConstants.PROTOCOL_PACKAGE_HTTP;
 import static org.ballerinalang.net.http.HttpUtil.checkConfigAnnotationAvailability;
 
 /**
@@ -49,13 +51,13 @@ public class HttpResource {
 
     private static final Logger log = LoggerFactory.getLogger(HttpResource.class);
 
-    private static final String METHODS_FIELD = "methods";
-    private static final String PATH_FIELD = "path";
-    private static final String BODY_FIELD = "body";
-    private static final String CONSUMES_FIELD = "consumes";
-    private static final String PRODUCES_FIELD = "produces";
-    private static final String CORS_FIELD = "cors";
-    private static final String TRANSACTION_INFECTABLE_FIELD = "transactionInfectable";
+    private static final BString METHODS_FIELD = BStringUtils.fromString("methods");
+    private static final BString PATH_FIELD = BStringUtils.fromString("path");
+    private static final BString BODY_FIELD = BStringUtils.fromString("body");
+    private static final BString CONSUMES_FIELD = BStringUtils.fromString("consumes");
+    private static final BString PRODUCES_FIELD = BStringUtils.fromString("produces");
+    private static final BString CORS_FIELD = BStringUtils.fromString("cors");
+    private static final BString TRANSACTION_INFECTABLE_FIELD = BStringUtils.fromString("transactionInfectable");
 
     private AttachedFunction balResource;
     private List<String> methods;
@@ -194,7 +196,7 @@ public class HttpResource {
 
         setupTransactionAnnotations(resource, httpResource);
         if (checkConfigAnnotationAvailability(resourceConfigAnnotation)) {
-            httpResource.setPath(resourceConfigAnnotation.getStringValue(PATH_FIELD).replaceAll(
+            httpResource.setPath(resourceConfigAnnotation.getStringValue(PATH_FIELD).getValue().replaceAll(
                     HttpConstants.REGEX, HttpConstants.SINGLE_SLASH));
             httpResource.setMethods(
                     getAsStringList(resourceConfigAnnotation.getArrayValue(METHODS_FIELD).getStringArray()));
@@ -202,7 +204,7 @@ public class HttpResource {
                     getAsStringList(resourceConfigAnnotation.getArrayValue(CONSUMES_FIELD).getStringArray()));
             httpResource.setProduces(
                     getAsStringList(resourceConfigAnnotation.getArrayValue(PRODUCES_FIELD).getStringArray()));
-            httpResource.setEntityBodyAttributeValue(resourceConfigAnnotation.getStringValue(BODY_FIELD));
+            httpResource.setEntityBodyAttributeValue(resourceConfigAnnotation.getStringValue(BODY_FIELD).getValue());
             httpResource.setCorsHeaders(CorsHeaders.buildCorsHeaders(resourceConfigAnnotation.getMapValue(CORS_FIELD)));
             httpResource
                     .setTransactionInfectable(resourceConfigAnnotation.getBooleanValue(TRANSACTION_INFECTABLE_FIELD));
@@ -235,13 +237,13 @@ public class HttpResource {
      * @return the resource configuration of the given resource
      */
     public static MapValue getResourceConfigAnnotation(AttachedFunction resource) {
-        return (MapValue) resource.getAnnotation(HTTP_PACKAGE_PATH, ANN_NAME_RESOURCE_CONFIG);
+        return (MapValue) resource.getAnnotation(PROTOCOL_PACKAGE_HTTP, ANN_NAME_RESOURCE_CONFIG);
     }
 
     protected static MapValue getPathParamOrderMap(AttachedFunction resource) {
-        Object annotation = resource.getAnnotation(HTTP_PACKAGE_PATH, ANN_NAME_PARAM_ORDER_CONFIG);
-        return annotation == null ? new MapValueImpl() :
-                (MapValue) ((MapValue) annotation).get(ANN_FIELD_PATH_PARAM_ORDER);
+        Object annotation = resource.getAnnotation(PROTOCOL_PACKAGE_HTTP, ANN_NAME_PARAM_ORDER_CONFIG);
+        return annotation == null ? new MapValueImpl<BString, Object>() :
+                (MapValue<BString, Object>) ((MapValue<BString, Object>) annotation).get(ANN_FIELD_PATH_PARAM_ORDER);
     }
 
     private static boolean hasInterruptibleAnnotation(AttachedFunction resource) {

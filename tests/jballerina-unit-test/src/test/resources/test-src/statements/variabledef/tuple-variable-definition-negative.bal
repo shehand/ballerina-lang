@@ -27,7 +27,7 @@ function testNegative2() {
 
 function testNegative3() {
     [string, int, float] [s1, i1, f1] = ["D", 4, 6.7, 45];
-    [int, byte, boolean] [s2, i2, r2] = [4, 6];
+    [int, byte, NoFillerObject] [s2, i2, r2] = [4, 6];
     [string, int, float] [s3, i3, f3] = [4, 5.6, "3"];
 }
 
@@ -65,25 +65,25 @@ type Bar record {
     boolean flag;
 };
 
-type FooObj object {
+class FooObj {
     public string s;
     public float f;
     public byte b;
-    public function __init(string s, float f, byte b) {
+    public function init(string s, float f, byte b) {
         self.s = s;
         self.f = f;
         self.b = b;
     }
-};
+}
 
-type BarObj object {
+class BarObj {
     public boolean b;
     public int i;
-    public function __init(boolean b, int i) {
+    public function init(boolean b, int i) {
         self.b = b;
         self.i = i;
     }
-};
+}
 
 function testInvalidTupleVarDef1() {
     [[string, [int, [boolean, int]]], [float, int]] t = [["Bal", [3, [true, 34]]], [5.6, 45]];
@@ -109,3 +109,6 @@ function testIgnoredVariables() {
 function testInvalidTupleVarDef3() {
     string|int [p, q] = [0, 0];
 }
+
+type NoFillerObject object {
+};

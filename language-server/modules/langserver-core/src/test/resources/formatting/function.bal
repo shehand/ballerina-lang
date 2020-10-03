@@ -58,10 +58,10 @@ function name17(int i,string name = "john",
 }
 
    function name18()=    @ java : Method    {name: "dfadfa",
-class: "a.b.Foo"
+'class: "a.b.Foo"
    }    external  ;
 
-    function name19() =  @ java : Method  {   name :  "dfadfa",class:"a.b.Foo"   }   external;
+    function name19() =  @ java : Method  {   name :  "dfadfa",'class:"a.b.Foo"   }   external;
 
 public function main1() {
             _=start     foo  (  )  ;
@@ -77,3 +77,13 @@ function foo() returns int {
          start
     foo();
   }
+
+  function toEmployee1(Person p) returns Employee=>{
+          name :  p . fname  +  " "  +  p . lname  +  " "  +  x . toString()
+  };
+
+  function toEmployee2(Person p) returns Employee
+         =>
+       {
+  name :  p . fname  + " "  +  p.lname + " " + x.toString()
+   } ;

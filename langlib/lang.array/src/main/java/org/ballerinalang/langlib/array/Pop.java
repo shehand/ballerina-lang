@@ -26,6 +26,7 @@ import org.ballerinalang.natives.annotations.BallerinaFunction;
 import org.ballerinalang.natives.annotations.ReturnType;
 
 import static org.ballerinalang.jvm.values.utils.ArrayUtils.checkIsArrayOnlyOperation;
+import static org.ballerinalang.util.BLangCompilerConstants.ARRAY_VERSION;
 
 /**
  * Native implementation of lang.array:pop((any|error)[]).
@@ -33,15 +34,17 @@ import static org.ballerinalang.jvm.values.utils.ArrayUtils.checkIsArrayOnlyOper
  * @since 1.0
  */
 @BallerinaFunction(
-        orgName = "ballerina", packageName = "lang.array", functionName = "pop",
+        orgName = "ballerina", packageName = "lang.array", version = ARRAY_VERSION, functionName = "pop",
         args = {@Argument(name = "arr", type = TypeKind.ARRAY)},
         returnType = {@ReturnType(type = TypeKind.ANY)},
         isPublic = true
 )
 public class Pop {
 
+    private static final String FUNCTION_SIGNATURE = "pop()";
+
     public static Object pop(Strand strand, ArrayValue arr) {
-        checkIsArrayOnlyOperation(arr.getType(), "pop()");
+        checkIsArrayOnlyOperation(arr.getType(), FUNCTION_SIGNATURE);
         return arr.shift(arr.size() - 1);
     }
 }

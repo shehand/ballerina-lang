@@ -1,46 +1,21 @@
 ## Module Overview
 
-This module provides default authentication provider configurations that can be extended to create new authentication providers.
+This module provides the default authentication provider configurations, which can be extended to create new authentication providers and functions to interact with the `auth:InvocationContext`.
 
-### Inbound Authentication Provider
+#### Invocation Context
 
-An inbound authentication provider defines an authentication scheme that could be used to authenticate endpoints. The `auth:InboundAuthProvider` acts as the interface for all the inbound authentication providers. Any type of implementation such as LDAP, JDBC, JWT, OAuth2, and file-based should be object-equivalent.
+The Invocation Context is a data holder, which is created per request and preserved for a single request-response flow. It comprises of auth-related information such as authentication scheme, auth token, and authenticated user's ID, claims, and scopes. 
 
-When creating a new inbound authentication provider, you need to implement the below function.
-- `authenticate` : Authenticates the user based on the user credentials (i.e., the username/password) or a token such as JWT or OAuth2.
+The following code snippet shows how to access the `auth:InvocationContext` and how to set the data and retrieve them.
 
-#### Inbound Basic Auth Provider
-
-The `auth:InboundBasicAuthProvider` is an implementation of the `auth:InboundAuthProvider` interface, which uses the Ballerina configuration file to read usernames, passwords, scopes, and the relevant associations.
-
+Set data to the invocation context.
 ```ballerina
-auth:InboundBasicAuthProvider basicAuthProvider = new;
+auth:InvocationContext invocationContext = auth:getInvocationContext();
+invocationContext.token = "eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ";
 ```
 
-A user is denoted by a section in the configuration file. The password and the scopes assigned to the user are denoted as keys under the relevant user section as shown below.
-
- ```
- [b7a.users.<username>]
- password="<password>"
- scopes="<comma_separated_scopes>"
- ```
- 
-### Outbound Authentication Provider
-
-An outbound authentication provider defines an authentication scheme that could be used to authenticate external endpoints. The `auth:OutboundAuthProvider` acts as the interface for all the outbound authentication providers. Any type of implementation such as JDBC, JWT, OAuth2, and file-based should be object-equivalent.
-
-When creating a new outbound authentication provider, you need to implement the below functions.
-- `generateToken`: Generates the token for authentication with outbound Auth providers such as JWT and OAuth2.
-- `inspect`: Inspects the incoming data and generates the token for authentication as needed. For example, if the incoming data indicates that it needs to regenerate the token because the previously-generated token is invalid, this method will generate it.
-
-#### Outbound Basic Auth Provider
-
-The `auth:OutboundBasicAuthProvider` is an implementation of the `auth:OutboundAuthProvider` interface, which uses
- usernames and passwords provided Ballerina configurations to authenticate external endpoints.
-
+Retrieve data from the invocation context.
 ```ballerina
-auth:OutboundBasicAuthProvider basicAuthProvider = new({
-    username: "tom",
-    password: "123"
-});
+string? authToken = auth:getInvocationContext()?.token;
 ```
+For information on the operations, which you can perform with this module, see the below **Objects**. For examples on the usage of the operations, see the [Secured Service with Basic Auth Example](https://ballerina.io/swan-lake/learn/by-example/secured-service-with-basic-auth.html) and [Secured Client with Basic Auth Example](https://ballerina.io/swan-lake/learn/by-example/secured-client-with-basic-auth.html).

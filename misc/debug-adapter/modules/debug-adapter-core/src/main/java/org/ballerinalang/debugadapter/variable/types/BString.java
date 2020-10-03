@@ -17,27 +17,28 @@
 package org.ballerinalang.debugadapter.variable.types;
 
 import com.sun.jdi.Value;
-import com.sun.tools.jdi.ObjectReferenceImpl;
-import org.ballerinalang.debugadapter.variable.VariableImpl;
-import org.eclipse.lsp4j.debug.Variable;
+import org.ballerinalang.debugadapter.SuspendedContext;
+import org.ballerinalang.debugadapter.variable.BSimpleVariable;
+import org.ballerinalang.debugadapter.variable.BVariableType;
 
+import static org.ballerinalang.debugadapter.variable.VariableUtils.UNKNOWN_VALUE;
+import static org.ballerinalang.debugadapter.variable.VariableUtils.getStringFrom;
 
 /**
- * string type.
+ * Ballerina string variable type.
  */
-public class BString extends VariableImpl {
+public class BString extends BSimpleVariable {
 
-    private final ObjectReferenceImpl value;
-
-    public BString(Value value, Variable dapVariable) {
-        this.value = (ObjectReferenceImpl) value;
-        this.setDapVariable(dapVariable);
-        dapVariable.setType("string");
-        dapVariable.setValue(this.toString());
+    public BString(SuspendedContext context, String name, Value value) {
+        super(context, name, BVariableType.STRING, value);
     }
 
     @Override
-    public String toString() {
-        return value.toString();
+    public String computeValue() {
+        try {
+            return getStringFrom(jvmValue);
+        } catch (Exception ignored) {
+            return UNKNOWN_VALUE;
+        }
     }
 }

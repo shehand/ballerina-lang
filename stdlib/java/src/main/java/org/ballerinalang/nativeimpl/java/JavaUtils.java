@@ -17,12 +17,15 @@
  */
 package org.ballerinalang.nativeimpl.java;
 
-import org.ballerinalang.jvm.BallerinaErrors;
+import org.ballerinalang.jvm.api.BErrorCreator;
+import org.ballerinalang.jvm.api.BStringUtils;
+import org.ballerinalang.jvm.api.values.BString;
 import org.ballerinalang.jvm.scheduling.Strand;
+import org.ballerinalang.jvm.types.BPackage;
+import org.ballerinalang.jvm.util.BLangConstants;
+import org.ballerinalang.jvm.util.exceptions.BallerinaErrorReasons;
 import org.ballerinalang.jvm.values.HandleValue;
 import org.ballerinalang.natives.annotations.BallerinaFunction;
-
-import static org.ballerinalang.jvm.util.exceptions.BallerinaErrorReasons.JAVA_CLASS_NOT_FOUND_ERROR;
 
 /**
  * This class contains various utility functions required to provide the 'ballerina/java' module API.
@@ -30,7 +33,7 @@ import static org.ballerinalang.jvm.util.exceptions.BallerinaErrorReasons.JAVA_C
  * @since 1.0.0
  */
 @BallerinaFunction(
-        orgName = "ballerinax", packageName = "java",
+        orgName = "ballerina", packageName = "java", version = "0.9.0",
         functionName = "getClass"
 )
 public class JavaUtils {
@@ -42,16 +45,18 @@ public class JavaUtils {
     private static final String longTypeName = "long";
     private static final String floatTypeName = "float";
     private static final String doubleTypeName = "double";
-
+    private static final BPackage JAVA_PACKAGE_ID = new BPackage(BLangConstants.BALLERINA_BUILTIN_PKG_PREFIX, "java",
+                                                                 "0.9.0");
 
     /**
      * Returns the Java Class object associated with the class or interface with the given string name.
      *
      * @param strand current strand
-     * @param name   class name
+     * @param namebStr   class name
      * @return a Java Class object instance
      */
-    public static Object getClass(Strand strand, String name) {
+    public static Object getClass(Strand strand, BString namebStr) {
+        String name = namebStr.getValue();
         Class<?> clazz = getPrimitiveTypeClass(name);
         if (clazz != null) {
             return new HandleValue(clazz);
@@ -61,7 +66,8 @@ public class JavaUtils {
             clazz = Class.forName(name);
             return new HandleValue(clazz);
         } catch (ClassNotFoundException e) {
-            return BallerinaErrors.createError(JAVA_CLASS_NOT_FOUND_ERROR, name);
+            return BErrorCreator.createDistinctError(BallerinaErrorReasons.JAVA_CLASS_NOT_FOUND_ERROR,
+                                                     JAVA_PACKAGE_ID, BStringUtils.fromString(name));
         }
     }
 

@@ -17,9 +17,13 @@
  */
 package org.ballerinalang.jvm.values;
 
+import org.ballerinalang.jvm.api.values.BFunctionPointer;
+import org.ballerinalang.jvm.api.values.BLink;
+import org.ballerinalang.jvm.runtime.AsyncUtils;
+import org.ballerinalang.jvm.scheduling.Scheduler;
+import org.ballerinalang.jvm.scheduling.StrandMetadata;
 import org.ballerinalang.jvm.types.BType;
 import org.ballerinalang.jvm.util.BLangConstants;
-import org.ballerinalang.jvm.values.api.BFunctionPointer;
 
 import java.util.Map;
 import java.util.function.Consumer;
@@ -42,34 +46,29 @@ public class FPValue<T, R> implements BFunctionPointer<T, R>, RefValue {
 
     final BType type;
     Function<T, R> function;
+    public boolean isConcurrent;
+    public String strandName;
 
     @Deprecated
-    public FPValue(Function<T, R> function, BType type) {
+    public FPValue(Function<T, R> function, BType type, String strandName, boolean isConcurrent) {
         this.function = function;
         this.type = type;
+        this.strandName = strandName;
+        this.isConcurrent = isConcurrent;
     }
 
     public R call(T t) {
         return this.function.apply(t);
     }
 
-    @Deprecated
-    public FPValue(Consumer<T> consumer, BType type) {
-        this.function = val -> {
-            consumer.accept(val);
-            return null;
-        };
-        this.type = type;
+    public FutureValue asyncCall(Object[] args, StrandMetadata metaData) {
+        return this.asyncCall(args, o -> o, metaData);
     }
 
-    @Deprecated
-    public R apply(T t) {
-        return this.function.apply(t);
-    }
-
-    @Deprecated
-    public void accept(T t) {
-        this.function.apply(t);
+    public FutureValue asyncCall(Object[] args, Function<Object, Object> resultHandleFunction,
+                                 StrandMetadata metaData) {
+        return AsyncUtils.invokeFunctionPointerAsync(this, this.strandName, metaData,
+                                                     args, resultHandleFunction, Scheduler.getStrand().scheduler);
     }
 
     public Function<T, R> getFunction() {
@@ -82,8 +81,13 @@ public class FPValue<T, R> implements BFunctionPointer<T, R>, RefValue {
     }
 
     @Override
-    public String stringValue() {
+    public String stringValue(BLink parent) {
         return "function " + type;
+    }
+
+    @Override
+    public String expressionStringValue(BLink parent) {
+        return stringValue(parent);
     }
 
     @Override
@@ -102,13 +106,8 @@ public class FPValue<T, R> implements BFunctionPointer<T, R>, RefValue {
     }
 
     @Override
-    public boolean isFrozen() {
-        return true;
-    }
-
-    @Override
-    public Object freeze() {
-        return this;
+    public void freezeDirect() {
+        return;
     }
 
     @Override

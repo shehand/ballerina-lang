@@ -1,3 +1,20 @@
+/*
+ *  Copyright (c) 2019, WSO2 Inc. (http://www.wso2.org) All Rights Reserved.
+ *
+ *  WSO2 Inc. licenses this file to you under the Apache License,
+ *  Version 2.0 (the "License"); you may not use this file except
+ *  in compliance with the License.
+ *  You may obtain a copy of the License at
+ *
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *  Unless required by applicable law or agreed to in writing,
+ *  software distributed under the License is distributed on an
+ *  "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ *  KIND, either express or implied.  See the License for the
+ *  specific language governing permissions and limitations
+ *  under the License.
+ */
 package org.ballerinalang.openapi.cmd;
 
 import org.ballerinalang.openapi.CodeGenerator;
@@ -14,6 +31,7 @@ import java.io.PrintStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.ArrayList;
 import java.util.List;
 
 import static org.ballerinalang.openapi.OpenApiMesseges.DEFINITION_EXISTS;
@@ -59,6 +77,13 @@ public class OpenApiGenServiceCmd implements BLauncherCmd {
     @CommandLine.Option(names = {"-h", "--help"}, hidden = true)
     private boolean helpFlag;
 
+    @CommandLine.Option(names = {"--tags"}, description = "Tag that need to write service")
+    private List<String> tags;
+
+    @CommandLine.Option(names = {"--operations"}, description = "Operations that need to write service")
+    private List<String> operations;
+
+
     public OpenApiGenServiceCmd() {
         this.outStream = System.err;
         this.executionPath = System.getProperty("user.dir");
@@ -76,6 +101,11 @@ public class OpenApiGenServiceCmd implements BLauncherCmd {
 
         CodeGenerator generator = new CodeGenerator();
 
+        List<String> tag = new ArrayList<>();
+        List<String> operation = new ArrayList<>();
+        Filter filter = new Filter(tag, operation);
+        tag.add("pet");
+        operation.add("operation");
         //Check if cli help argument is present
         if (helpFlag) {
             String commandUsageInfo = BLauncherCmd.getCommandUsageInfo(getName());
@@ -112,6 +142,7 @@ public class OpenApiGenServiceCmd implements BLauncherCmd {
         final File openApiFile = new File(argList.get(0));
         final String openApiFilePath = openApiFile.getPath();
         Path resourcePath = Paths.get(resourcesDirectory + "/" + openApiFile.getName());
+        Path relativeResourcePath = Paths.get("resources", openApiFile.getName());
 
         //Check provided OpenApi file is a valid and existing one
         if (Files.notExists(Paths.get(openApiFilePath))) {
@@ -198,8 +229,8 @@ public class OpenApiGenServiceCmd implements BLauncherCmd {
         //Path pathRelative = basePath.relativize(absPath);
 
         try {
-            generator.generateService(executionPath, resourcePath.toString(), resourcePath.toString(),
-                    moduleArgs.get(1), output);
+            generator.generateService(executionPath, resourcePath.toString(), relativeResourcePath.toString(),
+                    moduleArgs.get(1), output, filter);
         } catch (IOException | BallerinaOpenApiException e) {
             throw LauncherUtils.createLauncherException("Error occurred when generating service for openapi " +
                     "contract at " + argList.get(0) + ". " + e.getMessage() + ".");

@@ -72,7 +72,7 @@ public class LangLibMapTest {
 
     @Test(expectedExceptions = BLangRuntimeException.class,
           expectedExceptionsMessageRegExp =
-                  ".*error: \\{ballerina/lang.map\\}KeyNotFound message=cannot find key 'NonExistent'.*")
+                  ".*error: \\{ballerina/lang.map\\}KeyNotFound \\{\"message\":\"cannot find key 'NonExistent'\"\\}.*")
     public void testGetNonExistentKey() {
         BRunUtil.invoke(compileResult, "testGet", new BValue[]{new BString("NonExistent")});
     }
@@ -102,9 +102,14 @@ public class LangLibMapTest {
         assertEquals(map.get("us").stringValue(), "USA");
     }
 
+    @Test
+    public void testRemoveIfHasKey() {
+        BRunUtil.invoke(compileResult, "testRemoveIfHasKey");
+    }
+
     @Test(expectedExceptions = BLangRuntimeException.class,
           expectedExceptionsMessageRegExp =
-                  ".*error: \\{ballerina/lang.map\\}KeyNotFound message=cannot find key 'NonExistent'.*")
+                  ".*error: \\{ballerina/lang.map\\}KeyNotFound \\{\"message\":\"cannot find key 'NonExistent'\"\\}.*")
     public void testRemoveNonExistentKey() {
         BRunUtil.invoke(compileResult, "testRemove", new BValue[]{new BString("NonExistent")});
     }
@@ -173,6 +178,46 @@ public class LangLibMapTest {
     public void testReduce() {
         BValue[] returns = BRunUtil.invoke(compileResult, "testReduce");
         assertEquals(((BFloat) returns[0]).floatValue(), 80.5);
+    }
+
+    @Test
+    public void testBasicToArray() {
+        BRunUtil.invoke(compileResult, "testBasicToArray");
+    }
+
+    @Test
+    public void testLargeMapToArray() {
+        BRunUtil.invoke(compileResult, "testLargeMapToArray");
+    }
+
+    @Test
+    public void testRecordToArray() {
+        BRunUtil.invoke(compileResult, "testRecordToArray");
+    }
+
+    @Test
+    public void testOpenRecordToArray() {
+        BRunUtil.invoke(compileResult, "testOpenRecordToArray");
+    }
+
+    @Test
+    public void testMapOfUnionToArray() {
+        BRunUtil.invoke(compileResult, "testMapOfUnionToArray");
+    }
+
+    @Test
+    public void testRecordWithSameTypeFieldsToArray() {
+        BRunUtil.invoke(compileResult, "testRecordWithSameTypeFieldsToArray");
+    }
+
+    @Test
+    public void testAsyncFpArgsWithMaps() {
+        BValue[] results = BRunUtil.invoke(compileResult, "testAsyncFpArgsWithMaps");
+        assertTrue(results[0] instanceof BInteger);
+        assertTrue(results[1] instanceof BMap);
+        assertEquals(((BInteger) results[0]).intValue(), 118);
+        assertEquals(((BInteger) ((BMap) results[1]).get("b")).intValue(), 36);
+        assertEquals(((BInteger) ((BMap) results[1]).get("c")).intValue(), 78);
     }
 
     @DataProvider(name = "mapKeyProvider")

@@ -5,7 +5,7 @@ public function testObjectWithInterface () returns [int, string, int, string] {
 }
 
 
-type Person abstract object {
+type Person object {
     public int age;
     public string name;
 
@@ -17,14 +17,14 @@ type Person abstract object {
     function attachInterface(int add, string value1) returns [int, string];
 };
 
-type Employee object {
+class Employee {
     public int age = 20;
     public string name = "sample name";
 
     int year = 50;
     string month = "february";
 
-    function __init (int year, int count, string name = "sample value1", string val1 = "default value") {
+    function init (int year, int count, string name = "sample value1", string val1 = "default value") {
         self.year = year;
         self.name = name;
         self.age = self.age + count + 50;
@@ -42,6 +42,6 @@ type Employee object {
         string val2 = value1 + self.month;
         return [count, val2];
     }
-};
+}
 
 

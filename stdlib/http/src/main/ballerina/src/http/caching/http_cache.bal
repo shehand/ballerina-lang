@@ -25,7 +25,7 @@ import ballerina/log;
 #            `CACHE_CONTROL_AND_VALIDATORS`. The default behaviour is to allow caching only when the `cache-control`
 #            header and either the `etag` or `last-modified` header are present.
 # + isShared - Specifies whether the HTTP caching layer should behave as a public cache or a private cache
-public type HttpCache object {
+public class HttpCache {
 
     public cache:Cache cache;
     public CachingPolicy policy = CACHE_CONTROL_AND_VALIDATORS;
@@ -33,11 +33,15 @@ public type HttpCache object {
 
     # Creates the HTTP cache.
     #
-    # + config - The configurations for the HTTP cache
-    public function __init(CacheConfig cacheConfig) {
-            self.cache = new cache:Cache(cacheConfig.expiryTimeInMillis, cacheConfig.capacity, cacheConfig.evictionFactor);
-            self.policy = cacheConfig.policy;
-            self.isShared = cacheConfig.isShared;
+    # + cacheConfig - The configurations for the HTTP cache
+    public function init(CacheConfig cacheConfig) {
+        cache:CacheConfig config = {
+            capacity: cacheConfig.capacity,
+            evictionFactor: cacheConfig.evictionFactor
+        };
+        self.cache = new cache:Cache(config);
+        self.policy = cacheConfig.policy;
+        self.isShared = cacheConfig.isShared;
     }
 
     function isAllowedToCache(Response response) returns boolean {
@@ -57,9 +61,7 @@ public type HttpCache object {
             // IMPT: The call to getBinaryPayload() builds the payload from the stream. If this is not done, the stream
             // will be read by the client and the response will be after the first cache hit.
             var binaryPayload = inboundResponse.getBinaryPayload();
-            log:printDebug(function() returns string {
-                return "Adding new cache entry for: " + key;
-            });
+            log:printDebug(() => "Adding new cache entry for: " + key);
             addEntry(self.cache, key, inboundResponse);
         }
     }
@@ -147,10 +149,13 @@ public type HttpCache object {
         return matchingResponses;
     }
 
-    function remove (string key) {
-        self.cache.remove(key);
+    function remove(string key) {
+        cache:Error? result = self.cache.invalidate(key);
+        if (result is cache:Error) {
+            log:printDebug(() => "Failed to remove the key: " + key + " from the HTTP cache.");
+        }
     }
-};
+}
 
 function isCacheableStatusCode(int statusCode) returns boolean {
     return statusCode == STATUS_OK || statusCode == STATUS_NON_AUTHORITATIVE_INFORMATION ||
@@ -162,12 +167,15 @@ function isCacheableStatusCode(int statusCode) returns boolean {
 }
 
 function addEntry(cache:Cache cache, string key, Response inboundResponse) {
-    var existingResponses = cache.get(key);
-    if (existingResponses is Response[]) {
-        existingResponses[existingResponses.length()] = inboundResponse;
-    } else if (existingResponses is ()) {
+    if (cache.hasKey(key)) {
+        Response[] existingResponses = <Response[]>cache.get(key);
+        existingResponses.push(inboundResponse);
+    } else {
         Response[] cachedResponses = [inboundResponse];
-        cache.put(key, cachedResponses);
+        cache:Error? result = cache.put(key, cachedResponses);
+        if (result is cache:Error) {
+            log:printDebug(() => "Failed to add cached response with the key: " + key + " to the HTTP cache.");
+        }
     }
 }
 
@@ -179,5 +187,5 @@ function weakValidatorEquals(string etag1, string etag2) returns boolean {
 }
 
 function getCacheKey(string httpMethod, string url) returns string {
-    return httpMethod + " " + url;
+    return string `${httpMethod} ${url}`;
 }

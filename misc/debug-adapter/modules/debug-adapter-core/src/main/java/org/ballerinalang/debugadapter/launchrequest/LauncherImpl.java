@@ -20,7 +20,8 @@ import com.sun.jdi.VirtualMachine;
 import com.sun.jdi.connect.IllegalConnectorArgumentsException;
 import com.sun.jdi.request.ClassPrepareRequest;
 import com.sun.jdi.request.EventRequestManager;
-import org.ballerinalang.debugadapter.DebuggerAttachingVM;
+import org.ballerinalang.debugadapter.DebugExecutionManager;
+import org.ballerinalang.debugadapter.JBallerinaDebugServer;
 import org.ballerinalang.debugadapter.terminator.OSUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -28,6 +29,8 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -55,22 +58,30 @@ public abstract class LauncherImpl {
     }
 
     ArrayList<String> getLauncherCommand(String balFile) {
-        String ballerinaExec = ballerinaHome + File.separator + "bin" + File.separator + "ballerina";
+        List<String> ballerinaExec = new ArrayList<>();
         if (OSUtils.isWindows()) {
-            ballerinaExec = ballerinaExec + ".bat";
+            ballerinaExec.add("cmd.exe");
+            ballerinaExec.add("/c");
+            ballerinaExec.add(ballerinaHome + File.separator + "bin" + File.separator + "ballerina.bat");
+        } else {
+            ballerinaExec.add("bash");
+            ballerinaExec.add(ballerinaHome + File.separator + "bin" + File.separator + "ballerina");
         }
 
         String ballerinaCmd = args.get("ballerina.command") == null ? "" : args.get("ballerina.command").toString();
-
         // override ballerina exec if ballerina.command is provided.
-        if (ballerinaCmd.length() > 0) {
-            ballerinaExec = ballerinaCmd;
+        if (!ballerinaCmd.isEmpty()) {
+            ballerinaExec = Collections.singletonList(ballerinaCmd);
         }
 
         // TODO: validate file path
-        ArrayList<String> command = new ArrayList<String>();
-        command.add(ballerinaExec);
-        boolean debugTests = args.get("debugTests") != null && (boolean) args.get("debugTests");
+        ArrayList<String> command = new ArrayList<>(ballerinaExec);
+        boolean debugTests = false;
+        if (args.get("debugTests") instanceof Boolean) {
+            debugTests = (boolean) args.get("debugTests");
+        } else if (args.get("debugTests") instanceof String) {
+            debugTests = Boolean.parseBoolean((String) args.get("debugTests"));
+        }
         if (debugTests) {
             command.add("test");
             command.add("--debug");
@@ -85,34 +96,44 @@ public abstract class LauncherImpl {
 
         command.add(balFile);
 
-        boolean networkLogs = args.get("networkLogs") != null && (boolean) args.get("networkLogs");
-        if (networkLogs && !debugTests) {
+        boolean networkLogs = false;
+        if (args.get("networkLogs") instanceof Boolean) {
+            networkLogs = (boolean) args.get("networkLogs");
+        } else if (args.get("networkLogs") instanceof String) {
+            networkLogs = Boolean.parseBoolean((String) args.get("networkLogs"));
+        }
+        if (networkLogs && !debugTests && args.get("networkLogsPort") instanceof Double) {
             Double networkLogsPort = (Double) args.get("networkLogsPort");
             command.add("--b7a.http.tracelog.host=localhost");
             command.add("--b7a.http.tracelog.port=" + networkLogsPort.intValue());
         }
 
-        ArrayList<String> commandOptions = (ArrayList<String>) args.get("commandOptions");
-        commandOptions = commandOptions == null ? new ArrayList<>() : commandOptions;
+        ArrayList<String> commandOptions = new ArrayList<>();
+        if (args.get("commandOptions") instanceof ArrayList) {
+            commandOptions = (ArrayList<String>) args.get("commandOptions");
+        }
         command.addAll(commandOptions);
 
-        ArrayList<String> scriptArguments = (ArrayList<String>) args.get("scriptArguments");
-        scriptArguments = scriptArguments == null ? new ArrayList<>() : scriptArguments;
+        ArrayList<String> scriptArguments = new ArrayList<>();
+        if (args.get("scriptArguments") instanceof ArrayList) {
+            scriptArguments = (ArrayList<String>) args.get("scriptArguments");
+        }
         command.addAll(scriptArguments);
         return command;
     }
 
-    public VirtualMachine attachToLaunchedProcess() {
+    public void attachToLaunchedProcess(JBallerinaDebugServer server) {
         try {
-            VirtualMachine debuggee = new DebuggerAttachingVM(Integer.parseInt(debuggeePort)).initialize();
-            EventRequestManager erm = debuggee.eventRequestManager();
+            DebugExecutionManager execManager = new DebugExecutionManager();
+            VirtualMachine attachedVm = execManager.attach(debuggeePort);
+            EventRequestManager erm = attachedVm.eventRequestManager();
             ClassPrepareRequest classPrepareRequest = erm.createClassPrepareRequest();
             classPrepareRequest.enable();
-            return debuggee;
+            server.setDebuggeeVM(attachedVm);
+            server.setExecutionManager(execManager);
         } catch (IOException | IllegalConnectorArgumentsException e) {
             LOGGER.error("Debugger failed to attach");
         }
-        return null;
     }
 
     public String getBallerinaHome() {

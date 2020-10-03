@@ -41,6 +41,7 @@ public class ObjectSubtypingTest {
 
     @BeforeClass
     public void setup() {
+        BaloCreator.cleanCacheDirectories();
         BaloCreator.createAndSetupBalo("test-src/balo/test_projects/test_project", "testorg", "subtyping");
         compileResult = BCompileUtil.compile("test-src/jvm/objects_subtyping.bal");
     }
@@ -81,15 +82,18 @@ public class ObjectSubtypingTest {
         assertEquals(result[0].stringValue(), "Rocky walked 50 meters");
     }
 
+    @Test(description = "Test object subtyping")
+    public void testObjectAssignabilityBetweenNonClientAndClientObject() {
+        BRunUtil.invoke(compileResult, "testObjectAssignabilityBetweenNonClientAndClientObject");
+    }
+
     @Test
     public void testNegatives() {
         CompileResult result = BCompileUtil.compile("test-src/jvm/object_negatives.bal");
         String msgFormat = "incompatible types: expected '%s', found '%s'";
         int i = 0;
-        validateError(result, i++, "abstract object field: 'ssn' can not be declared as private", 21, 5);
-        validateError(result, i++,
-                      "interface function: 'test' of abstract object 'ObjWithPvtMethod' can not be declared as private",
-                      28, 5);
+        validateError(result, i++, "'private' qualifier not allowed", 21, 13);
+        validateError(result, i++, "'private' qualifier not allowed", 28, 13);
         validateError(result, i++, format(msgFormat, "ObjWithPvtField", "AnotherObjWithAPvtField"), 45, 26);
         validateError(result, i++, format(msgFormat, "ObjWithPvtMethod", "AnotherObjWithPvtMethod"), 46, 27);
         validateError(result, i++, format(msgFormat, "testorg/subtyping:1.0.0:ModuleLevelSubtypableObj", "Subtype1"),
@@ -99,16 +103,16 @@ public class ObjectSubtypingTest {
         assertEquals(result.getErrorCount(), i);
     }
 
-    @Test
+    @Test(groups = { "disableOnOldParser" })
     public void testObjSubtypingSemanticsNegative() {
         CompileResult result = BCompileUtil.compile("test-src/jvm/object-subtype-semantics-negative.bal");
         int i = 0;
         validateError(result, i++,
-                "incompatible types: expected '(object { int intField1; int intField2; }|record {| null...; |}|4)', " +
-                        "found 'testObj'", 22, 17);
+                "incompatible types: expected '(object { int intField1; int intField2; }|record" +
+                        " {| int i; anydata...; |}|4)', found 'testObj'", 22, 17);
         validateError(result, i++,
-                "incompatible types: expected '(object { int intField1; int intField2; }|string|boolean|1)', " +
-                        "found 'testObj'", 23, 19);
+                "incompatible types: expected '(object { int intField1; int intField2; }|string" +
+                        "|boolean|1)', found 'testObj'", 23, 19);
         assertEquals(result.getErrorCount(), i);
     }
 
@@ -116,8 +120,6 @@ public class ObjectSubtypingTest {
     public void testObjSubtypingNegatives() {
         CompileResult result = BCompileUtil.compile("test-src/jvm/object-subtype-negative.bal");
         int i = 0;
-        validateError(result, i++, "uninitialized field 'intField1'", 18, 46);
-        validateError(result, i++, "uninitialized field 'intField2'", 18, 61);
         validateError(result, i++, "uninitialized field 'intField1'", 27, 5);
         validateError(result, i++, "uninitialized field 'intField2'", 28, 5);
         assertEquals(result.getErrorCount(), i);

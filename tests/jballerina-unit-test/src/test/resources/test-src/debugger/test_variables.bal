@@ -19,16 +19,16 @@ type Foo record {
     string last;
 };
 
-type Person object {
+class Person {
     public int age = 0;
     public string name = "";
     public Person? parent = ();
     private string email = "default@abc.com";
 
-    function __init() {
+    function init() {
 
     }
-};
+}
 
 function callFunc() returns (string) {
     string newStr = "ABCDEFG";

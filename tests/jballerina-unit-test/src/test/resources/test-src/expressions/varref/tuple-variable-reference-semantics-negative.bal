@@ -20,7 +20,7 @@ function testBasicNegative0() {
 }
 
 function testBasicNegative1() {
-    [string, int, float] [s, i, f] = ["D", 4, 6.7];
+    [string, int, NoFillerObject] [s, i, f] = ["D", 4, new(6)];
     [s, i, f] = ["FFF", 345];
 }
 
@@ -100,25 +100,25 @@ type Bar record {
     boolean flag;
 };
 
-type FooObj object {
+class FooObj {
     public string s;
     public float f;
     public byte b;
-    function __init(string s, float f, byte b) {
+    function init(string s, float f, byte b) {
         self.s = s;
         self.f = f;
         self.b = b;
     }
-};
+}
 
-type BarObj object {
+class BarObj {
     public boolean b;
     public int i;
-    function __init(boolean b, int i) {
+    function init(boolean b, int i) {
         self.b = b;
         self.i = i;
     }
-};
+}
 
 function testInvalidTupleVarDef1() {
     [[string, [int, [boolean, int]]], [float, int]] [[s, [i1, [b, y]]], [f, i2]] = [["Bal", [3, [true, 34]]], [5.6, 45]];
@@ -161,14 +161,8 @@ function testFieldAndIndexBasedVarRefs() returns [anydata, anydata] {
     return [m["var1"], m["var2"]];
 }
 
-function testAssigningValuesToFinalVars() {
-    [string, float] t1 = ["hello", 1.0];
-    final var [s1, f1] = t1;
-    [s1, f1] = t1;
+class NoFillerObject {
+    function init(int i) {
 
-    [string?, [float, boolean], int...] t2 = ["hi", [1.0, true], 1, 2];
-    final [string?, [float, boolean], int...] [s2, [f2, b2], ...n2] = t2;
-    [s2, [f2, b2], ...n2] = t2;
-    s2 = "hello";
-    [f2, b2] = [2.0, false];
+    }
 }

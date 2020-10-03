@@ -35,19 +35,16 @@ service testService16 on new http:Listener(9118) {
             if (binaryPayload is byte[]) {
                 var payload = res.getXmlPayload();
                 if (payload is xml) {
-                    xml descendants = payload.selectDescendants("title");
-                    checkpanic caller->respond(<@untainted> descendants.getTextValue());
+                    //xml descendants = payload.selectDescendants("title");
+                    checkpanic caller->respond(<@untainted> (payload/**/<title>/*).toString());
                 } else {
-                    error err = payload;
-                    checkpanic caller->respond(<@untainted> err.reason());
+                    checkpanic caller->respond(<@untainted> payload.message());
                 }
             } else {
-                error err = binaryPayload;
-                checkpanic caller->respond(<@untainted> err.reason());
+                checkpanic caller->respond(<@untainted> binaryPayload.message());
             }
         } else {
-            error err = res;
-            checkpanic caller->respond(<@untainted> err.reason());
+            checkpanic caller->respond(<@untainted> res.message());
         }
     }
 
@@ -56,13 +53,13 @@ service testService16 on new http:Listener(9118) {
         if (res is http:Response) {
             var payload = res.getXmlPayload();
             if (payload is xml) {
-                xml descendants = payload.selectDescendants("title");
-                checkpanic caller->respond(<@untainted> descendants.getTextValue());
+                //xml descendants = payload.selectDescendants("title");
+                checkpanic caller->respond(<@untainted> (payload/**/<title>/*).toString());
             } else {
                 if (payload is http:GenericClientError) {
-                    var cause = payload.detail()?.cause;
+                    var cause = payload.cause();
                     if (cause is mime:ParserError) {
-                        checkpanic caller->respond(<@untainted> cause.detail().message);
+                        checkpanic caller->respond(<@untainted> cause.message());
                     }
                 }
             }

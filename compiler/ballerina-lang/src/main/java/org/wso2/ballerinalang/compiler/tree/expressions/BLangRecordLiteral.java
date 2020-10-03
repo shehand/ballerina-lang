@@ -18,6 +18,7 @@
 package org.wso2.ballerinalang.compiler.tree.expressions;
 
 import org.ballerinalang.model.tree.NodeKind;
+import org.ballerinalang.model.tree.expressions.ExpressionNode;
 import org.ballerinalang.model.tree.expressions.RecordLiteralNode;
 import org.wso2.ballerinalang.compiler.semantics.model.symbols.BAttachedFunction;
 import org.wso2.ballerinalang.compiler.semantics.model.symbols.BRecordTypeSymbol;
@@ -29,24 +30,25 @@ import org.wso2.ballerinalang.compiler.util.diagnotic.DiagnosticPos;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.TreeMap;
 import java.util.stream.Collectors;
 
 import static org.ballerinalang.model.tree.NodeKind.RECORD_LITERAL_KEY_VALUE;
+import static org.ballerinalang.model.tree.NodeKind.RECORD_LITERAL_SPREAD_OP;
 
 /**
  * The super class of all the record literal expressions.
  *
  * @see BLangStructLiteral
  * @see BLangMapLiteral
- * @see BLangTableLiteral
  * @since 0.94
  */
 public class BLangRecordLiteral extends BLangExpression implements RecordLiteralNode {
 
-    public List<BLangRecordKeyValue> keyValuePairs;
+    public List<RecordField> fields;
 
     public BLangRecordLiteral() {
-        keyValuePairs = new ArrayList<>();
+        fields = new ArrayList<>();
     }
 
     public BLangRecordLiteral(DiagnosticPos pos) {
@@ -56,7 +58,7 @@ public class BLangRecordLiteral extends BLangExpression implements RecordLiteral
 
     public BLangRecordLiteral(DiagnosticPos pos, BType type) {
         this.pos = pos;
-        keyValuePairs = new ArrayList<>();
+        fields = new ArrayList<>();
         this.type = type;
     }
 
@@ -71,14 +73,14 @@ public class BLangRecordLiteral extends BLangExpression implements RecordLiteral
     }
 
     @Override
-    public List<BLangRecordKeyValue> getKeyValuePairs() {
-        return keyValuePairs;
+    public List<RecordField> getFields() {
+        return fields;
     }
 
     @Override
     public String toString() {
-        return " {" + keyValuePairs.stream()
-                .map(BLangRecordKeyValue::toString)
+        return " {" + fields.stream()
+                .map(RecordField::toString)
                 .collect(Collectors.joining(",")) + "}";
     }
 
@@ -87,15 +89,17 @@ public class BLangRecordLiteral extends BLangExpression implements RecordLiteral
      *
      * @since 0.94
      */
-    public static class BLangRecordKeyValue extends BLangNode implements RecordKeyValueNode {
+    public static class BLangRecordKeyValueField extends BLangNode implements RecordKeyValueFieldNode {
 
         public BLangRecordKey key;
         public BLangExpression valueExpr;
+        public boolean readonly;
 
-        public BLangRecordKeyValue() {
+        public BLangRecordKeyValueField() {
         }
 
-        public BLangRecordKeyValue(BLangRecordKey key, BLangExpression valueExpr) {
+        @Deprecated
+        public BLangRecordKeyValueField(BLangRecordKey key, BLangExpression valueExpr) {
             this.key = key;
             this.valueExpr = valueExpr;
         }
@@ -123,6 +127,66 @@ public class BLangRecordLiteral extends BLangExpression implements RecordLiteral
         @Override
         public String toString() {
             return key + ((valueExpr != null) ? ": " + valueExpr : "");
+        }
+
+        @Override
+        public boolean isKeyValueField() {
+            return true;
+        }
+    }
+
+    /**
+     * This static inner class represents a variable name as a field in a mapping constructor.
+     *
+     * @since 1.2.0
+     */
+    public static class BLangRecordVarNameField extends BLangSimpleVarRef implements RecordVarNameFieldNode {
+
+        public boolean readonly;
+
+        @Override
+        public boolean isKeyValueField() {
+            return false;
+        }
+    }
+
+    /**
+     * This static inner class represents a spread operator as a field in a mapping constructor.
+     *
+     * @since 1.2.0
+     */
+    public static class BLangRecordSpreadOperatorField extends BLangNode implements RecordSpreadOperatorFieldNode {
+
+        public BLangExpression expr;
+
+        @Override
+        public BLangExpression getExpression() {
+            return expr;
+        }
+
+        @Override
+        public void setExpression(ExpressionNode expr) {
+            this.expr = (BLangExpression) expr;
+        }
+
+        @Override
+        public NodeKind getKind() {
+            return RECORD_LITERAL_SPREAD_OP;
+        }
+
+        @Override
+        public void accept(BLangNodeVisitor visitor) {
+            visitor.visit(this);
+        }
+
+        @Override
+        public String toString() {
+            return "..." + expr;
+        }
+
+        @Override
+        public boolean isKeyValueField() {
+            return false;
         }
     }
 
@@ -167,12 +231,13 @@ public class BLangRecordLiteral extends BLangExpression implements RecordLiteral
      */
     public static class BLangStructLiteral extends BLangRecordLiteral {
         public BAttachedFunction initializer;
+        public TreeMap<Integer, BVarSymbol> enclMapSymbols;
 
-        public BLangStructLiteral(DiagnosticPos pos, List<BLangRecordKeyValue> keyValuePairs, BType structType) {
+        public BLangStructLiteral(DiagnosticPos pos, BType structType, List<RecordField> fields) {
             super(pos);
-            this.keyValuePairs = keyValuePairs;
             this.type = structType;
             this.initializer = ((BRecordTypeSymbol) structType.tsymbol).initializerFunc;
+            this.fields = fields;
         }
 
         @Override
@@ -188,29 +253,10 @@ public class BLangRecordLiteral extends BLangExpression implements RecordLiteral
      */
     public static class BLangMapLiteral extends BLangRecordLiteral {
 
-        public BLangMapLiteral(DiagnosticPos pos, List<BLangRecordKeyValue> keyValuePairs, BType mapType) {
+        public BLangMapLiteral(DiagnosticPos pos, BType mapType, List<RecordField> fields) {
             super(pos);
-            this.keyValuePairs = keyValuePairs;
             this.type = mapType;
-        }
-
-        @Override
-        public void accept(BLangNodeVisitor visitor) {
-            visitor.visit(this);
-        }
-    }
-
-    /**
-     * This class represents a JSON type literal expression.
-     *
-     * @since 0.94
-     */
-    public static class BLangJSONLiteral extends BLangRecordLiteral {
-
-        public BLangJSONLiteral(DiagnosticPos pos, List<BLangRecordKeyValue> keyValuePairs, BType jsonType) {
-            super(pos);
-            this.keyValuePairs = keyValuePairs;
-            this.type = jsonType;
+            this.fields = fields;
         }
 
         @Override

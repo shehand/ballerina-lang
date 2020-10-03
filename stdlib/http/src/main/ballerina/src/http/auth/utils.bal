@@ -18,7 +18,7 @@ import ballerina/log;
 import ballerina/reflect;
 
 # Auth annotation module.
-const string ANN_MODULE = "ballerina/http";
+const string ANN_MODULE = "ballerina/http:1.0.0";
 # Resource level annotation name.
 const string RESOURCE_ANN_NAME = "ResourceConfig";
 # Service level annotation name.
@@ -42,27 +42,51 @@ public const NO_BEARER = "NO_BEARER";
 # Indicates the status code.
 public const STATUS_CODE = "STATUS_CODE";
 
+# Represents inbound auth handler patterns.
+public type InboundAuthHandlers InboundAuthHandler[]|InboundAuthHandler[][];
+
+# Represents scopes patterns.
+public type Scopes string[]|string[][];
+
 # Extracts the Authorization header value from the request.
 #
-# + req - Request instance
+# + req - The `Request` instance
 # + return - Value of the Authorization header
 public function extractAuthorizationHeaderValue(Request req) returns @tainted string {
     // extract authorization header
     return req.getHeader(AUTH_HEADER);
 }
 
+# Checks whether the calling resource is secured by evaluating the authentication hierarchy.
+#
+# + context - The `FilterContext` instance
+# + return - The status of calling resource is secured or not
+public function isResourceSecured(FilterContext context) returns boolean {
+    ResourceAuth? resourceLevelAuthAnn = getResourceAuthConfig(context);
+    ServiceAuth? serviceLevelAuthAnn = getServiceAuthConfig(context);
+
+    boolean? resourceSecured = isResourceAuthEnabled(resourceLevelAuthAnn);
+    boolean serviceSecured = isServiceAuthEnabled(serviceLevelAuthAnn);
+
+    if (resourceSecured is boolean) {
+        return resourceSecured;
+    } else {
+        return serviceSecured;
+    }
+}
+
 # Tries to retrieve the inbound authentication handlers based on their hierarchy
 # (i.e., first from the resource level and then from the service level, if it is not there at the resource level).
 #
 # + context - The `FilterContext` instance
-# + return - Returns the authentication handlers or whether it is needed to engage listener-level handlers or not
-function getAuthHandlers(FilterContext context) returns InboundAuthHandler[]|InboundAuthHandler[][]|boolean {
+# + return - The authentication handlers or a boolean value indicating whether it is needed to engage listener-level handlers or not
+function getAuthHandlers(FilterContext context) returns InboundAuthHandlers|boolean {
     ResourceAuth? resourceLevelAuthAnn = getResourceAuthConfig(context);
     ServiceAuth? serviceLevelAuthAnn = getServiceAuthConfig(context);
 
-     // check if authentication is enabled for resource and service
-    boolean? resourceSecured = isResourceSecured(resourceLevelAuthAnn);
-    boolean serviceSecured = isServiceSecured(serviceLevelAuthAnn);
+    // check if authentication is enabled for resource and service
+    boolean? resourceSecured = isResourceAuthEnabled(resourceLevelAuthAnn);
+    boolean serviceSecured = isServiceAuthEnabled(serviceLevelAuthAnn);
 
     if (resourceSecured is boolean) {
         // if resource is not secured, no need to check further.
@@ -74,16 +98,16 @@ function getAuthHandlers(FilterContext context) returns InboundAuthHandler[]|Inb
         }
         // checks if Auth providers are given at the resource level.
         if (resourceLevelAuthAnn is ResourceAuth) {
-            var resourceAuthHandlers = resourceLevelAuthAnn?.authHandlers;
-            if (!(resourceAuthHandlers is ())) {
+            InboundAuthHandlers? resourceAuthHandlers = resourceLevelAuthAnn?.authHandlers;
+            if (resourceAuthHandlers is InboundAuthHandlers) {
                 return resourceAuthHandlers;
             } else {
                 // checks if service is secured.
                 if (serviceSecured) {
                     // Checks if Auth providers are given at the service level.
                     if (serviceLevelAuthAnn is ServiceAuth) {
-                        var serviceAuthHandlers = serviceLevelAuthAnn?.authHandlers;
-                        if (!(serviceAuthHandlers is ())) {
+                        InboundAuthHandlers? serviceAuthHandlers = serviceLevelAuthAnn?.authHandlers;
+                        if (serviceAuthHandlers is InboundAuthHandlers) {
                             return serviceAuthHandlers;
                         }
                     }
@@ -94,8 +118,8 @@ function getAuthHandlers(FilterContext context) returns InboundAuthHandler[]|Inb
             if (serviceSecured) {
                 // Checks if Auth providers are given at the service level.
                 if (serviceLevelAuthAnn is ServiceAuth) {
-                    var serviceAuthHandlers = serviceLevelAuthAnn?.authHandlers;
-                    if (!(serviceAuthHandlers is ())) {
+                    InboundAuthHandlers? serviceAuthHandlers = serviceLevelAuthAnn?.authHandlers;
+                    if (serviceAuthHandlers is InboundAuthHandlers) {
                         return serviceAuthHandlers;
                     }
                 }
@@ -104,8 +128,8 @@ function getAuthHandlers(FilterContext context) returns InboundAuthHandler[]|Inb
     } else {
         // checks if Auth providers are given at the resource level.
         if (resourceLevelAuthAnn is ResourceAuth) {
-            var resourceAuthHandlers = resourceLevelAuthAnn?.authHandlers;
-            if (!(resourceAuthHandlers is ())) {
+            InboundAuthHandlers? resourceAuthHandlers = resourceLevelAuthAnn?.authHandlers;
+            if (resourceAuthHandlers is InboundAuthHandlers) {
                 return resourceAuthHandlers;
             }
         }
@@ -118,8 +142,8 @@ function getAuthHandlers(FilterContext context) returns InboundAuthHandler[]|Inb
         }
         // Checks if Auth providers are given at the service level.
         if (serviceLevelAuthAnn is ServiceAuth) {
-            var serviceAuthHandlers = serviceLevelAuthAnn?.authHandlers;
-            if (!(serviceAuthHandlers is ())) {
+            InboundAuthHandlers? serviceAuthHandlers = serviceLevelAuthAnn?.authHandlers;
+            if (serviceAuthHandlers is InboundAuthHandlers) {
                 return serviceAuthHandlers;
             }
         }
@@ -127,18 +151,18 @@ function getAuthHandlers(FilterContext context) returns InboundAuthHandler[]|Inb
     return true;
 }
 
-# Tries to retrieve the authorization scopes hierarchically - first from the resource level and then
-# from the service level, if it is not there in the resource level.
+# Retrieves the authorization scopes hierarchically - first from the resource level and then
+# from the service level if it is not there in the resource level.
 #
 # + context - `FilterContext` instance
 # + return - Authorization scopes or whether it is needed to engage listener level scopes or not
-function getScopes(FilterContext context) returns string[]|string[][]|boolean {
+function getScopes(FilterContext context) returns Scopes|boolean {
     ResourceAuth? resourceLevelAuthAnn = getResourceAuthConfig(context);
     ServiceAuth? serviceLevelAuthAnn = getServiceAuthConfig(context);
 
      // check if authentication is enabled for resource and service
-    boolean? resourceSecured = isResourceSecured(resourceLevelAuthAnn);
-    boolean serviceSecured = isServiceSecured(serviceLevelAuthAnn);
+    boolean? resourceSecured = isResourceAuthEnabled(resourceLevelAuthAnn);
+    boolean serviceSecured = isServiceAuthEnabled(serviceLevelAuthAnn);
 
     if (resourceSecured is boolean) {
         // if resource is not secured, no need to check further.
@@ -150,16 +174,16 @@ function getScopes(FilterContext context) returns string[]|string[][]|boolean {
         }
         // checks if scopes are given at the resource level.
         if (resourceLevelAuthAnn is ResourceAuth) {
-            var resourceScopes = resourceLevelAuthAnn?.scopes;
-            if (!(resourceScopes is ())) {
+            Scopes? resourceScopes = resourceLevelAuthAnn?.scopes;
+            if (resourceScopes is Scopes) {
                 return resourceScopes;
             } else {
                 // checks if service is secured.
                 if (serviceSecured) {
                     // Checks if scopes are given at the service level.
                     if (serviceLevelAuthAnn is ServiceAuth) {
-                        var serviceScopes = serviceLevelAuthAnn?.scopes;
-                        if (!(serviceScopes is ())) {
+                        Scopes? serviceScopes = serviceLevelAuthAnn?.scopes;
+                        if (serviceScopes is Scopes) {
                             return serviceScopes;
                         }
                     }
@@ -170,8 +194,8 @@ function getScopes(FilterContext context) returns string[]|string[][]|boolean {
             if (serviceSecured) {
                 // Checks if scopes are given at the service level.
                 if (serviceLevelAuthAnn is ServiceAuth) {
-                    var serviceScopes = serviceLevelAuthAnn?.scopes;
-                    if (!(serviceScopes is ())) {
+                    Scopes? serviceScopes = serviceLevelAuthAnn?.scopes;
+                    if (serviceScopes is Scopes) {
                         return serviceScopes;
                     }
                 }
@@ -180,8 +204,8 @@ function getScopes(FilterContext context) returns string[]|string[][]|boolean {
     } else {
         // checks if scopes are given at the resource level.
         if (resourceLevelAuthAnn is ResourceAuth) {
-            var resourceScopes = resourceLevelAuthAnn?.scopes;
-            if (!(resourceScopes is ())) {
+            Scopes? resourceScopes = resourceLevelAuthAnn?.scopes;
+            if (resourceScopes is Scopes) {
                 return resourceScopes;
             }
         }
@@ -194,8 +218,8 @@ function getScopes(FilterContext context) returns string[]|string[][]|boolean {
         }
         // Checks if scopes are given at the service level.
         if (serviceLevelAuthAnn is ServiceAuth) {
-            var serviceScopes = serviceLevelAuthAnn?.scopes;
-            if (!(serviceScopes is ())) {
+            Scopes? serviceScopes = serviceLevelAuthAnn?.scopes;
+            if (serviceScopes is Scopes) {
                 return serviceScopes;
             }
         }
@@ -203,10 +227,10 @@ function getScopes(FilterContext context) returns string[]|string[][]|boolean {
     return true;
 }
 
-# Retrieve the authentication annotation value for service level.
+# Retrieves the authentication annotation value for the service level.
 #
 # + context - The `FilterContext` instance
-# + return - Returns the service-level authentication annotations
+# + return - The service-level authentication annotations or else `()`
 function getServiceAuthConfig(FilterContext context) returns ServiceAuth? {
     any annData = reflect:getServiceAnnotations(context.getService(), SERVICE_ANN_NAME, ANN_MODULE);
     if (!(annData is ())) {
@@ -215,10 +239,10 @@ function getServiceAuthConfig(FilterContext context) returns ServiceAuth? {
     }
 }
 
-# Retrieve the authentication annotation value for resource level and service level.
+# Retrieves the authentication annotation value for the resource level and service level.
 #
 # + context - The `FilterContext` instance
-# + return - Returns the resource-level and service-level authentication annotations
+# + return - The resource-level and service-level authentication annotations
 function getResourceAuthConfig(FilterContext context) returns ResourceAuth? {
     any annData = reflect:getResourceAnnotations(context.getService(), context.getResourceName(), RESOURCE_ANN_NAME,
                                                  ANN_MODULE);
@@ -228,23 +252,39 @@ function getResourceAuthConfig(FilterContext context) returns ResourceAuth? {
     }
 }
 
-# Check for the service is secured by evaluating the enabled flag configured by the user.
+# Checks whether the `http:ResourceConfig` has `http:WebSocketUpgradeConfig` or not.
+#
+# + context - The `FilterContext` instance
+# + return - Whether the `http:ResourceConfig` has `http:WebSocketUpgradeConfig` or not
+function isWebSocketUpgradeRequest(FilterContext context) returns boolean {
+    any annData = reflect:getResourceAnnotations(context.getService(), context.getResourceName(), RESOURCE_ANN_NAME,
+                                                 ANN_MODULE);
+    if (annData is ()) {
+        return false;
+    }
+    HttpResourceConfig resourceConfig = <HttpResourceConfig> annData;
+    if (resourceConfig?.webSocketUpgrade is WebSocketUpgradeConfig) {
+        return true;
+    }
+    return false;
+}
+
+# Checks whether the service is secured by evaluating the enabled flag configured by the user.
 #
 # + serviceAuth - Service auth annotation
 # + return - Whether the service is secured or not
-function isServiceSecured(ServiceAuth? serviceAuth) returns boolean {
-    boolean secured = true;
+function isServiceAuthEnabled(ServiceAuth? serviceAuth) returns boolean {
     if (serviceAuth is ServiceAuth) {
-        secured = serviceAuth.enabled;
+        return serviceAuth.enabled;
     }
-    return secured;
+    return true;
 }
 
-# Check for the resource is secured by evaluating the enabled flag configured by the user.
+# Checks whether the resource is secured by evaluating the enabled flag configured by the user.
 #
 # + resourceAuth - Resource auth annotation
 # + return - Whether the resource is secured or not
-function isResourceSecured(ResourceAuth? resourceAuth) returns boolean? {
+function isResourceAuthEnabled(ResourceAuth? resourceAuth) returns boolean? {
     if (resourceAuth is ResourceAuth) {
         return resourceAuth?.enabled;
     }
@@ -253,7 +293,7 @@ function isResourceSecured(ResourceAuth? resourceAuth) returns boolean? {
 # Creates a map out of the headers of the HTTP response.
 #
 # + resp - The `Response` instance
-# + return - Returns the map of the response headers
+# + return - The map of the response headers
 function createResponseHeaderMap(Response resp) returns @tainted map<anydata> {
     map<anydata> headerMap = { STATUS_CODE: resp.statusCode };
     string[] headerNames = resp.getHeaderNames();
@@ -268,28 +308,25 @@ function createResponseHeaderMap(Response resp) returns @tainted map<anydata> {
 #
 # + message -The error message
 # + err - The `error` instance
-# + return - Returns the prepared `AuthenticationError` instance
+# + return - The prepared `http:AuthenticationError` instance
 function prepareAuthenticationError(string message, error? err = ()) returns AuthenticationError {
     log:printDebug(function () returns string { return message; });
     if (err is error) {
-        AuthenticationError preparedError = error(AUTHN_FAILED, message = message, cause = err);
-        return preparedError;
+        return AuthenticationError(message, err);
     }
-    AuthenticationError preparedError = error(AUTHN_FAILED, message = message);
-    return preparedError;
+    return AuthenticationError(message);
 }
 
 # Logs, prepares, and returns the `AuthorizationError`.
 #
 # + message -The error message
 # + err - The `error` instance
-# + return - Returns the prepared `AuthorizationError` instance
+# + return - The prepared `http:AuthorizationError` instance
 function prepareAuthorizationError(string message, error? err = ()) returns AuthorizationError {
     log:printDebug(function () returns string { return message; });
     if (err is error) {
-        AuthorizationError preparedError = error(AUTHZ_FAILED, message = message, cause = err);
-        return preparedError;
+        return AuthorizationError(message, err);
     }
-    AuthorizationError preparedError = error(AUTHZ_FAILED, message = message);
-    return preparedError;
+    return AuthorizationError(message);
 }
+

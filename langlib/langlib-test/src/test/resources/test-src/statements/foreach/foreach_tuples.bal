@@ -41,11 +41,11 @@ type Person record {
     int age;
 };
 
-type Employee object {
+class Employee {
     string name;
     int age;
 
-    function __init() {
+    function init() {
         self.name = "John";
         self.age = 10;
     }
@@ -53,7 +53,7 @@ type Employee object {
     function growOld() {
         self.age += 1;
     }
-};
+}
 
 function testTupleWithBasicTypes() returns string {
     string result = "";

@@ -6,14 +6,14 @@ function testPrintingObject() returns Person {
 	return p;
 }
 
-type Person object {
+class Person {
     public int age = 10;
     public string name = "sample name";
 
     int year = 50;
     string month = "February";
-    
-    function __init (int age, string name, int year, string month) {
+
+    function init (int age, string name, int year, string month) {
         self.age = age;
         self.name = name;
         self.year = year;
@@ -24,4 +24,4 @@ type Person object {
         json result = {age: self.age, name: self.name};
         return result.toJsonString();
     }
-};
+}

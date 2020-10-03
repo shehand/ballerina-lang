@@ -18,9 +18,16 @@
 
 package org.ballerinalang.net.http.websocket;
 
+import org.ballerinalang.jvm.TypeChecker;
+import org.ballerinalang.jvm.api.BStringUtils;
+import org.ballerinalang.jvm.api.BValueCreator;
+import org.ballerinalang.jvm.api.values.BError;
+import org.ballerinalang.jvm.api.values.BMap;
+import org.ballerinalang.jvm.api.values.BString;
+import org.ballerinalang.jvm.types.BErrorType;
+import org.ballerinalang.jvm.types.BTypes;
+import org.ballerinalang.jvm.types.TypeConstants;
 import org.ballerinalang.jvm.values.ErrorValue;
-
-import static org.ballerinalang.net.http.websocket.WebSocketConstants.ErrorCode;
 
 /**
  * Exceptions that could occur in WebSocket.
@@ -30,21 +37,28 @@ import static org.ballerinalang.net.http.websocket.WebSocketConstants.ErrorCode;
 public class WebSocketException extends ErrorValue {
     private final String message;
 
-    public WebSocketException(Throwable ex) {
-        this(WebSocketUtil.getErrorMessage(ex));
+    public WebSocketException(Throwable ex, String typeIdName) {
+        this(WebSocketConstants.ErrorCode.WsGenericError.errorCode().substring(2) + ":" +
+                     WebSocketUtil.getErrorMessage(ex), typeIdName);
     }
 
-    public WebSocketException(String message) {
-        this(ErrorCode.WsGenericError, message);
+    public WebSocketException(String message, String typeIdName) {
+        this(message, BValueCreator.createMapValue(BTypes.typeErrorDetail), typeIdName);
     }
 
-    public WebSocketException(ErrorCode errorCode, String message) {
-        super(errorCode.errorCode(), WebSocketUtil.createDetailRecord(message));
+    public WebSocketException(String message, BError cause, String typeIdName) {
+        this(message, cause, BValueCreator.createMapValue(BTypes.typeErrorDetail), typeIdName);
+    }
+
+    public WebSocketException(String message, BMap<BString, Object> details, String typeIdName) {
+        super(new BErrorType(TypeConstants.ERROR, BTypes.typeError.getPackage(), TypeChecker.getType(details)),
+              BStringUtils.fromString(message), null, details, typeIdName, WebSocketConstants.PROTOCOL_HTTP_PKG_ID);
         this.message = message;
     }
 
-    public WebSocketException(ErrorCode errorCode, String message, ErrorValue cause) {
-        super(errorCode.errorCode(), WebSocketUtil.createDetailRecord(message, cause));
+    public WebSocketException(String message, BError cause, BMap<BString, Object> details, String typeIdName) {
+        super(new BErrorType(TypeConstants.ERROR, BTypes.typeError.getPackage(), TypeChecker.getType(details)),
+              BStringUtils.fromString(message), cause, details, typeIdName, WebSocketConstants.PROTOCOL_HTTP_PKG_ID);
         this.message = message;
     }
 

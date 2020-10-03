@@ -16,8 +16,8 @@
 
 const ERR_REASON = "error reason";
 
-type MyError error<string>;
-type MyErrorTwo error<ERR_REASON, ErrorDetails>;
+type MyError error;
+type MyErrorTwo error<ErrorDetails>;
 
 type ErrorDetails record {
    string message;
@@ -40,53 +40,53 @@ type Person record {
 };
 
 type TableEmployee record {|
-    int id;
+    readonly int id;
     string name;
 |};
 
 type TableEmployeeTwo record {|
-    boolean id;
+    readonly boolean id;
     string name;
 |};
 
-type EmployeeObject object {
+class EmployeeObject {
     string name;
     int id = 10000;
 
-    function __init(string name) {
+    function init(string name) {
         self.name = name;
     }
 
     function getName() returns string {
         return self.name;
     }
-};
+}
 
-type LeadObject object {
+class LeadObject {
     string name;
     int id = 10000;
     float rating = 100.0;
 
-    function __init(string name) {
+    function init(string name) {
         self.name = name;
     }
 
     function getName() returns string {
         return self.name;
     }
-};
+}
 
-type PersonObject object {
+class PersonObject {
     string name;
 
-    function __init(string name) {
+    function init(string name) {
         self.name = name;
     }
 
     function getName() returns string {
         return self.name;
     }
-};
+}
 
 function testNilCastPositive() returns boolean {
     () a = ();
@@ -296,28 +296,24 @@ function testRecordCastNegative() {
 }
 
 function testTableCastPositive() returns boolean {
-    table<TableEmployee> t1 = table {
-        { key id, name },
-        [
-            { 1, "Mary" },
-            { 2, "John" },
-            { 3, "Jim" }
-        ]
-    };
+    table<TableEmployee> t1 = table key(id) [
+            { id: 1, name: "Mary" },
+            { id: 2, name: "John" },
+            { id: 3, name: "Jim" }
+        ];
+
     anydata a = t1;
     table<TableEmployee> t2 = <table<TableEmployee>> a;
     return t1 === t2;
 }
 
 function testTableCastNegative() {
-    table<TableEmployee> t1 = table {
-        { key id, name },
-        [
-            { 1, "Mary" },
-            { 2, "John" },
-            { 3, "Jim" }
-        ]
-    };
+    table<TableEmployee> t1 = table key(id)[
+            { id: 1, name: "Mary" },
+            { id: 2, name: "John" },
+            { id: 3, name: "Jim" }
+        ];
+
     anydata a = t1;
     table<TableEmployeeTwo> t2 = <table<TableEmployeeTwo>> a;
 }
@@ -344,7 +340,7 @@ function testErrorCastPositive() returns boolean {
     any|error a2 = e3;
     error e4 = <MyError> a2;
 
-    MyErrorTwo e5 = error(ERR_REASON, message = "error message");
+    MyErrorTwo e5 = MyErrorTwo(ERR_REASON, message = "error message");
     a2 = e5;
     MyErrorTwo e6 = <MyErrorTwo> a2;
     error e7 = <error> a2;
@@ -629,7 +625,7 @@ function testSimpleTypeToUnionCastPositive() returns boolean {
 function testDirectlyUnmatchedUnionToUnionCastPositive() returns boolean {
     string s = "hello world";
     string|typedesc<anydata> v1 = s;
-    json|table<Lead> v2 = <json|table<Lead>> v1;
+    json v2 = <json> v1;
     boolean castSuccessful = s == v2;
 
     Lead lead = { name: "Em", id: 2000, rating: 10.0 };
@@ -649,13 +645,13 @@ function testDirectlyUnmatchedUnionToUnionCastNegative_2() {
 }
 
 function testTypeCastOnRecordLiterals() returns [string, string, string] {
-    string s1 = init(<ServerModeConfig>{});
-    string s2 = init(<EmbeddedModeConfig>{});
-    string s3 = init(<InMemoryModeConfig>{});
+    string s1 = _init_(<ServerModeConfig>{});
+    string s2 = _init_(<EmbeddedModeConfig>{});
+    string s3 = _init_(<InMemoryModeConfig>{});
     return [s1, s2, s3];
 }
 
-function init(InMemoryModeConfig|ServerModeConfig|EmbeddedModeConfig rec) returns string {
+function _init_(InMemoryModeConfig|ServerModeConfig|EmbeddedModeConfig rec) returns string {
     if (rec is ServerModeConfig) {
         return "Server mode configuration";
     } else if (rec is EmbeddedModeConfig) {

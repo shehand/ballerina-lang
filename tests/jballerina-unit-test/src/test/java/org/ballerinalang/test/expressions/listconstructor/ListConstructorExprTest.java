@@ -32,11 +32,12 @@ import org.testng.annotations.Test;
  */
 public class ListConstructorExprTest {
 
-    private CompileResult result, resultNegative;
+    private CompileResult result, resultInferType, resultNegative;
 
     @BeforeClass
     public void setup() {
         result = BCompileUtil.compile("test-src/expressions/listconstructor/list_constructor.bal");
+        resultInferType = BCompileUtil.compile("test-src/expressions/listconstructor/list_constructor_infer_type.bal");
         resultNegative = BCompileUtil.compile(
                 "test-src/expressions/listconstructor/list_constructor_negative.bal");
     }
@@ -54,9 +55,57 @@ public class ListConstructorExprTest {
         BAssertUtil.validateError(resultNegative, i++, "invalid list constructor expression: " +
                 "types cannot be inferred for '[v1, v2, v3]'", 18, 24);
         BAssertUtil.validateError(resultNegative, i++, "tuple and expression size does not match",
-                22, 20);
+                22, 31);
         BAssertUtil.validateError(resultNegative, i++, "tuple and expression size does not match",
-                23, 34);
+                23, 56);
+        BAssertUtil.validateError(resultNegative, i++, "incompatible types: expected '[record {| int id; string name;" +
+                                          " int city; |},record {| anydata...; |},boolean,string]', found '[record {|" +
+                                          " int id; string name; string city; |},record {| int id; string name; " +
+                                          "int age; |},int,string]'", 42, 40);
+        BAssertUtil.validateError(resultNegative, i++, "incompatible types: expected 'record {| int id; string name; " +
+                                          "string age; |}', found 'record {| int id; string name; int age; |}'",
+                                  48, 13);
+        BAssertUtil.validateError(resultNegative, i++, "incompatible types: expected 'float', found 'int'",
+                                  49, 16);
+        BAssertUtil.validateError(resultNegative, i++, "incompatible types: expected 'readonly', found 'int[]'", 57,
+                                  23);
+        BAssertUtil.validateError(resultNegative, i++, "incompatible types: expected 'readonly', found 'future'",
+                                  57, 28);
+        BAssertUtil.validateError(resultNegative, i++, "incompatible types: expected '(readonly|int[])', " +
+                                          "found '[int,map<(boolean|int)>]'", 66, 25);
+        BAssertUtil.validateError(resultNegative, i++, "ambiguous type '(boolean[][]|readonly)'", 70, 31);
+        BAssertUtil.validateError(resultNegative, i++, "unknown type 'Foo'", 74, 5);
+        BAssertUtil.validateError(resultNegative, i++, "incompatible types: 'int' cannot be cast to 'string'", 74, 23);
+        BAssertUtil.validateError(resultNegative, i++, "unknown type 'Foo'", 75, 14);
+        BAssertUtil.validateError(resultNegative, i++, "incompatible types: 'int' cannot be cast to 'string'", 75, 23);
         Assert.assertEquals(resultNegative.getErrorCount(), i);
+    }
+
+    @Test
+    public void testListConstructorAutoFillExpr() {
+        BRunUtil.invoke(result, "testListConstructorAutoFillExpr");
+    }
+
+    @Test
+    public void testListConstructorWithBroadACET() {
+        BRunUtil.invoke(result, "testListConstructorWithAnyACET");
+        BRunUtil.invoke(result, "testListConstructorWithAnydataACET");
+        BRunUtil.invoke(result, "testListConstructorWithJsonACET");
+    }
+
+    @Test
+    public void testTypeWithReadOnlyInUnionCET() {
+        BRunUtil.invoke(result, "testTypeWithReadOnlyInUnionCET");
+    }
+
+    @Test
+    public void testListConstructorInferType() {
+        BRunUtil.invoke(resultInferType, "inferSimpleTuple");
+        BRunUtil.invoke(resultInferType, "inferStructuredTuple");
+        BRunUtil.invoke(resultInferType, "inferNestedTuple");
+        BRunUtil.invoke(resultInferType, "testInferSameRecordsInTuple");
+        BRunUtil.invoke(resultInferType, "testInferDifferentRecordsInTuple");
+        BRunUtil.invoke(resultInferType, "testInferringForReadOnly");
+        BRunUtil.invoke(resultInferType, "testInferringForReadOnlyInUnion");
     }
 }

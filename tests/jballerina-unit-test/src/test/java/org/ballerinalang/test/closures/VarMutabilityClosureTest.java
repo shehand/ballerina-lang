@@ -152,7 +152,7 @@ public class VarMutabilityClosureTest {
     @Test(description = "Test variable mutability with xml")
     public void testVarMutabilityWithXML() {
         BValue[] returns = BRunUtil.invoke(compileResult, "test12");
-        Assert.assertEquals(returns[0].size(), 23);
+        Assert.assertEquals(returns[0].size(), 3);
         Assert.assertEquals(((BXMLSequence) returns[0]).getItem(0).toString(), "<book>The Princess Diaries" +
                 "</book>");
         Assert.assertEquals(((BXMLSequence) returns[0]).getItem(1).toString(), "Hello, Princess!! :) ");
@@ -163,7 +163,8 @@ public class VarMutabilityClosureTest {
     public void testVarMutabilityWithError() {
         BValue[] returns = BRunUtil.invoke(compileResult, "test13");
         Assert.assertEquals(((BError) returns[0]).getReason(), "Account Not Found");
-        Assert.assertEquals(((BError) returns[0]).getDetails().stringValue(), "{accountID:222}");
+        String s = ((BError) returns[0]).getDetails().stringValue();
+        Assert.assertEquals(s, "{accountID:222}");
     }
 
 }

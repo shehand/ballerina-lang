@@ -6,7 +6,7 @@ function testElementLiteralWithNamespaces() returns [xml, xml] {
     xmlns "http://ballerina.com/c" as ns1;
 
     xml x1 = xml `<root ns0:id="456"><foo>123</foo><bar ns1:status="complete"></bar></root>`;
-    xml x2 = x1.*;
+    xml x2 = x1/*;
     return [x1, x2];
 }
 
@@ -112,9 +112,9 @@ function testInnerScopeNamespaceDclr() returns [string, string, string] {
     return [s1, s2, s3];
 }
 
-type Person object {
+class Person {
     xml info = xml `<p:person xmlns:p="foo" xmlns:q="bar">hello</p:person>`;
-};
+}
 
 function testObjectLevelXML() returns xml {
     Person p = new();

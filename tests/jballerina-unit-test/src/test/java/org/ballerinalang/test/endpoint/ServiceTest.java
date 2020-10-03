@@ -43,6 +43,16 @@ public class ServiceTest {
         Assert.assertTrue(output.errorOutput.contains("error: startError"));
     }
 
+    @Test(groups = { "disableOnOldParser" })
+    public void testServiceWithTransactionalKeyword() {
+        CompileResult compileResult = BCompileUtil.compile("test-src/endpoint/new/service_transactional_negative.bal");
+        Assert.assertEquals(compileResult.getErrorCount(), 3);
+        int errIdx = 0;
+        validateError(compileResult, errIdx++, "undefined symbol 'bar'", 1, 16);
+        validateError(compileResult, errIdx++, "undefined annotation 'annot9'", 3, 5);
+        validateError(compileResult, errIdx++, "missing close brace token", 4, 1);
+    }
+
     @Test(expectedExceptions = { BLangRuntimeException.class },
           expectedExceptionsMessageRegExp = ".*error: startError.*")
     public void testServiceInitPanicNegativeTest() {
@@ -70,7 +80,7 @@ public class ServiceTest {
         Assert.assertEquals(result[0].stringValue(), "2_1");
     }
 
-    @Test
+    @Test(groups = { "brokenOnNewParser" })
     public void testServiceBasicsNegative() {
         CompileResult compileResult = BCompileUtil.compile("test-src/endpoint/new/service_basic_negative.bal");
         Assert.assertEquals(compileResult.getErrorCount(), 17);
@@ -78,7 +88,7 @@ public class ServiceTest {
         validateError(compileResult, errIdx++, "resource function can not be invoked with in a service", 9, 9);
         validateError(compileResult, errIdx++, "redeclared symbol 'name1'", 19, 9);
         validateError(compileResult, errIdx++,
-                "incompatible types: expected 'Listener', found 'string'", 19, 18);
+                "incompatible types: expected 'listener', found 'string'", 19, 18);
         validateError(compileResult, errIdx++, "invalid listener attachment", 19, 18);
         validateError(compileResult, errIdx++, "redeclared symbol 'MyService$$service$2.foo'", 30, 14);
         validateError(compileResult, errIdx++, "undefined symbol 'invalidVar'", 58, 12);

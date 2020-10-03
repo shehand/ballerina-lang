@@ -21,9 +21,10 @@ import org.ballerinalang.model.types.ArrayType;
 import org.ballerinalang.model.types.TypeKind;
 import org.wso2.ballerinalang.compiler.semantics.model.TypeVisitor;
 import org.wso2.ballerinalang.compiler.semantics.model.symbols.BTypeSymbol;
+import org.wso2.ballerinalang.compiler.semantics.model.symbols.Symbols;
 import org.wso2.ballerinalang.compiler.util.BArrayState;
-import org.wso2.ballerinalang.compiler.util.TypeDescriptor;
 import org.wso2.ballerinalang.compiler.util.TypeTags;
+import org.wso2.ballerinalang.util.Flags;
 
 /**
  * @since 0.94
@@ -33,6 +34,7 @@ public class BArrayType extends BType implements ArrayType {
     private static final String SEMI_COLON = ";";
 
     public BType eType;
+    public BIntersectionType immutableType;
 
     public int size = -1;
 
@@ -55,12 +57,11 @@ public class BArrayType extends BType implements ArrayType {
         this.state = state;
     }
 
-    public String getDesc() {
-        if (state == BArrayState.UNSEALED) {
-            return TypeDescriptor.SIG_ARRAY + -1 + SEMI_COLON + eType.getDesc();
-        } else {
-            return TypeDescriptor.SIG_ARRAY + size + SEMI_COLON + eType.getDesc();
-        }
+    public BArrayType(BType elementType, BTypeSymbol tsymbol, int size, BArrayState state, int flags) {
+        super(TypeTags.ARRAY, tsymbol, flags);
+        this.eType = elementType;
+        this.size = size;
+        this.state = state;
     }
 
     @Override
@@ -93,17 +94,28 @@ public class BArrayType extends BType implements ArrayType {
         StringBuilder sb = new StringBuilder(eType.toString());
         String tempSize = (state == BArrayState.OPEN_SEALED) ? "*" : String.valueOf(size);
         if (eType.tag == TypeTags.ARRAY) {
-            return (state != BArrayState.UNSEALED) ?
-                    sb.insert(sb.indexOf("["), "[" + tempSize + "]").toString() :
-                    sb.insert(sb.indexOf("["), "[]").toString();
+            if (state != BArrayState.UNSEALED) {
+                sb.insert(sb.indexOf("["), "[" + tempSize + "]");
+            } else {
+                sb.insert(sb.indexOf("["), "[]");
+            }
         } else {
-            return (state != BArrayState.UNSEALED) ?
-                    sb.append("[").append(tempSize).append("]").toString() : sb.append("[]").toString();
+            if (state != BArrayState.UNSEALED) {
+                sb.append("[").append(tempSize).append("]");
+            } else {
+                sb.append("[]");
+            }
         }
+        return !Symbols.isFlagOn(flags, Flags.READONLY) ? sb.toString() : sb.append(" & readonly").toString();
     }
 
     @Override
     public final boolean isAnydata() {
         return this.eType.isPureType();
+    }
+
+    @Override
+    public BIntersectionType getImmutableType() {
+        return this.immutableType;
     }
 }

@@ -46,8 +46,8 @@ public class BootstrapRunner {
     private static final PrintStream err = System.err;
     private static final String CLASSPATH = "CLASSPATH";
     private static final String TMP_OBJECT_FILE_NAME = "ballerina_native_objf.o";
-    private static final String COMPILER_BACKEND_JVM = "ballerina.compiler_backend_jvm.___init";
-    private static final String COMPILER_BACKEND_LLVM = "ballerina.compiler_backend_llvm.___init";
+    private static final String COMPILER_BACKEND_JVM = "ballerina.compiler_backend_jvm.$_init";
+    private static final String COMPILER_BACKEND_LLVM = "ballerina.compiler_backend_llvm.$_init";
     private static String javaCommand = System.getProperty("java.command");
 
     public static void loadTargetAndGenerateJarBinary(String entryBir, String jarOutputPath, boolean dumpBir,
@@ -199,7 +199,6 @@ public class BootstrapRunner {
             javaCommand = System.getProperty("java.command");
         }
         commands.add(javaCommand);
-        setSystemProperty(commands, "ballerina.bstring");
         commands.add(COMPILER_BACKEND_JVM);
         commands.addAll(createArgsForCompilerBackend(entryBir, jarOutputPath, dumpBir, true,
                 birCachePaths, jarFilePaths));

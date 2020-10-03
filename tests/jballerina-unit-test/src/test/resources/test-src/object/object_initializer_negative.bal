@@ -14,28 +14,28 @@
 // specific language governing permissions and limitations
 // under the License.
 
-type Foo object {
+class Foo {
     public int age = 0;
     public string name = "";
 
-    function __init() {}
+    function init() {}
 
-    function __init() {}
-};
+    function init() {}
+}
 
-type Bar object {
-   private function __init() {}
-};
+class Bar {
+   private function init() {}
+}
 
-type Person object {
+class Person {
     string name;
     int age;
 
-    function __init() returns error? {
+    function init() returns error? {
         self.name = check getError();
         self.age = 25;
     }
-};
+}
 
 function getError() returns string|error {
     map<string> m = {f: "foo"};
@@ -48,24 +48,24 @@ function testInit() {
     Person p2 = new Person();
 }
 
-type Person2 object {
+class Person2 {
     string name;
 
-    function __init() returns string? {
+    function init() returns string? {
         self.name = "";
         return "foo";
     }
-};
+}
 
-type Person3 object {
+class Person3 {
     string name;
 
-    function __init() returns error {
+    function init() returns error {
         self.name = "";
         error e = error("failed to create Person3");
         return e;
     }
-};
+}
 
 type FooErrData record {
     string f;
@@ -73,7 +73,7 @@ type FooErrData record {
     error cause?;
 };
 
-type FooErr error<string, FooErrData>;
+type FooErr error<FooErrData>;
 
 type BarErrData record {
     string b;
@@ -81,27 +81,27 @@ type BarErrData record {
     error cause?;
 };
 
-type BarErr error<string, BarErrData>;
+type BarErr error<BarErrData>;
 
-type Person4 object {
+class Person4 {
     string name;
 
-    function __init() returns FooErr|BarErr {
+    function init() returns FooErr|BarErr {
         self.name = "";
-        FooErr e = error("Foo Error", f = "foo");
+        FooErr e = FooErr("Foo Error", f = "foo");
         return e;
     }
-};
+}
 
-type Too object {
-    public function __init() {
+class Too {
+    public function init() {
     }
     function name() {
-        self.__init(); // valid
+        self.init(); // valid
     }
-};
+}
 
 function callInitFunction() {
     Too t = new;
-    t.__init(); // invalid
+    t.init(); // invalid
 }

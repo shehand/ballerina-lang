@@ -17,6 +17,7 @@
  */
 package org.ballerinalang.jvm;
 
+import org.ballerinalang.jvm.api.values.BString;
 import org.ballerinalang.jvm.types.TypeTags;
 import org.ballerinalang.jvm.values.ArrayValue;
 import org.ballerinalang.jvm.values.DecimalValue;
@@ -292,7 +293,7 @@ public class JSONGenerator {
                 this.writeEndArray();
                 break;
             case TypeTags.BOOLEAN_TAG:
-                this.writeBoolean(((Boolean) json).booleanValue());
+                this.writeBoolean((Boolean) json);
                 break;
             case TypeTags.FLOAT_TAG:
                 this.writeNumber(((Number) json).doubleValue());
@@ -309,8 +310,8 @@ public class JSONGenerator {
             case TypeTags.MAP_TAG:
             case TypeTags.JSON_TAG:
                 this.startObject();
-                for (Entry<String, RefValue> entry : ((MapValueImpl<String, RefValue>) json).entrySet()) {
-                    this.writeFieldName(entry.getKey());
+                for (Entry<BString, RefValue> entry : ((MapValueImpl<BString, RefValue>) json).entrySet()) {
+                    this.writeFieldName(entry.getKey().getValue());
                     serialize(entry.getValue());
                 }
                 this.endObject();

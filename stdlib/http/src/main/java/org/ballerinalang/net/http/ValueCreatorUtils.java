@@ -17,8 +17,10 @@
  */
 package org.ballerinalang.net.http;
 
+import org.ballerinalang.jvm.api.BStringUtils;
+import org.ballerinalang.jvm.api.values.BObject;
+import org.ballerinalang.jvm.api.values.BString;
 import org.ballerinalang.jvm.values.MapValue;
-import org.ballerinalang.jvm.values.ObjectValue;
 import org.ballerinalang.jvm.values.ValueCreator;
 
 import static org.ballerinalang.mime.util.MimeConstants.MEDIA_TYPE;
@@ -42,35 +44,36 @@ public class ValueCreatorUtils {
     private static final ValueCreator httpValueCreator = ValueCreator.getValueCreator(PROTOCOL_HTTP_PKG_ID.toString());
     private static final ValueCreator mimeValueCreator = ValueCreator.getValueCreator(PROTOCOL_MIME_PKG_ID.toString());
 
-    public static ObjectValue createRequestObject() {
+    public static BObject createRequestObject() {
         return createObjectValue(httpValueCreator, REQUEST);
     }
 
-    public static ObjectValue createResponseObject() {
+    public static BObject createResponseObject() {
         return createObjectValue(httpValueCreator, RESPONSE);
     }
 
-    public static ObjectValue createEntityObject() {
+    public static BObject createEntityObject() {
         return createObjectValue(mimeValueCreator, ENTITY);
     }
 
-    public static ObjectValue createMediaTypeObject() {
+    public static BObject createMediaTypeObject() {
         return createObjectValue(mimeValueCreator, MEDIA_TYPE);
     }
 
-    public static ObjectValue createPushPromiseObject() {
-        return createObjectValue(httpValueCreator, PUSH_PROMISE, "/", "GET");
+    public static BObject createPushPromiseObject() {
+        return createObjectValue(httpValueCreator, PUSH_PROMISE, BStringUtils.fromString("/"),
+                                 BStringUtils.fromString("GET"));
     }
 
-    public static ObjectValue createRequestCacheControlObject() {
+    public static BObject createRequestCacheControlObject() {
         return createObjectValue(httpValueCreator, REQUEST_CACHE_CONTROL);
     }
 
-    public static ObjectValue createResponseCacheControlObject() {
+    public static BObject createResponseCacheControlObject() {
         return createObjectValue(httpValueCreator, RESPONSE_CACHE_CONTROL);
     }
 
-    public static ObjectValue createCallerObject() {
+    public static BObject createCallerObject() {
         return createObjectValue(httpValueCreator, CALLER);
     }
     
@@ -80,7 +83,7 @@ public class ValueCreatorUtils {
      * @param recordTypeName name of the record type.
      * @return value of the record.
      */
-    public static MapValue<String, Object> createHTTPRecordValue(String recordTypeName) {
+    public static MapValue<BString, Object> createHTTPRecordValue(String recordTypeName) {
         return httpValueCreator.createRecordValue(recordTypeName);
     }
 
@@ -92,7 +95,7 @@ public class ValueCreatorUtils {
      * @param fieldValues values to be used for fields when creating the object value instance.
      * @return value of the object.
      */
-    private static ObjectValue createObjectValue(ValueCreator valueCreator, String objectTypeName,
+    private static BObject createObjectValue(ValueCreator valueCreator, String objectTypeName,
                                                  Object... fieldValues) {
 
         Object[] fields = new Object[fieldValues.length * 2];

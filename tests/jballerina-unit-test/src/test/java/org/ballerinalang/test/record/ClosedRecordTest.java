@@ -161,12 +161,16 @@ public class ClosedRecordTest {
                         "family:{spouse:\"Jane\", noOfChildren:0, children:[\"Alex\", \"Bob\"]}}");
     }
 
-    @Test (description = "Negative test to test attaching functions to record literal")
+    @Test(description = "Negative test to test attaching functions to record literal",
+            groups = { "disableOnOldParser" })
     public void testStructLiteralAttachedFunc() {
-        CompileResult result = BCompileUtil.compile(
-                "test-src/record/sealed_record_literal_with_attached_functions_negative.bal");
-        Assert.assertEquals(result.getErrorCount(), 5);
-        BAssertUtil.validateError(result, 0, "mismatched input '.'. expecting '('", 7, 16);
+        CompileResult result =
+                BCompileUtil.compile("test-src/record/sealed_record_literal_with_attached_functions_negative.bal");
+        Assert.assertEquals(result.getErrorCount(), 4);
+        BAssertUtil.validateError(result, 0, "redeclared symbol 'Person'", 7, 10);
+        BAssertUtil.validateError(result, 1, "invalid token '.'", 7, 24);
+        BAssertUtil.validateError(result, 2, "invalid token 'getName'", 7, 24);
+        BAssertUtil.validateError(result, 3, "undefined symbol 'self'", 8, 12);
     }
 
     @Test(description = "Test for records defined using the 'record' keyword")
@@ -210,68 +214,31 @@ public class ClosedRecordTest {
         Assert.assertEquals(returns[3].stringValue(), "{}");
     }
 
-    @Test(description = "Test white space between the type name and ellipsis in rest descriptor")
+    @Test(description = "Test white space between the type name and ellipsis in rest descriptor",
+            groups = { "disableOnOldParser" })
     public void testRestDescriptorSyntax() {
         CompileResult result = BCompileUtil.compile("test-src/record/closed_record_invalid_delimiter.bal");
-
-        BAssertUtil.validateError(result, 0, "extraneous input '}'", 5, 1);
-        BAssertUtil.validateError(result, 1, "extraneous input '|}'", 11, 1);
-        BAssertUtil.validateError(result, 2, "extraneous input '|'", 13, 23);
-        BAssertUtil.validateError(result, 3, "extraneous input '|'", 17, 1);
-        BAssertUtil.validateError(result, 4,
-                                  "mismatched input '|'. expecting {'service', 'function', 'object', 'record', " +
-                                          "'abstract', 'client', 'int', 'byte', 'float', 'decimal', 'boolean', " +
-                                          "'string', 'error', 'map', 'json', 'xml', 'table', 'any', " +
-                                          "'typedesc', 'future', 'anydata', " +
-                                          "'handle', '(', '[', '|}', '*', '@', Identifier}",
-                                  19, 25);
-        BAssertUtil.validateError(result, 5,
-                                  "mismatched input '}'. expecting {'service', 'function', 'object', 'record', " +
-                                          "'abstract', 'client', 'int', 'byte', 'float', 'decimal', 'boolean', " +
-                                          "'string', 'error', 'map', 'json', 'xml', 'table', 'any', " +
-                                          "'typedesc', 'future', 'anydata', " +
-                                          "'handle', '(', '[', '-', DecimalIntegerLiteral, " +
-                                          "HexIntegerLiteral, HexadecimalFloatingPointLiteral, " +
-                                          "DecimalFloatingPointNumber, BooleanLiteral, QuotedStringLiteral, " +
-                                          "Base16BlobLiteral, Base64BlobLiteral, 'null', Identifier}",
-                                  19, 27);
-        BAssertUtil.validateError(result, 6, "extraneous input '||'", 21, 25);
-        BAssertUtil.validateError(result, 7, "extraneous input '||'", 23, 25);
-        BAssertUtil.validateError(result, 8,
-                                  "mismatched input '|'. expecting {'service', 'function', 'object', 'record', " +
-                                          "'abstract', 'client', 'int', 'byte', 'float', 'decimal', 'boolean', " +
-                                          "'string', 'error', 'map', 'json', 'xml', 'table', 'any', " +
-                                          "'typedesc', 'future', 'anydata', " +
-                                          "'handle', '}', '(', '[', '*', '@', Identifier}",
-                                  25, 25);
-        BAssertUtil.validateError(result, 9,
-                                  "mismatched input '|'. expecting {'service', 'function', 'object', 'record', " +
-                                          "'abstract', 'client', 'int', 'byte', 'float', 'decimal', 'boolean', " +
-                                          "'string', 'error', 'map', 'json', 'xml', 'table', 'any', " +
-                                          "'typedesc', 'future', 'anydata', " +
-                                          "'handle', '(', '[', '-', DecimalIntegerLiteral, " +
-                                          "HexIntegerLiteral, HexadecimalFloatingPointLiteral, " +
-                                          "DecimalFloatingPointNumber, BooleanLiteral, QuotedStringLiteral, " +
-                                          "Base16BlobLiteral, Base64BlobLiteral, 'null', Identifier}",
-                                  25, 27);
-        BAssertUtil.validateError(result, 10,
-                                  "mismatched input '}'. expecting {'service', 'function', 'object', 'record', " +
-                                          "'abstract', 'client', 'int', 'byte', 'float', 'decimal', 'boolean', " +
-                                          "'string', 'error', 'map', 'json', 'xml', 'table', 'any', " +
-                                          "'typedesc', 'future', 'anydata', " +
-                                          "'handle', '(', '[', '-', DecimalIntegerLiteral, " +
-                                          "HexIntegerLiteral, HexadecimalFloatingPointLiteral, " +
-                                          "DecimalFloatingPointNumber, BooleanLiteral, QuotedStringLiteral, " +
-                                          "Base16BlobLiteral, Base64BlobLiteral, 'null', Identifier}",
-                                  25, 29);
-
+        int i = 0;
+        BAssertUtil.validateError(result, i++, "missing close brace pipe token", 5, 1);
+        BAssertUtil.validateError(result, i++, "invalid token '}'", 5, 2);
+        BAssertUtil.validateError(result, i++, "missing close brace token", 11, 1);
+        BAssertUtil.validateError(result, i++, "invalid token '|}'", 11, 3);
+        BAssertUtil.validateError(result, i++, "missing type desc", 13, 23);
+        BAssertUtil.validateError(result, i++, "invalid token '|'", 17, 3);
+        BAssertUtil.validateError(result, i++, "missing close brace pipe token", 19, 25);
+        BAssertUtil.validateError(result, i++, "invalid token '|'", 19, 28);
+        BAssertUtil.validateError(result, i++, "invalid token '}'", 19, 28);
+        BAssertUtil.validateError(result, i++, "invalid token '||'", 21, 27);
+        BAssertUtil.validateError(result, i++, "invalid token '||'", 23, 28);
+        BAssertUtil.validateError(result, i++, "invalid token '|'", 25, 29);
+        BAssertUtil.validateError(result, i++, "invalid token '|'", 25, 29);;
     }
 
     @Test(description = "Test ambiguous type resolution negative cases")
     public void testAmbiguityResolutionNegative() {
         CompileResult result = BCompileUtil.compile("test-src/record/closed_record_ambiguous_types_negative.bal");
         BAssertUtil.validateError(result, 0, "ambiguous type '(InMemoryModeConfig|ServerModeConfig" +
-                        "|EmbeddedModeConfig)'", 36, 22);
+                        "|EmbeddedModeConfig)'", 36, 24);
     }
 
     @Test(description = "Test invocation of nil-able function pointer fields in a closed record")
@@ -322,5 +289,25 @@ public class ClosedRecordTest {
         BAssertUtil.validateError(result, index++, "undefined field 'y' in record 'Foo'", 46, 36);
         BAssertUtil.validateError(result, index++, "undefined field 'z' in record 'Foo'", 46, 48);
         Assert.assertEquals(result.getErrorCount(), index);
+    }
+
+    @Test
+    public void testOptionalRecordRemove() {
+        BValue[] returns = BRunUtil.invoke(compileResult, "removeOptional");
+    }
+
+    @Test
+    public void testRestRecordRemove() {
+        BValue[] returns = BRunUtil.invoke(compileResult, "removeRest");
+    }
+
+    @Test
+    public void removeIfHasKeyOptional() {
+        BRunUtil.invoke(compileResult, "removeIfHasKeyOptional");
+    }
+
+    @Test
+    public void removeIfHasKeyRest() {
+        BRunUtil.invoke(compileResult, "removeIfHasKeyRest");
     }
 }

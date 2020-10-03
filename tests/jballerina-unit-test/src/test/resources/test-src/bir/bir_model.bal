@@ -131,13 +131,10 @@ type Employee record {
 };
 
 function newTable() returns table<Employee> {
-    table<Employee> employeeTable = table {
-        {id, name},
-        [
-            {1, "Employee1"},
-            {2, "Employee2"}
-        ]
-    };
+    table<Employee> employeeTable = table [
+            {id: 1, name: "Employee1"},
+            {id: 2, name: "Employee2"}
+        ];
 
     return employeeTable;
 }

@@ -17,6 +17,8 @@
 */
 package org.ballerinalang.jvm.util;
 
+import org.ballerinalang.jvm.api.BStringUtils;
+import org.ballerinalang.jvm.api.values.BString;
 import org.ballerinalang.jvm.types.BPackage;
 
 import java.math.BigDecimal;
@@ -34,14 +36,17 @@ public class BLangConstants {
 
     public static final String MAIN_FUNCTION_NAME = "main";
     public static final String INIT_FUNCTION_SUFFIX = "..<init>";
-    public static final String CONSTRUCTOR_FUNCTION_SUFFIX = "__init";
+    public static final String CONSTRUCTOR_FUNCTION_SUFFIX = "init";
     public static final String START_FUNCTION_SUFFIX = ".<start>";
     public static final String STOP_FUNCTION_SUFFIX = ".<stop>";
     public static final String TEST_INIT_FUNCTION_SUFFIX = ".<testinit>";
     public static final String TEST_START_FUNCTION_SUFFIX = ".<teststart>";
     public static final String TEST_STOP_FUNCTION_SUFFIX = ".<teststop>"; 
-    public static final String MODULE_INIT_CLASS_NAME = "___init";
-    
+    public static final String MODULE_INIT_CLASS_NAME = "$_init";
+    public static final String GENERATE_PKG_INIT = "___init_";
+    public static final String GENERATE_PKG_START = "___start_";
+    public static final String GENERATE_PKG_STOP = "___stop_";
+
     // Configs
     public static final String BALLERINA_ARGS_INIT_PREFIX = "--";
     public static final int BALLERINA_ARGS_INIT_PREFIX_LENGTH = BALLERINA_ARGS_INIT_PREFIX.length();
@@ -53,7 +58,8 @@ public class BLangConstants {
     public static final String DOT = ".";
     public static final String ORG_NAME_SEPARATOR = "/";
     public static final String VERSION_SEPARATOR = ":";
-    
+    public static final String UNDERSCORE = "_";
+
 
     public static final String BLANG_SRC_FILE_EXT = "bal";
     public static final String BLANG_SRC_FILE_SUFFIX = "." + BLANG_SRC_FILE_EXT;
@@ -91,10 +97,12 @@ public class BLangConstants {
     public static final String BALLERINA_LANG_ERROR_PKG = BALLERINA_PACKAGE_PREFIX + "lang_error";
     public static final String BALLERINA_MAX_POOL_SIZE_ENV_VAR = "BALLERINA_MAX_POOL_SIZE";
 
-
     public static final BPackage BALLERINA_BUILTIN_PKG_ID = new BPackage(BALLERINA_BUILTIN_PKG_PREFIX, "builtin");
-    public static final BPackage BALLERINA_RUNTIME_PKG_ID = new BPackage(BALLERINA_BUILTIN_PKG_PREFIX, "runtime");
-    public static final BPackage BALLERINA_LANG_ERROR_PKG_ID = new BPackage(BALLERINA_BUILTIN_PKG_PREFIX, "lang.error");
+    public static final BPackage BALLERINA_RUNTIME_PKG_ID = new BPackage(BALLERINA_BUILTIN_PKG_PREFIX,
+                                                                         "runtime", "0.5.0");
+    public static final BPackage BALLERINA_LANG_ERROR_PKG_ID = new BPackage(BALLERINA_BUILTIN_PKG_PREFIX,
+                                                                            "lang.error", "1.0.0");
+    public static final BPackage BALLERINA_AUTH_PKG_ID = new BPackage(BALLERINA_BUILTIN_PKG_PREFIX, "auth", "1.0.0");
 
     public static final String STRING_LANG_LIB = "lang.string";
     public static final String MAP_LANG_LIB = "lang.map";
@@ -107,15 +115,26 @@ public class BLangConstants {
     public static final String TABLE_LANG_LIB = "lang.table";
     public static final String INT_LANG_LIB = "lang.int";
     public static final String FLOAT_LANG_LIB = "lang.float";
+    public static final String BOOLEAN_LANG_LIB = "lang.boolean";
 
     // Zero value for string
     public static final String STRING_NULL_VALUE = null;
-    
+    public static final BString BSTRING_NULL_VALUE = null;
+
     // Empty value for string
-    public static final String STRING_EMPTY_VALUE = "";
+    public static final BString STRING_EMPTY_VALUE = BStringUtils.fromString("");
 
     public static final Integer BBYTE_MIN_VALUE = 0;
     public static final Integer BBYTE_MAX_VALUE = 255;
+    public static final Integer SIGNED32_MAX_VALUE = 2147483647;
+    public static final Integer SIGNED32_MIN_VALUE = -2147483648;
+    public static final Integer SIGNED16_MAX_VALUE = 32767;
+    public static final Integer SIGNED16_MIN_VALUE = -32768;
+    public static final Integer SIGNED8_MAX_VALUE = 127;
+    public static final Integer SIGNED8_MIN_VALUE = -128;
+    public static final Long UNSIGNED32_MAX_VALUE = 4294967295L;
+    public static final Integer UNSIGNED16_MAX_VALUE = 65535;
+    public static final Integer UNSIGNED8_MAX_VALUE = 255;
     public static final double BINT_MAX_VALUE_DOUBLE_RANGE_MAX = 9223372036854775807.5;
     public static final double BINT_MIN_VALUE_DOUBLE_RANGE_MIN = -9223372036854775807.6;
     public static final BigDecimal BINT_MAX_VALUE_BIG_DECIMAL_RANGE_MAX = new BigDecimal("9223372036854775807.5",

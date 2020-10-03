@@ -98,7 +98,7 @@ function testPublicClientObjectAccessIncludingObjectReference() {
     test:assertEquals(result, 50, msg = "expected client object public method to be accessible");
 }
 
-type ObjReferenceToPublicAbstractClientObject client object {
+client class ObjReferenceToPublicAbstractClientObject {
     *objects:AbstractClientObject;
     private int counter;
 
@@ -117,11 +117,11 @@ type ObjReferenceToPublicAbstractClientObject client object {
         return self.counter;
     }
 
-    public function __init(string argOne) {
+    public function init(string argOne) {
         self.publicStringField = argOne;
         self.counter = 10;
     }
-};
+}
 
 public function ObjReferenceToPublicAbstractClientObject.publicMethodDeclaredOutside() returns int {
     self.counter += 10;

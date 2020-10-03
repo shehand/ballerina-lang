@@ -17,13 +17,13 @@
  */
 package org.ballerinalang.langserver;
 
-import org.ballerinalang.langserver.command.ExecuteCommandKeys;
+import org.ballerinalang.langserver.commons.LSContext;
+import org.ballerinalang.langserver.commons.LSOperation;
+import org.ballerinalang.langserver.commons.capability.LSClientCapabilities;
+import org.ballerinalang.langserver.commons.command.ExecuteCommandKeys;
+import org.ballerinalang.langserver.commons.workspace.WorkspaceDocumentManager;
 import org.ballerinalang.langserver.compiler.DocumentServiceKeys;
-import org.ballerinalang.langserver.compiler.LSContext;
 import org.ballerinalang.langserver.compiler.LSContextImpl;
-import org.ballerinalang.langserver.compiler.LSOperation;
-import org.ballerinalang.langserver.compiler.workspace.WorkspaceDocumentManager;
-import org.ballerinalang.langserver.diagnostic.DiagnosticsHelper;
 
 import java.util.List;
 
@@ -48,11 +48,12 @@ public class WorkspaceServiceOperationContext extends LSContextImpl {
         ServiceOperationContextBuilder withExecuteCommandParams(List<Object> args,
                                                                 WorkspaceDocumentManager documentManager,
                                                                 BallerinaLanguageServer langServer,
-                                                                DiagnosticsHelper diagnosticsHelper) {
+                                                                LSClientCapabilities clientCapabilities) {
             this.lsContext.put(ExecuteCommandKeys.COMMAND_ARGUMENTS_KEY, args);
             this.lsContext.put(DocumentServiceKeys.DOC_MANAGER_KEY, documentManager);
             this.lsContext.put(ExecuteCommandKeys.LANGUAGE_SERVER_KEY, langServer);
-            this.lsContext.put(ExecuteCommandKeys.DIAGNOSTICS_HELPER_KEY, diagnosticsHelper);
+            this.lsContext.put(ExecuteCommandKeys.LANGUAGE_CLIENT_KEY, langServer.getClient());
+            this.lsContext.put(ExecuteCommandKeys.LS_CLIENT_CAPABILITIES_KEY, clientCapabilities);
             return this;
         }
 

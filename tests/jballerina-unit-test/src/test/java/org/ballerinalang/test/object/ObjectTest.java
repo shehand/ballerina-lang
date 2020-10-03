@@ -27,7 +27,6 @@ import org.ballerinalang.test.util.BCompileUtil;
 import org.ballerinalang.test.util.BRunUtil;
 import org.ballerinalang.test.util.CompileResult;
 import org.testng.Assert;
-import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import java.io.ByteArrayOutputStream;
@@ -416,7 +415,7 @@ public class ObjectTest {
     public void testObjectNegativeTestForNonInitializable() {
         CompileResult result = BCompileUtil.compile("test-src/object/object_with_non_defaultable_negative.bal");
         Assert.assertEquals(result.getErrorCount(), 1);
-        BAssertUtil.validateError(result, 0, "undefined function 'attachInterface' in object 'Person'", 5, 15);
+        BAssertUtil.validateError(result, 0, "undefined method 'attachInterface' in object 'Person'", 5, 15);
     }
 
     @Test(description = "Negative test to test returning different type without type name")
@@ -450,7 +449,7 @@ public class ObjectTest {
         int index = 0;
         Assert.assertEquals(result.getErrorCount(), 2);
         BAssertUtil.validateError(result, index++, "incompatible types: expected 'string', found 'int'", 13, 16);
-        BAssertUtil.validateError(result, index++, "incompatible types: expected 'int', found 'string'", 23, 17);
+        BAssertUtil.validateError(result, index, "incompatible types: expected 'int', found 'string'", 23, 17);
     }
 
     @Test(description = "Negative test to test self reference types")
@@ -486,9 +485,9 @@ public class ObjectTest {
     public void testObjectInitFunctionNegative() {
         CompileResult result = BCompileUtil.compile("test-src/object/object_init_function_negative.bal");
         Assert.assertEquals(result.getErrorCount(), 2);
-        BAssertUtil.validateError(result, 0, "object '__init' method cannot have an 'external' implementation",
+        BAssertUtil.validateError(result, 0, "object 'init' method cannot have an 'external' implementation",
                 19, 5);
-        BAssertUtil.validateError(result, 1, "object '__init' method cannot have an 'external' implementation",
+        BAssertUtil.validateError(result, 1, "object 'init' method cannot have an 'external' implementation",
                 23, 5);
     }
 
@@ -527,7 +526,7 @@ public class ObjectTest {
                                   34, 21);
         BAssertUtil.validateError(result, index++, "attempt to refer to non-accessible symbol 'Employee.getAge'",
                                   38, 14);
-        BAssertUtil.validateError(result, index++, "undefined function 'getAge' in object 'testorg/mod:1.0.0:Employee'",
+        BAssertUtil.validateError(result, index++, "undefined method 'getAge' in object 'testorg/mod:1.0.0:Employee'",
                                   38, 19);
         BAssertUtil.validateError(result, index++, "attempt to refer to non-accessible symbol 'name'", 45, 17);
         BAssertUtil.validateError(result, index++, "undefined field 'name' in object 'testorg/pkg1:1.0.0:Employee'", 45,
@@ -537,12 +536,12 @@ public class ObjectTest {
                                 46, 21);
         BAssertUtil.validateError(result, index++, "attempt to refer to non-accessible symbol 'Employee.getAge'",
                                   49, 14);
-        BAssertUtil.validateError(result, index++, "undefined function 'getAge' in object " +
+        BAssertUtil.validateError(result, index++, "undefined method 'getAge' in object " +
                                                    "'testorg/pkg1:1.0.0:Employee'",
                                   49, 19);
         BAssertUtil.validateError(result, index++, "attempt to refer to non-accessible symbol " + "'Employee" +
                 ".getEmail'", 50, 17);
-        BAssertUtil.validateError(result, index++, "undefined function 'getEmail' in object " +
+        BAssertUtil.validateError(result, index, "undefined method 'getEmail' in object " +
                                                    "'testorg/pkg1:1.0.0:Employee'",
                                   50, 22);
     }
@@ -604,12 +603,12 @@ public class ObjectTest {
         BAssertUtil.validateError(result, i++,
                                   "attempt to refer to non-accessible symbol 'Person.incrementSalary'", 45, 5);
         BAssertUtil.validateError(result, i++,
-                                  "undefined function 'incrementSalary' in object 'Person'", 45, 12);
+                                  "undefined method 'incrementSalary' in object 'Person'", 45, 12);
         BAssertUtil.validateError(result, i++,
                                   "attempt to refer to non-accessible symbol 'Person.decrementAndUpdateSalary'", 46,
                                   13);
         BAssertUtil.validateError(result, i,
-                                  "undefined function 'decrementAndUpdateSalary' in object 'Person'", 46, 20);
+                                  "undefined method 'decrementAndUpdateSalary' in object 'Person'", 46, 20);
     }
 
     @Test
@@ -689,17 +688,6 @@ public class ObjectTest {
         Assert.assertEquals(((BInteger) retChoose.get("val")).intValue(), 5);
     }
 
-    @Test(dataProvider = "missingNativeImplFiles")
-    public void testObjectWithMissingNativeImpl(String filePath) {
-        try {
-            BCompileUtil.compileInProc(filePath);
-        } catch (Exception e) {
-            Assert.assertTrue(e.getMessage().contains("native function not available: Person.printName"));
-            return;
-        }
-        Assert.fail("expected compilation to fail due to missing external implementation");
-    }
-
     @Test(description = "Test invoking object inits with union params in another object's function")
     public void testUnionsAsAnInitParam() {
         CompileResult objectTypeUnion = BCompileUtil.compile("test-src/object/object_type_union.bal");
@@ -727,7 +715,7 @@ public class ObjectTest {
         Assert.assertEquals(((BInteger) result[1]).intValue(), 1);
     }
 
-    @Test(description = "Negative test for object union type inference")
+    @Test(description = "Negative test for object union type inference", groups = { "brokenOnNewParser" })
     public void testNegativeUnionTypeInit() {
         CompileResult resultNegative = BCompileUtil.compile("test-src/object/object_type_union_negative.bal");
         int i = 0;
@@ -756,14 +744,6 @@ public class ObjectTest {
         BAssertUtil.validateError(resultNegative, i++,
                 "cannot infer type of the object from '(InitObjThree|InitObjOne|boolean|string)'", 129, 50);
         Assert.assertEquals(resultNegative.getErrorCount(), i);
-    }
-
-    @DataProvider
-    public Object[][] missingNativeImplFiles() {
-        return new Object[][]{
-                {"test-src/object/object_with_missing_native_impl.bal"},
-                {"test-src/object/object_with_missing_native_impl_2.bal"}
-        };
     }
 
     @Test(description = "Test field name and method name in different namespaces")

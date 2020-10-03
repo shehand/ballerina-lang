@@ -19,20 +19,23 @@
 package org.ballerinalang.packerina.cmd;
 
 import org.ballerinalang.compiler.CompilerPhase;
+import org.ballerinalang.compiler.JarResolver;
 import org.ballerinalang.jvm.util.BLangConstants;
+import org.ballerinalang.packerina.JarResolverImpl;
 import org.ballerinalang.packerina.TaskExecutor;
 import org.ballerinalang.packerina.buildcontext.BuildContext;
+import org.ballerinalang.packerina.buildcontext.BuildContextField;
 import org.ballerinalang.packerina.task.CleanTargetDirTask;
 import org.ballerinalang.packerina.task.CompileTask;
-import org.ballerinalang.packerina.task.CopyModuleJarTask;
-import org.ballerinalang.packerina.task.CopyNativeLibTask;
+import org.ballerinalang.packerina.task.CopyObservabilitySymbolsTask;
+import org.ballerinalang.packerina.task.CopyResourcesTask;
 import org.ballerinalang.packerina.task.CreateBaloTask;
 import org.ballerinalang.packerina.task.CreateBirTask;
-import org.ballerinalang.packerina.task.CreateExecutableTask;
 import org.ballerinalang.packerina.task.CreateJarTask;
 import org.ballerinalang.packerina.task.CreateTargetDirTask;
 import org.ballerinalang.packerina.task.PrintExecutablePathTask;
 import org.ballerinalang.packerina.task.PrintRunningExecutableTask;
+import org.ballerinalang.packerina.task.ResolveMavenDependenciesTask;
 import org.ballerinalang.packerina.task.RunExecutableTask;
 import org.ballerinalang.tool.BLauncherCmd;
 import org.ballerinalang.tool.BallerinaCliCommands;
@@ -52,6 +55,7 @@ import java.util.Arrays;
 import java.util.List;
 
 import static org.ballerinalang.compiler.CompilerOptionName.COMPILER_PHASE;
+import static org.ballerinalang.compiler.CompilerOptionName.DUMP_BIR;
 import static org.ballerinalang.compiler.CompilerOptionName.EXPERIMENTAL_FEATURES_ENABLED;
 import static org.ballerinalang.compiler.CompilerOptionName.LOCK_ENABLED;
 import static org.ballerinalang.compiler.CompilerOptionName.OFFLINE;
@@ -72,7 +76,6 @@ public class RunCommand implements BLauncherCmd {
 
     private final PrintStream outStream;
     private final PrintStream errStream;
-    private boolean isInDebugMode = false;
 
     @CommandLine.Parameters(description = "Program arguments")
     private List<String> argList;
@@ -107,6 +110,13 @@ public class RunCommand implements BLauncherCmd {
     @CommandLine.Option(names = "--experimental", description = "Enable experimental language features.")
     private boolean experimentalFlag;
 
+    @CommandLine.Option(names = "--old-parser", description = "Enable new parser.", hidden = true)
+    private boolean useOldParser;
+
+    @CommandLine.Option(names = "--observability-included", description = "package observability in the executable " +
+            "when run is used with a source file or a module.")
+    private boolean observabilityIncluded;
+
     public RunCommand() {
         this.outStream = System.err;
         this.errStream = System.err;
@@ -134,9 +144,9 @@ public class RunCommand implements BLauncherCmd {
             return;
         }
 
-        // enable remote debugging.
-        if (null != this.debugPort) {
-            isInDebugMode = true;
+        // Sets the debug port as a system property, which will be used when setting up debug args before running the
+        // executable jar in a separate JVM process.
+        if (this.debugPort != null) {
             System.setProperty(SYSTEM_PROP_BAL_DEBUG, this.debugPort);
         }
 
@@ -154,10 +164,10 @@ public class RunCommand implements BLauncherCmd {
             //// check if path given is an absolute path. update source root accordingly.
             if (Paths.get(this.argList.get(0)).isAbsolute()) {
                 sourcePath = Paths.get(this.argList.get(0));
-                sourceRootPath = sourcePath.getParent();
             } else {
                 sourcePath = sourceRootPath.resolve(this.argList.get(0));
             }
+            sourceRootPath = sourcePath.getParent();
 
             //// check if the given file exists.
             if (Files.notExists(sourcePath)) {
@@ -252,14 +262,18 @@ public class RunCommand implements BLauncherCmd {
         CompilerOptions options = CompilerOptions.getInstance(compilerContext);
         options.put(PROJECT_DIR, sourceRootPath.toString());
         options.put(OFFLINE, Boolean.toString(this.offline));
-        options.put(COMPILER_PHASE, CompilerPhase.BIR_GEN.toString());
+        options.put(COMPILER_PHASE, CompilerPhase.CODE_GEN.toString());
+        options.put(DUMP_BIR, Boolean.toString(dumpBIR));
         options.put(LOCK_ENABLED, Boolean.toString(true));
         options.put(SKIP_TESTS, Boolean.toString(true));
-        options.put(TEST_ENABLED, "true");
+        options.put(TEST_ENABLED, Boolean.toString(false));
         options.put(EXPERIMENTAL_FEATURES_ENABLED, Boolean.toString(this.experimentalFlag));
 
         // create builder context
         BuildContext buildContext = new BuildContext(sourceRootPath, targetPath, sourcePath, compilerContext);
+        JarResolver jarResolver = JarResolverImpl.getInstance(buildContext, false,
+                observabilityIncluded);
+        buildContext.put(BuildContextField.JAR_RESOLVER, jarResolver);
         buildContext.setOut(this.outStream);
         buildContext.setErr(this.errStream);
 
@@ -268,17 +282,16 @@ public class RunCommand implements BLauncherCmd {
         TaskExecutor taskExecutor = new TaskExecutor.TaskBuilder()
                 .addTask(new CleanTargetDirTask(), isSingleFileBuild)   // clean the target directory(projects only)
                 .addTask(new CreateTargetDirTask()) // create target directory.
+                .addTask(new ResolveMavenDependenciesTask()) // resolve maven dependencies in Ballerina.toml
                 .addTask(new CompileTask()) // compile the modules
-                .addTask(new CreateBaloTask(), isSingleFileBuild)   // create the balos for modules(projects only)
                 .addTask(new CreateBirTask())   // create the bir
-                .addTask(new CopyNativeLibTask())    // copy the native libs(projects only)
-                // create the jar.
-                .addTask(new CreateJarTask(this.dumpBIR, this.nativeBinary, this.dumpLLVMIR, this.noOptimizeLLVM))
-                .addTask(new CopyModuleJarTask())
-                .addTask(new CreateExecutableTask())  // create the executable .jar file
+                .addTask(new CreateBaloTask(), isSingleFileBuild)   // create the balos for modules(projects only)
+                .addTask(new CreateJarTask())   // create the jar
+                .addTask(new CopyResourcesTask(), isSingleFileBuild)
+                .addTask(new CopyObservabilitySymbolsTask(), isSingleFileBuild)
                 .addTask(new PrintExecutablePathTask(), isSingleFileBuild)   // print the location of the executable
                 .addTask(new PrintRunningExecutableTask(!isSingleFileBuild))   // print running executables
-                .addTask(new RunExecutableTask(programArgs, isInDebugMode))
+                .addTask(new RunExecutableTask(programArgs))
                 .build();
 
         taskExecutor.executeTasks(buildContext);

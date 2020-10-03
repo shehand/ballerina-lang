@@ -18,7 +18,10 @@
 
 package org.ballerinalang.langlib.array;
 
+import org.ballerinalang.jvm.runtime.AsyncUtils;
+import org.ballerinalang.jvm.scheduling.Scheduler;
 import org.ballerinalang.jvm.scheduling.Strand;
+import org.ballerinalang.jvm.scheduling.StrandMetadata;
 import org.ballerinalang.jvm.types.BType;
 import org.ballerinalang.jvm.values.ArrayValue;
 import org.ballerinalang.jvm.values.FPValue;
@@ -28,7 +31,13 @@ import org.ballerinalang.natives.annotations.Argument;
 import org.ballerinalang.natives.annotations.BallerinaFunction;
 import org.ballerinalang.natives.annotations.ReturnType;
 
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
+
+import static org.ballerinalang.jvm.util.BLangConstants.ARRAY_LANG_LIB;
+import static org.ballerinalang.jvm.util.BLangConstants.BALLERINA_BUILTIN_PKG_PREFIX;
 import static org.ballerinalang.jvm.values.utils.ArrayUtils.getElementAccessFunction;
+import static org.ballerinalang.util.BLangCompilerConstants.ARRAY_VERSION;
 
 /**
  * Native implementation of lang.array:reduce(Type[], function).
@@ -36,7 +45,7 @@ import static org.ballerinalang.jvm.values.utils.ArrayUtils.getElementAccessFunc
  * @since 1.0
  */
 @BallerinaFunction(
-        orgName = "ballerina", packageName = "lang.array", functionName = "reduce",
+        orgName = "ballerina", packageName = "lang.array", version = ARRAY_VERSION, functionName = "reduce",
         args = {@Argument(name = "arr", type = TypeKind.ARRAY), @Argument(name = "func", type = TypeKind.FUNCTION),
                 @Argument(name = "initial", type = TypeKind.ANY)},
         returnType = {@ReturnType(type = TypeKind.ARRAY)},
@@ -44,16 +53,22 @@ import static org.ballerinalang.jvm.values.utils.ArrayUtils.getElementAccessFunc
 )
 public class Reduce {
 
+    private static final StrandMetadata METADATA = new StrandMetadata(BALLERINA_BUILTIN_PKG_PREFIX, ARRAY_LANG_LIB,
+                                                                      ARRAY_VERSION, "reduce");
+
     public static Object reduce(Strand strand, ArrayValue arr, FPValue<Object, Boolean> func, Object initial) {
         BType arrType = arr.getType();
         int size = arr.size();
-        Object accum = initial;
         GetFunction getFn = getElementAccessFunction(arrType, "reduce()");
+        AtomicReference<Object> accum = new AtomicReference<>(initial);
+        AtomicInteger index = new AtomicInteger(-1);
+        AsyncUtils
+                .invokeFunctionPointerAsyncIteratively(func, null, METADATA, size,
+                                                       () -> new Object[]{strand, accum.get(), true,
+                                                               getFn.get(arr, index.incrementAndGet()), true},
+                                                       accum::set, accum::get, Scheduler.getStrand().scheduler);
+        return accum.get();
 
-        for (int i = 0; i < size; i++) {
-            accum = func.apply(new Object[]{strand, accum, true, getFn.get(arr, i), true});
-        }
-
-        return accum;
+        
     }
 }

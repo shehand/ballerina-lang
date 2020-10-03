@@ -35,7 +35,7 @@ import org.wso2.transport.http.netty.message.HttpMessageDataStreamer;
 /**
  * identifier literals in service and resource names.
  */
-@Test(groups = { "brokenOnSpecDeviation" })
+@Test(groups = { "disableOnOldParser" })
 public class IdentifierLiteralServiceTest {
 
     private static final int MOCK_ENDPOINT_PORT = 9090;
@@ -47,7 +47,7 @@ public class IdentifierLiteralServiceTest {
 
     @Test(description = "Test using identifier literals in service and resource names")
     public void testUsingIdentifierLiteralsInServiceAndResourceNames() {
-        HTTPTestRequest cMsg = MessageUtils.generateHTTPMessage("/identifierLiteral/resource", "GET");
+        HTTPTestRequest cMsg = MessageUtils.generateHTTPMessage("/identifierLiteral/resource1", "GET");
         HttpCarbonMessage response = Services.invoke(MOCK_ENDPOINT_PORT, cMsg);
         Assert.assertNotNull(response);
         BValue bJson = JsonParser.parse(new HttpMessageDataStreamer(response).getInputStream());

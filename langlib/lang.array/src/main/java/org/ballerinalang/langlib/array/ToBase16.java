@@ -18,7 +18,9 @@
 
 package org.ballerinalang.langlib.array;
 
-import org.ballerinalang.jvm.BallerinaErrors;
+import org.ballerinalang.jvm.api.BErrorCreator;
+import org.ballerinalang.jvm.api.BStringUtils;
+import org.ballerinalang.jvm.api.values.BString;
 import org.ballerinalang.jvm.scheduling.Strand;
 import org.ballerinalang.jvm.types.BArrayType;
 import org.ballerinalang.jvm.types.BType;
@@ -32,6 +34,7 @@ import org.ballerinalang.natives.annotations.ReturnType;
 import static org.ballerinalang.jvm.util.BLangConstants.ARRAY_LANG_LIB;
 import static org.ballerinalang.jvm.util.exceptions.BallerinaErrorReasons.OPERATION_NOT_SUPPORTED_IDENTIFIER;
 import static org.ballerinalang.jvm.util.exceptions.BallerinaErrorReasons.getModulePrefixedReason;
+import static org.ballerinalang.util.BLangCompilerConstants.ARRAY_VERSION;
 
 /**
  * Native implementation of lang.array:toBase16(byte[]).
@@ -39,7 +42,7 @@ import static org.ballerinalang.jvm.util.exceptions.BallerinaErrorReasons.getMod
  * @since 1.0
  */
 @BallerinaFunction(
-        orgName = "ballerina", packageName = "lang.array", functionName = "toBase16",
+        orgName = "ballerina", packageName = "lang.array", version = ARRAY_VERSION, functionName = "toBase16",
         args = {@Argument(name = "arr", type = TypeKind.ARRAY)},
         returnType = {@ReturnType(type = TypeKind.STRING)},
         isPublic = true
@@ -48,13 +51,16 @@ public class ToBase16 {
 
     private static final char[] chars = "0123456789abcdef".toCharArray();
 
-    public static String toBase16(Strand strand, ArrayValue arr) {
+    private static final BString NOT_SUPPORTED_ERROR_DETAIL = BStringUtils.fromString("toBase16() is only supported " +
+                                                                                               "on 'byte[]'");
+
+    public static BString toBase16(Strand strand, ArrayValue arr) {
         BType arrType = arr.getType();
         if (arrType.getTag() != TypeTags.ARRAY_TAG ||
                 ((BArrayType) arrType).getElementType().getTag() != TypeTags.BYTE_TAG) {
-            throw BallerinaErrors.createError(getModulePrefixedReason(ARRAY_LANG_LIB,
-                                                                      OPERATION_NOT_SUPPORTED_IDENTIFIER),
-                                              "toBase16() is only supported on 'byte[]'");
+            throw BErrorCreator.createError(getModulePrefixedReason(ARRAY_LANG_LIB,
+                                                                    OPERATION_NOT_SUPPORTED_IDENTIFIER),
+                                            NOT_SUPPORTED_ERROR_DETAIL);
         }
 
         // Implementation borrowed from https://stackoverflow.com/a/9855338
@@ -67,6 +73,6 @@ public class ToBase16 {
             base16Chars[i * 2 + 1] = chars[v & 0xF];
         }
 
-        return new String(base16Chars);
+        return BStringUtils.fromString(new String(base16Chars));
     }
 }

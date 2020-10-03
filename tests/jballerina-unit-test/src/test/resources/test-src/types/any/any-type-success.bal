@@ -8,29 +8,28 @@ function jsonReturnFunction() returns (json) {
   return val;
 }
 
-function tableReturnTestAsAny() returns (any) {
+function tableReturnTestAsAny(){
     any abc = tableReturnFunction();
-    return abc;
+    assertEquality("[{\"id\":1,\"name\":\"Jane\"},{\"id\":2,\"name\":\"Anne\"}]", abc.toString());
 }
 
-function inputAnyAsTableTest() returns (table<any>?) {
-    table<any>? t = anyToTableFunction(tableReturnFunction());
-    return t;
+function inputAnyAsTableTest(){
+    table<map<any>>? t = anyToTableFunction(tableReturnFunction());
+    assertEquality("[{\"id\":1,\"name\":\"Jane\"},{\"id\":2,\"name\":\"Anne\"}]", t.toString());
 }
 
-function anyToTableFunction (any aTable) returns (table<any>?) {
-    if (aTable is table<any>) {
+function anyToTableFunction (any aTable) returns (table<map<any>>?) {
+    if (aTable is table<map<any>>) {
         return aTable;
     }
     return ();
 }
 
-function tableReturnFunction () returns (table<any>) {
-    table <Employee> tb = table{};
-    Employee e1 = {id:1, name:"Jane"};
-    Employee e2 = {id:2, name:"Anne"};
-    checkpanic tb.add(e1);
-    checkpanic tb.add(e2);
+function tableReturnFunction () returns (table<map<any>>) {
+    table <Employee> tb = table [
+                {id:1, name:"Jane"},
+                {id:2, name:"Anne"}
+    ];
 
     return tb;
 }
@@ -119,3 +118,18 @@ function anyArrayWithMapArray() returns (any[]) {
     return a;
 }
 
+type AssertionError error;
+
+const ASSERTION_ERROR_REASON = "AssertionError";
+
+function assertEquality(any|error expected, any|error actual) {
+    if expected is anydata && actual is anydata && expected == actual {
+        return;
+    }
+
+    if expected === actual {
+        return;
+    }
+
+    panic AssertionError(ASSERTION_ERROR_REASON, message = "expected '" + expected.toString() + "', found '" + actual.toString () + "'");
+}

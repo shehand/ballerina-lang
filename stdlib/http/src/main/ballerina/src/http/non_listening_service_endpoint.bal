@@ -14,11 +14,11 @@
 // specific language governing permissions and limitations
 // under the License.
 
-import ballerinax/java;
+import ballerina/java;
 import ballerina/lang.'object as lang;
 
 # Mock server endpoint which does not open a listening port.
-public type MockListener object {
+public class MockListener {
 
     *lang:Listener;
 
@@ -26,7 +26,7 @@ public type MockListener object {
     private ListenerConfiguration config = {};
 
     public function __start() returns error? {
-        return self.start();
+        return self.startEndpoint();
     }
 
     public function __gracefulStop() returns error? {
@@ -44,13 +44,9 @@ public type MockListener object {
         return self.detach(s);
     }
 
-    public function __init(int port, ListenerConfiguration? config = ()) {
+    public function init(int port, ListenerConfiguration? config = ()) {
         self.config = config ?: {};
         self.port = port;
-        self.init(self.config);
-    }
-
-    public function init(ListenerConfiguration c) {
         var err = self.initEndpoint();
         if (err is error) {
             panic err;
@@ -65,7 +61,7 @@ public type MockListener object {
         return externMockRegister(self, s, name);
     }
 
-    public function start() returns error? {
+    public function startEndpoint() returns error? {
         return externMockStart(self);
     }
 
@@ -76,29 +72,29 @@ public type MockListener object {
     public function detach(service s) returns error? {
         return externMockDetach(self, s);
     }
-};
+}
 
 function externMockInitEndpoint(MockListener mockListener) returns error? = @java:Method {
-    class: "org.ballerinalang.net.http.mock.nonlistening.NonListeningInitEndpoint",
+    'class: "org.ballerinalang.net.http.mock.nonlistening.NonListeningInitEndpoint",
     name: "initEndpoint"
 } external;
 
 function externMockRegister(MockListener mockListener, service s, string? name) returns error? = @java:Method {
-   class: "org.ballerinalang.net.http.mock.nonlistening.NonListeningRegister",
+   'class: "org.ballerinalang.net.http.mock.nonlistening.NonListeningRegister",
    name: "register"
 } external;
 
 function externMockStart(MockListener mockListener) returns error? = @java:Method {
-    class: "org.ballerinalang.net.http.mock.nonlistening.NonListeningStart",
+    'class: "org.ballerinalang.net.http.mock.nonlistening.NonListeningStart",
     name: "start"
 } external;
 
 function externMockGracefulStop(MockListener mockListener) returns error? = @java:Method {
-    class: "org.ballerinalang.net.http.mock.nonlistening.NonListeningGracefulStop",
+    'class: "org.ballerinalang.net.http.mock.nonlistening.NonListeningGracefulStop",
     name: "gracefulStop"
 } external;
 
 function externMockDetach(MockListener mockListener, service s) returns error? = @java:Method {
-    class: "org.ballerinalang.net.http.mock.nonlistening.NonListeningDetachEndpoint",
+    'class: "org.ballerinalang.net.http.mock.nonlistening.NonListeningDetachEndpoint",
     name: "detach"
 } external;

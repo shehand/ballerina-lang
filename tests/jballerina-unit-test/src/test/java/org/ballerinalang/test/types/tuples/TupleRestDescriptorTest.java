@@ -65,16 +65,16 @@ public class TupleRestDescriptorTest {
     public void testTupleCovarianceWithRestDescriptor() {
         BValue[] returns = BRunUtil.invoke(result, "tupleCovarianceWithRestDescriptor", new BValue[]{});
         Assert.assertEquals(returns.length, 1);
-        Assert.assertEquals(returns[0].stringValue(), "s name=John intern=true name=John intern=true name=John " +
-                "intern=true ");
+        Assert.assertEquals(returns[0].stringValue(), "s {\"name\":\"John\",\"intern\":true} {\"name\":\"John\"," +
+                "\"intern\":true} {\"name\":\"John\",\"intern\":true} ");
     }
 
     @Test(description = "Test tuple covariance with only rest descriptor")
     public void tupleCovarianceWithOnlyRestDescriptor() {
         BValue[] returns = BRunUtil.invoke(result, "tupleCovarianceWithOnlyRestDescriptor", new BValue[]{});
         Assert.assertEquals(returns.length, 1);
-        Assert.assertEquals(returns[0].stringValue(), "name=John intern=true name=John intern=true name=John " +
-                "intern=true ");
+        Assert.assertEquals(returns[0].stringValue(), "{\"name\":\"John\",\"intern\":true} {\"name\":\"John\"," +
+                "\"intern\":true} {\"name\":\"John\",\"intern\":true} ");
     }
 
     @Test(description = "Test function invocation with tuples with rest descriptor")
@@ -101,8 +101,8 @@ public class TupleRestDescriptorTest {
     @Test(description = "Test out of bound indexed based access on tuples with rest descriptor",
             expectedExceptions = {BLangRuntimeException.class},
             expectedExceptionsMessageRegExp =
-                    "error: \\{ballerina/lang.array\\}IndexOutOfRange message=tuple index out of range: index: 4, " +
-                            "size: 4.*")
+                    "error: \\{ballerina/lang.array\\}IndexOutOfRange \\{\"message\":\"tuple index out of range: " +
+                            "index: 4, size: 4.*")
     public void testIndexBasedAccessNegative() {
         BRunUtil.invoke(result, "testIndexBasedAccessNegative");
     }
@@ -120,8 +120,13 @@ public class TupleRestDescriptorTest {
                 19, 33);
         BAssertUtil.validateError(resultNegative, i++, "incompatible types: expected 'boolean', found 'string'",
                 19, 36);
-        BAssertUtil.validateError(resultNegative, i++, "tuple and expression size does not match",
-                24, 12);
+        BAssertUtil.validateError(resultNegative, i++, "incompatible types: expected '([string,int,boolean]|string)'," +
+                                          " found '[string,int,boolean,boolean]'", 24, 12);
+        BAssertUtil.validateError(resultNegative, i++, "incompatible types: expected '[int,int,string...]', found " +
+                                          "'[int]'", 29, 31);
+        BAssertUtil.validateError(resultNegative, i++, "incompatible types: expected '[int,float,string,string...]', " +
+                                          "found '[int,float,string...]'", 32, 41);
+        Assert.assertEquals(resultNegative.getErrorCount(), i);
     }
 
 }

@@ -19,6 +19,8 @@ package org.ballerinalang.test.types.string;
 
 import org.apache.axiom.om.OMNode;
 import org.ballerinalang.jvm.XMLFactory;
+import org.ballerinalang.jvm.values.ArrayValue;
+import org.ballerinalang.jvm.values.XMLItem;
 import org.ballerinalang.model.util.JsonParser;
 import org.ballerinalang.model.values.BBoolean;
 import org.ballerinalang.model.values.BFloat;
@@ -43,7 +45,6 @@ import static org.ballerinalang.test.util.BAssertUtil.validateError;
  * Test Native functions in ballerina.model.string.
  */
 public class StringTest {
-    private static final String s1 = "WSO2 Inc.";
     private CompileResult result;
 
     @BeforeClass
@@ -59,6 +60,7 @@ public class StringTest {
         final String expected = "true";
         Assert.assertEquals(returns[0].stringValue(), expected);
     }
+
     @Test
     public void testFloatValueOf() {
         BValue[] args = {new BFloat(1.345f)};
@@ -87,6 +89,27 @@ public class StringTest {
         BValue[] args = {new BString("Lion in the town"), new BString("in")};
         BValue[] results = BRunUtil.invoke(result, "indexOf", args);
         Assert.assertEquals(((BInteger) results[0]).intValue(), 5);
+    }
+
+    @Test
+    public void testIndexOfAfterEmoji() {
+        BValue[] args = {new BString("Lion\uD83E\uDD81 in the town"), new BString("in")};
+        BValue[] results = BRunUtil.invoke(result, "indexOf", args);
+        Assert.assertEquals(((BInteger) results[0]).intValue(), 6);
+    }
+
+    @Test
+    public void testIndexOfAtEmoji() {
+        BValue[] args = {new BString("Lion\uD83E\uDD81 in the town"), new BString("\uD83E\uDD81")};
+        BValue[] results = BRunUtil.invoke(result, "indexOf", args);
+        Assert.assertEquals(((BInteger) results[0]).intValue(), 4);
+    }
+
+    @Test
+    public void testIndexOfBeforeEmoji() {
+        BValue[] args = {new BString("Lion\uD83E\uDD81 in the town"), new BString("Lion")};
+        BValue[] results = BRunUtil.invoke(result, "indexOf", args);
+        Assert.assertEquals(((BInteger) results[0]).intValue(), 0);
     }
 
     @Test
@@ -133,6 +156,31 @@ public class StringTest {
     }
 
     @Test
+    public void testSubStringAfterEmoji() {
+        BValue[] args = {new BString("test\uD83D\uDC87\uD83C\uDFFE\u200D♂️Values"), new BInteger(0), new BInteger(12)};
+        BValue[] returns = BRunUtil.invoke(result, "substring", args);
+        Assert.assertTrue(returns[0] instanceof BString);
+        Assert.assertEquals(returns[0].stringValue(), "test\uD83D\uDC87\uD83C\uDFFE\u200D♂️Val");
+    }
+
+    @Test
+    public void testSubStringBeforeEmoji() {
+        BValue[] args = {new BString("test\uD83D\uDC69\uD83C\uDFFC\u200D⚖️️️Values"), new BInteger(0), new BInteger(4)};
+        BValue[] returns = BRunUtil.invoke(result, "substring", args);
+        Assert.assertTrue(returns[0] instanceof BString);
+        Assert.assertEquals(returns[0].stringValue(), "test");
+    }
+
+    @Test
+    public void testSubStringAtEmoji() {
+        BValue[] args = {new BString("test\uD83D\uDC69\uD83C\uDFFE\u200D\uD83C\uDF7C️️Values"), new BInteger(0),
+                new BInteger(8)};
+        BValue[] returns = BRunUtil.invoke(result, "substring", args);
+        Assert.assertTrue(returns[0] instanceof BString);
+        Assert.assertEquals(returns[0].stringValue(), "test\uD83D\uDC69\uD83C\uDFFE\u200D\uD83C\uDF7C");
+    }
+
+    @Test
     public void testToLowerCase() {
         BValue[] args = {new BString("COMPANY")};
         BValue[] returns = BRunUtil.invoke(result, "toLower", args);
@@ -158,7 +206,7 @@ public class StringTest {
 
     @Test
     public void testXmlValueOf() {
-        OMNode omNode = (OMNode) XMLFactory.parse("<test>name</test>").value();
+        OMNode omNode = ((XMLItem) ((ArrayValue) XMLFactory.parse("<test>name</test>").value()).get(0)).value();
         BValue[] args = { new BXMLItem(omNode) };
         BValue[] returns = BRunUtil.invoke(result, "xmlValueOf", args);
         Assert.assertTrue(returns[0] instanceof BString);
@@ -177,37 +225,17 @@ public class StringTest {
         ByteArrayUtils.assertJBytesWithBBytes(bytes, bByteArray.getBytes());
     }
 
-    @Test
+    @Test(groups = { "disableOnOldParser" })
     public void testMultilineStringLiterals() {
         CompileResult multilineLiterals = BCompileUtil.compile("test-src/types/string/string_negative.bal");
         int indx = 0;
-
-        validateError(multilineLiterals, indx++, "token recognition error at: '\"Hello\\n'", 17, 23);
-        validateError(multilineLiterals, indx++,
-                      "mismatched input '!'. expecting {'is', ';', '.', '[', '?', '?.', '+', '-', '*', '/', '%', " +
-                              "'==', '!=', '>', '<', '>=', '<=', '&&', '||', '===', '!==', '&', '^', '@', '...', '|'," +
-                              " '?:', '->>', '..<', '.@'}", 18, 6);
-        validateError(multilineLiterals, indx++, "token recognition error at: '\";\\n'", 18, 7);
-        validateError(multilineLiterals, indx++, "token recognition error at: '\"Hello\\n'", 21, 17);
-        validateError(multilineLiterals, indx++,
-                      "mismatched input '!'. expecting {'is', ';', '.', '[', '?', '?.', '+', '-', '*', '/', '%', " +
-                              "'==', '!=', '>', '<', '>=', '<=', '&&', '||', '===', '!==', '&', '^', '@', '...', '|'," +
-                              " '?:', '->>', '..<', '.@'}", 22, 10);
-        validateError(multilineLiterals, indx++, "token recognition error at: '\";\\n'", 22, 11);
-        validateError(multilineLiterals, indx++, "token recognition error at: '\"Another Hello\\n'", 24, 17);
-        validateError(multilineLiterals, indx++,
-                      "mismatched input 'with'. expecting {'is', ';', '.', '[', '?', '?.', '+', '-', '*', '/', '%', " +
-                              "'==', '!=', '>', '<', '>=', '<=', '&&', '||', '===', '!==', '&', '^', '@', '...', '|'," +
-                              " '?:', '->>', '..<', '.@'}", 25, 19);
-        validateError(multilineLiterals, indx++, "token recognition error at: '\";\\n'", 25, 39);
-        validateError(multilineLiterals, indx++, "mismatched input 's3'. expecting {'(', '[', '?', '|'}", 27, 12);
-        validateError(multilineLiterals, indx++, "token recognition error at: '\"Multiple\\n'", 27, 17);
-        validateError(multilineLiterals, indx++, "mismatched input 'Hello'. expecting {',', ')'}", 29, 5);
-        validateError(multilineLiterals, indx++, "mismatched input 'World'. expecting {'is', ';', '.', '[', '?', '?" +
-                ".', '+', '-', '*', '/', '%', '==', '!=', '>', '<', '>=', '<=', '&&', '||', '===', '!==', '&', '^', " +
-                "'@', '...', '|', '?:', '->>', '..<', '.@'}", 30, 5);
-        validateError(multilineLiterals, indx++, "token recognition error at: '\";\\n'", 30, 11);
-
+        validateError(multilineLiterals, indx++, "missing double quote", 18, 17);
+        validateError(multilineLiterals, indx++, "missing plus token", 19, 1);
+        validateError(multilineLiterals, indx++, "undefined symbol 'World'", 19, 5);
+        validateError(multilineLiterals, indx++, "missing plus token", 19, 10);
+        validateError(multilineLiterals, indx++, "operator '!' not defined for 'string'", 19, 10);
+        validateError(multilineLiterals, indx++, "missing double quote", 19, 11);
+        validateError(multilineLiterals, indx++, "missing semicolon token", 20, 1);
         Assert.assertEquals(multilineLiterals.getErrorCount(), indx);
     }
 }

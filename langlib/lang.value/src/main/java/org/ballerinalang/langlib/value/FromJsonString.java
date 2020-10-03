@@ -18,8 +18,10 @@
 
 package org.ballerinalang.langlib.value;
 
-import org.ballerinalang.jvm.BallerinaErrors;
 import org.ballerinalang.jvm.JSONParser;
+import org.ballerinalang.jvm.api.BErrorCreator;
+import org.ballerinalang.jvm.api.BStringUtils;
+import org.ballerinalang.jvm.api.values.BString;
 import org.ballerinalang.jvm.scheduling.Strand;
 import org.ballerinalang.jvm.util.exceptions.BallerinaException;
 import org.ballerinalang.model.types.TypeKind;
@@ -27,8 +29,7 @@ import org.ballerinalang.natives.annotations.Argument;
 import org.ballerinalang.natives.annotations.BallerinaFunction;
 import org.ballerinalang.natives.annotations.ReturnType;
 
-import java.io.Reader;
-import java.io.StringReader;
+import static org.ballerinalang.util.BLangCompilerConstants.VALUE_VERSION;
 
 /**
  * Parse a string in JSON format and return the the value that it represents.
@@ -36,7 +37,7 @@ import java.io.StringReader;
  * @since 1.0
  */
 @BallerinaFunction(
-        orgName = "ballerina", packageName = "lang.value",
+        orgName = "ballerina", packageName = "lang.value", version = VALUE_VERSION,
         functionName = "fromJsonString",
         args = {@Argument(name = "str", type = TypeKind.STRING)},
         returnType = {@ReturnType(type = TypeKind.JSON), @ReturnType(type = TypeKind.ERROR)},
@@ -44,16 +45,19 @@ import java.io.StringReader;
 )
 public class FromJsonString {
 
-    public static Object fromJsonString(Strand strand, String value) {
+    private static final BString JSON_STRING_ERROR = BStringUtils.fromString("{ballerina}FromJsonStringError");
 
-        if (value.equals("null")) {
+    public static Object fromJsonString(Strand strand, BString value) {
+
+        String str = value.getValue();
+        if (str.equals("null")) {
             return null;
         }
-        Reader reader = new StringReader(value);
         try {
-            return JSONParser.parse(reader);
+            return JSONParser.parse(str);
         } catch (BallerinaException e) {
-            return BallerinaErrors.createError("{ballerina}FromJsonStringError", e.getMessage());
+            return BErrorCreator.createError(BStringUtils.fromString("{ballerina/lang.value}FromJsonStringError"),
+                                             BStringUtils.fromString(e.getMessage()));
         }
     }
 }

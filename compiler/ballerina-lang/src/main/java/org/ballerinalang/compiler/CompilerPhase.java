@@ -34,17 +34,23 @@ public enum CompilerPhase {
 
     DATAFLOW_ANALYZE("dataflowAnalyze"),
 
+    ISOLATION_ANALYZE("isolationAnalyze"),
+
     DOCUMENTATION_ANALYZE("documentationAnalyze"),
 
     TAINT_ANALYZE("taintAnalyze"),
 
+    CONSTANT_PROPAGATION("constantPropagation"),
+
     COMPILER_PLUGIN("compilerPlugin"),
+
+    OBSERVABILITY_DATA_GEN("observabilityDataGen"),
 
     DESUGAR("desugar"),
 
-    CODE_GEN("codeGen"),
+    BIR_GEN("birGen"),
 
-    BIR_GEN("birGen");
+    CODE_GEN("codeGen");
 
     private String value;
 
@@ -64,8 +70,12 @@ public enum CompilerPhase {
                 return DOCUMENTATION_ANALYZE;
             case "taintAnalyze":
                 return TAINT_ANALYZE;
-            case "annotationProcess":
+            case "constantPropagation":
+                return CONSTANT_PROPAGATION;
+            case "compilerPlugin":
                 return COMPILER_PLUGIN;
+            case "observabilityDataGen":
+                return OBSERVABILITY_DATA_GEN;
             case "desugar":
                 return DESUGAR;
             case "codeGen":

@@ -34,6 +34,10 @@ public enum Flag {
      */
     REMOTE,
     /**
+     * Indicates Flagged node is a transactional function.
+     */
+    TRANSACTIONAL,
+    /**
      * Indicates Flagged node is a native construct.
      */
     NATIVE,
@@ -86,10 +90,6 @@ public enum Flag {
      */
     ANONYMOUS,
     /**
-     * Indicates Flagged node is a abstract node.
-     */
-    ABSTRACT,
-    /**
      * Indicates that the flagged node is an optional field.
      */
     OPTIONAL,
@@ -105,6 +105,10 @@ public enum Flag {
      * Indicates Flagged node is a resource node.
      */
     RESOURCE,
+    /**
+     * Indicates Flagged node is an isolated node.
+     */
+    ISOLATED,
     /**
      * Indicates Flagged node is a service node.
      */
@@ -124,5 +128,13 @@ public enum Flag {
     /**
      * Indicates flagged node is a worker inside fork stmt.
      */
-    FORKED
+    FORKED,
+    /**
+     * Indicates flagged node is a distinct type.
+     */
+    DISTINCT,
+    /**
+     * Indicates flagged node is a class.
+     */
+    CLASS
 }

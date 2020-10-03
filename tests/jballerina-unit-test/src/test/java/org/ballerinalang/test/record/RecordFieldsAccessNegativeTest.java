@@ -32,7 +32,7 @@ public class RecordFieldsAccessNegativeTest {
     public void testRecordPrivateFieldsAccess1() {
         CompileResult result = BCompileUtil.compile("test-src/record/record-project", "access-neg-1");
 
-        Assert.assertEquals(result.getErrorCount(), 9);
+        Assert.assertEquals(result.getErrorCount(), 8);
         int i = 0;
         BAssertUtil.validateError(result, i++, "attempt to expose non-public symbol 'ChildFoo'", 4, 5);
         BAssertUtil.validateError(result, i++, "attempt to expose non-public symbol 'PrivatePerson'", 16, 44);
@@ -41,17 +41,14 @@ public class RecordFieldsAccessNegativeTest {
         BAssertUtil.validateError(result, i++, "attempt to expose non-public symbol 'PrivatePerson'", 24, 72);
         BAssertUtil.validateError(result, i++, "attempt to expose non-public symbol 'FooFamily'", 12, 5);
         BAssertUtil.validateError(result, i++, "attempt to refer to non-accessible symbol 'PrivatePerson'", 20, 5);
-        BAssertUtil.validateError(result, i++, "unknown type 'PrivatePerson'", 20, 5);
-        BAssertUtil.validateError(result, i++,
-                                  "a type compatible with mapping constructor expressions not found in type 'other'",
-                                  20, 27);
+        BAssertUtil.validateError(result, i, "unknown type 'PrivatePerson'", 20, 5);
     }
 
     @Test(description = "Test private fields access in record 02")
     public void testRecordPrivateFieldsAccess2() {
         CompileResult compileResult = BCompileUtil.compile("test-src/record/record-project", "access-neg-2");
 
-        Assert.assertEquals(compileResult.getErrorCount(), 6);
+        Assert.assertEquals(compileResult.getErrorCount(), 8);
         int i = 0;
         BAssertUtil.validateError(compileResult, i++, "attempt to expose non-public symbol 'ChildFoo'", 4, 5);
         BAssertUtil.validateError(compileResult, i++, "attempt to expose non-public symbol 'PrivatePerson'", 16, 44);
@@ -59,5 +56,7 @@ public class RecordFieldsAccessNegativeTest {
         BAssertUtil.validateError(compileResult, i++, "attempt to expose non-public symbol 'PrivatePerson'", 24, 1);
         BAssertUtil.validateError(compileResult, i++, "attempt to expose non-public symbol 'PrivatePerson'", 24, 72);
         BAssertUtil.validateError(compileResult, i++, "attempt to expose non-public symbol 'FooFamily'", 12, 5);
+        BAssertUtil.validateError(compileResult, i++, "attempt to refer to non-accessible symbol 'FooFamily'", 5, 13);
+        BAssertUtil.validateError(compileResult, i, "attempt to refer to non-accessible symbol 'FooFamily'", 10, 13);
     }
 }

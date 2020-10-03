@@ -35,6 +35,8 @@ import org.ballerinalang.natives.annotations.BallerinaFunction;
 
 import java.util.Arrays;
 
+import static org.ballerinalang.util.BLangCompilerConstants.XML_VERSION;
+
 /**
  * Set the children of an XML if its a singleton. Error otherwise.
  * Any existing children will be removed.
@@ -42,7 +44,7 @@ import java.util.Arrays;
  * @since 0.88
  */
 @BallerinaFunction(
-        orgName = "ballerina", packageName = "lang.xml",
+        orgName = "ballerina", packageName = "lang.xml", version = XML_VERSION,
         functionName = "setChildren",
         args = {@Argument(name = "children", type = TypeKind.UNION)},
         isPublic = true
@@ -51,24 +53,24 @@ public class SetChildren {
 
     private static final String OPERATION = "set children to xml element";
 
-    public static void setChildren(Strand strand, XMLValue<?> xml, Object children) {
+    public static void setChildren(Strand strand, XMLValue xml, Object children) {
         if (!IsElement.isElement(strand, xml)) {
             throw BLangExceptionHelper.getRuntimeException(RuntimeErrors.XML_FUNC_TYPE_ERROR, "setChildren", "element");
         }
 
         BType childrenType = TypeChecker.getType(children);
         if (childrenType.getTag() == TypeTags.STRING_TAG) {
-            XMLValue<?> xmlText = XMLFactory.createXMLText((String) children);
+            XMLValue xmlText = XMLFactory.createXMLText((String) children);
             children = xmlText;
-        } else if (childrenType.getTag() != TypeTags.XML_TAG) {
+        } else if (TypeTags.isXMLTypeTag(childrenType.getTag())) {
             BLangExceptionHelper.getRuntimeException(RuntimeErrors.INCOMPATIBLE_TYPE,
                     new BUnionType(Arrays.asList(BTypes.typeXML, BTypes.typeString),
-                            TypeFlags.asMask(TypeFlags.ANYDATA, TypeFlags.PURETYPE)),
-                    childrenType);
+                                   TypeFlags.asMask(TypeFlags.ANYDATA, TypeFlags.PURETYPE)),
+                                                     childrenType);
         }
 
         try {
-            xml.setChildren((XMLValue<?>) children);
+            xml.setChildren((XMLValue) children);
         } catch (Throwable e) {
             BLangExceptionHelper.handleXMLException(OPERATION, e);
         }

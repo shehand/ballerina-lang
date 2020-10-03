@@ -13,12 +13,12 @@
 // KIND, either express or implied.  See the License for the
 // specific language governing permissions and limitations
 // under the License.
-type ObjectOne object {
+class ObjectOne {
     public int age = 0;
 
-    function __init(int age) = external;
-};
+    function init(int age) = external;
+}
 
-public type ObjectTwo object {
-    public function __init() = external;
-};
+public class ObjectTwo {
+    public function init() = external;
+}

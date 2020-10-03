@@ -20,7 +20,9 @@ package org.wso2.ballerinalang.compiler.semantics.analyzer;
 
 import org.ballerinalang.model.tree.NodeKind;
 import org.ballerinalang.model.tree.OperatorKind;
+import org.ballerinalang.model.tree.expressions.RecordLiteralNode;
 import org.ballerinalang.util.diagnostic.DiagnosticCode;
+import org.wso2.ballerinalang.compiler.diagnostic.BLangDiagnosticLog;
 import org.wso2.ballerinalang.compiler.semantics.model.symbols.BConstantSymbol;
 import org.wso2.ballerinalang.compiler.semantics.model.symbols.SymTag;
 import org.wso2.ballerinalang.compiler.tree.BLangConstantValue;
@@ -35,7 +37,6 @@ import org.wso2.ballerinalang.compiler.tree.expressions.BLangRecordLiteral;
 import org.wso2.ballerinalang.compiler.tree.expressions.BLangSimpleVarRef;
 import org.wso2.ballerinalang.compiler.util.CompilerContext;
 import org.wso2.ballerinalang.compiler.util.TypeTags;
-import org.wso2.ballerinalang.compiler.util.diagnotic.BLangDiagnosticLog;
 import org.wso2.ballerinalang.compiler.util.diagnotic.DiagnosticPos;
 
 import java.math.BigDecimal;
@@ -114,25 +115,45 @@ public class ConstantValueResolver extends BLangNodeVisitor {
     }
 
     @Override
-    public void visit(BLangRecordLiteral recorLiteral) {
+    public void visit(BLangRecordLiteral recordLiteral) {
         Map<String, BLangConstantValue> mapConstVal = new HashMap<>();
-        for (BLangRecordLiteral.BLangRecordKeyValue keyValuePair : recorLiteral.keyValuePairs) {
-            NodeKind nodeKind = keyValuePair.key.expr.getKind();
-
+        for (RecordLiteralNode.RecordField field : recordLiteral.fields) {
             String key;
-            if (nodeKind == NodeKind.LITERAL || nodeKind == NodeKind.NUMERIC_LITERAL) {
-                key = (String) ((BLangLiteral) keyValuePair.key.expr).value;
-            } else if (nodeKind == NodeKind.SIMPLE_VARIABLE_REF) {
-                key = ((BLangSimpleVarRef) keyValuePair.key.expr).variableName.value;
+            BLangConstantValue value;
+
+            if (field.isKeyValueField()) {
+                BLangRecordLiteral.BLangRecordKeyValueField keyValuePair =
+                        (BLangRecordLiteral.BLangRecordKeyValueField) field;
+                NodeKind nodeKind = keyValuePair.key.expr.getKind();
+
+                if (nodeKind == NodeKind.LITERAL || nodeKind == NodeKind.NUMERIC_LITERAL) {
+                    key = (String) ((BLangLiteral) keyValuePair.key.expr).value;
+                } else if (nodeKind == NodeKind.SIMPLE_VARIABLE_REF) {
+                    key = ((BLangSimpleVarRef) keyValuePair.key.expr).variableName.value;
+                } else {
+                    continue;
+                }
+
+                value = visitExpr(keyValuePair.valueExpr);
+            } else if (field.getKind() == NodeKind.SIMPLE_VARIABLE_REF) {
+                BLangRecordLiteral.BLangRecordVarNameField varNameField =
+                        (BLangRecordLiteral.BLangRecordVarNameField) field;
+                key = varNameField.variableName.value;
+                value = visitExpr(varNameField);
             } else {
+                BLangConstantValue spreadOpConstValue =
+                        visitExpr(((BLangRecordLiteral.BLangRecordSpreadOperatorField) field).expr);
+
+                if (spreadOpConstValue != null) {
+                    mapConstVal.putAll((Map<String, BLangConstantValue>) spreadOpConstValue.value);
+                }
                 continue;
             }
 
-            BLangConstantValue value = visitExpr(keyValuePair.valueExpr);
             mapConstVal.put(key, value);
         }
 
-        this.result = new BLangConstantValue(mapConstVal, recorLiteral.type);
+        this.result = new BLangConstantValue(mapConstVal, recordLiteral.type);
     }
 
     @Override

@@ -1,11 +1,11 @@
 int a = 0;
 
-type Person object {
+class Person {
 
-    function __init() {
+    function init() {
         a += 1;
     }
-};
+}
 
 public function testObjectInit() returns int {
     Person p;

@@ -19,6 +19,7 @@
 package org.ballerinalang.stdlib.system;
 
 import org.apache.commons.lang3.SystemUtils;
+import org.ballerinalang.model.values.BError;
 import org.ballerinalang.model.values.BString;
 import org.ballerinalang.model.values.BValue;
 import org.ballerinalang.test.util.BCompileUtil;
@@ -111,5 +112,15 @@ public class SystemTest {
             Assert.assertEquals(returns[0].stringValue().trim(), "1");
         }
     }
-    
+
+    @Test(description = "test process execute error")
+    public void testExecWithError() {
+        String expectedError = "Cannot run program \"eee\": error=2, No such file or directory";
+        if (SystemUtils.IS_OS_UNIX) {
+            BValue[] returns = BRunUtil.invoke(compileResult, "testExecWithError");
+            Assert.assertNotNull(returns[0]);
+            Assert.assertTrue(returns[0] instanceof BError);
+            Assert.assertEquals(((BError) returns[0]).getMessage().trim(), expectedError);
+        }
+    }
 }

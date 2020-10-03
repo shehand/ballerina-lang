@@ -39,6 +39,7 @@ import java.util.concurrent.TimeUnit;
  *
  * @since 0.961.0
  */
+@Test
 public class LocksInServicesTest {
 
     CompileResult compileResult;
@@ -50,7 +51,7 @@ public class LocksInServicesTest {
                 .compile(true, "test-src/lock/locks-in-services.bal");
     }
 
-    @Test(description = "Test locking service level variable basic")
+    @Test(description = "Test locking service level variable basic", enabled = false)
     public void testServiceLvlVarLockBasic() {
         Semaphore semaphore = new Semaphore(-999);
 
@@ -147,8 +148,8 @@ public class LocksInServicesTest {
         executor.submit(new TestRequestSender(semaphore, "/sample3/echo"));
 
         try {
-            if (!semaphore.tryAcquire(500, TimeUnit.MILLISECONDS)) {
-                Assert.fail("request execution not finished within 100ms");
+            if (!semaphore.tryAcquire(1, TimeUnit.MINUTES)) {
+                Assert.fail("request execution not finished within 1minute");
             }
             String path = "/sample3/getMsg";
             HTTPTestRequest cMsg = MessageUtils.generateHTTPMessage(path, "GET");

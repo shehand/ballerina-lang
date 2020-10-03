@@ -1,4 +1,0 @@
-# To start the service, navigate to the directory that contains the
-# `.bal` file and execute the `ballerina run` command.
-$ ballerina run secured_client_with_oauth2.bal
-# This should log the json output returned by the REST endpoint.

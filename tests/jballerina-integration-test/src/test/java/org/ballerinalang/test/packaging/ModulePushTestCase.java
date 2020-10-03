@@ -31,12 +31,15 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Map;
 
+import static org.wso2.ballerinalang.util.RepoUtils.BALLERINA_STAGE_CENTRAL;
+
 /**
  * Testing pushing a module from central by specifying the access token as an environment variable.
  *
  * @since 0.990.5
  */
 public class ModulePushTestCase extends BaseTest {
+    static final String REPO_TO_CENTRAL_SUCCESS_MSG = " pushed to central successfully";
     private Path tempProjectDirectory;
     private String moduleName = "test";
     private Map<String, String> envVariables;
@@ -50,7 +53,8 @@ public class ModulePushTestCase extends BaseTest {
         balClient = new BMainInstance(balServer);
     }
 
-    @Test(description = "Test pushing a package to central by specifying the access token as an environment variable")
+    @Test(enabled = false, description = "Test pushing a package to central by specifying " +
+            "the access token as an environment variable")
     public void testPush() throws Exception {
         Path projectPath = tempProjectDirectory.resolve("initPushProject");
         
@@ -78,11 +82,11 @@ public class ModulePushTestCase extends BaseTest {
                 new LogLeecher[]{}, projectPath.toString());
         
         // Push the module to Ballerina Central
-        String msg = orgName + "/" + moduleName + ":0.1.0 [project repo -> central]";
-        LogLeecher logLeecher = new LogLeecher(msg);
+        String msg = orgName + "/" + moduleName + ":0.1.0" + REPO_TO_CENTRAL_SUCCESS_MSG;
+        LogLeecher logLeecher = new LogLeecher(msg, LogLeecher.LeecherType.INFO);
         balClient.runMain("push", new String[]{moduleName}, envVariables, new String[]{}, new LogLeecher[]{logLeecher},
                 projectPath.toString());
-        logLeecher.waitForText(5000);
+        logLeecher.waitForText(60000);
     }
 
     /**
@@ -91,7 +95,7 @@ public class ModulePushTestCase extends BaseTest {
      * @return env directory variable array
      */
     private Map<String, String> addEnvVariables(Map<String, String> envVariables) {
-        envVariables.put("BALLERINA_DEV_STAGE_CENTRAL", "true");
+        envVariables.put(BALLERINA_STAGE_CENTRAL, "true");
         envVariables.put("BALLERINA_CENTRAL_ACCESS_TOKEN", PackerinaTestUtils.getToken());
         return envVariables;
     }

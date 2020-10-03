@@ -17,8 +17,14 @@
  */
 package org.ballerinalang.test.javainterop;
 
-import org.ballerinalang.compiler.BLangCompilerException;
+import io.ballerina.tools.diagnostics.Diagnostic;
+import org.ballerinalang.jvm.api.values.BFuture;
+import org.ballerinalang.jvm.values.ArrayValue;
+import org.ballerinalang.jvm.values.FPValue;
+import org.ballerinalang.jvm.values.FutureValue;
+import org.ballerinalang.test.util.BAssertUtil;
 import org.ballerinalang.test.util.BCompileUtil;
+import org.ballerinalang.test.util.CompileResult;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
@@ -31,23 +37,43 @@ public class RefTypeNegativeTests {
 
     @Test
     public void testInvalidMethodSignaturesForRefTypes() {
-        String[] errors = null;
-        try {
-            BCompileUtil.compileInProc("test-src/javainterop/ballerina_ref_types_as_interop_negative.bal");
-        } catch (BLangCompilerException e) {
-            errors = e.getMessage().split("\n");
-        }
-
-        Assert.assertNotNull(errors);
-        Assert.assertEquals(errors.length, 2);
-        Assert.assertEquals(errors[0], "error: .:ballerina_ref_types_as_interop_negative.bal:13:1: {ballerinax/java}" +
-                "METHOD_SIGNATURE_DOES_NOT_MATCH message=Incompatible return type for method 'getAllFloats' in class" +
-                " 'org.ballerinalang.test.javainterop.RefTypeNegativeTests': Java type 'float' will not be matched " +
-                "to ballerina type 'ALL_INT'");
-        Assert.assertEquals(errors[1], "error: .:ballerina_ref_types_as_interop_negative.bal:28:1: {ballerinax/java}" +
-                "METHOD_SIGNATURE_DOES_NOT_MATCH message=Incompatible param type for method 'acceptAllInts' in class" +
-                " 'org.ballerinalang.test.javainterop.RefTypeNegativeTests': Java type 'int' will not be matched to " +
-                "ballerina type 'MIX_TYPE'");
+        CompileResult compileResult =
+                BCompileUtil.compileInProc("test-src/javainterop/ballerina_ref_types_as_interop_negative.bal");
+        Diagnostic[] diagnostics = compileResult.getDiagnostics();
+        Assert.assertNotNull(diagnostics);
+        Assert.assertEquals(diagnostics.length, 6);
+        BAssertUtil.validateError(compileResult, 0,
+                "{ballerina/java}METHOD_SIGNATURE_DOES_NOT_MATCH 'Incompatible return type for method " +
+                        "'getAllFloats' in class 'org.ballerinalang.test.javainterop.RefTypeNegativeTests': " +
+                        "Java type 'float' will not be matched to ballerina type 'ALL_INT''",
+                "ballerina_ref_types_as_interop_negative.bal", 13, 1);
+        BAssertUtil.validateError(compileResult, 1,
+                "{ballerina/java}METHOD_SIGNATURE_DOES_NOT_MATCH 'Incompatible param type for method " +
+                        "'acceptAllInts' in class 'org.ballerinalang.test.javainterop.RefTypeNegativeTests': " +
+                        "Java type 'int' will not be matched to ballerina type 'MIX_TYPE''",
+                "ballerina_ref_types_as_interop_negative.bal", 28, 1);
+        BAssertUtil.validateError(compileResult, 2,
+                                  "{ballerina/java}METHOD_SIGNATURE_DOES_NOT_MATCH 'Incompatible param type for " +
+                                          "method 'acceptImmutableValue' in class " +
+                                          "'org.ballerinalang.test.javainterop.RefTypeNegativeTests': Java type 'int'" +
+                                          " will not be matched to ballerina type '(map<int> & readonly)''", 33, 1);
+        BAssertUtil.validateError(compileResult, 3,
+                                  "{ballerina/java}METHOD_SIGNATURE_DOES_NOT_MATCH 'Incompatible return type for " +
+                                          "method 'acceptAndReturnImmutableArray' in class " +
+                                          "'org.ballerinalang.test.javainterop.RefTypeNegativeTests': Java type " +
+                                          "'java.lang.Object' will not be matched to ballerina type " +
+                                          "'(int[] & readonly)''", 39, 1);
+        BAssertUtil.validateError(compileResult, 4,
+                                  "{ballerina/java}METHOD_SIGNATURE_DOES_NOT_MATCH 'Incompatible param type for " +
+                                          "method 'acceptReadOnlyValue' in class " +
+                                          "'org.ballerinalang.test.javainterop.RefTypeNegativeTests': Java type " +
+                                          "'long' will not be matched to ballerina type 'readonly''", 45, 1);
+        BAssertUtil.validateError(compileResult, 5,
+                                  "{ballerina/java}METHOD_SIGNATURE_DOES_NOT_MATCH 'Incompatible return type for " +
+                                          "method 'returnReadOnlyValue' in class " +
+                                          "'org.ballerinalang.test.javainterop.RefTypeNegativeTests': Java type " +
+                                          "'org.ballerinalang.jvm.api.values.BFuture' will not be matched to " +
+                                          "ballerina type 'readonly''", 51, 1);
     }
 
     // static methods
@@ -66,5 +92,19 @@ public class RefTypeNegativeTests {
 
     public static int acceptAllFloats(float x) {
         return (int) x;
+    }
+
+    public static void acceptImmutableValue(int m) {
+    }
+
+    public static Object acceptAndReturnImmutableArray(ArrayValue a) {
+        return a;
+    }
+
+    public static void acceptReadOnlyValue(long r) {
+    }
+
+    public static BFuture returnReadOnlyValue(FPValue f) {
+        return new FutureValue(null, null, null); // OK since not used anywhere.
     }
 }

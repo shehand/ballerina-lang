@@ -33,6 +33,7 @@ import static org.testng.Assert.assertTrue;
  *
  * @since 0.990.4
  */
+
 public class MainFunctionsTest {
 
     private static final String MAIN_FUNCTION_TEST_SRC_DIR = "test-src/main.function/";
@@ -86,20 +87,20 @@ public class MainFunctionsTest {
         assertTrue(result.consoleOutput.startsWith("error? returning main invoked"),
                             "expected the main function to be invoked");
         assertTrue(result.errorOutput.contains("const error reason"), "invalid error reason");
-        assertTrue(result.errorOutput.contains("message=error message"), "invalid error message");
+        assertTrue(result.errorOutput.contains("{\"message\":\"error message\""), "invalid error message");
     }
 
-    @Test
+    @Test(groups = { "disableOnOldParser" })
     public void invalidMainFunctionSignatureTest() {
         CompileResult negativeResult = BCompileUtil.compile("test-src/main.function/test_main_function_negative.bal");
         assertEquals(negativeResult.getErrorCount(), 5);
         validateError(negativeResult, 0, "the 'main' function should be public", 17, 1);
-        validateError(negativeResult, 1, "invalid type 'typedesc' as 'main' function parameter, expected anydata",
-                      17, 15);
-        validateError(negativeResult, 2, "invalid type '(int|typedesc)' as 'main' function parameter, expected anydata",
-                      17, 32);
-        validateError(negativeResult, 3, "invalid type 'FooObject[]' as 'main' function parameter, expected anydata",
-                      17, 57);
+        validateError(negativeResult, 1,
+                "invalid type 'typedesc' as 'main' function parameter, expected anydata", 17, 15);
+        validateError(negativeResult, 2,
+                "invalid type '(int|typedesc)' as 'main' function parameter, expected anydata", 17, 32);
+        validateError(negativeResult, 3,
+                "invalid type 'FooObject[]' as 'main' function parameter, expected anydata", 17, 57);
         validateError(negativeResult, 4, "invalid 'main' function return type 'string', expected a subtype of " +
                               "'error?' containing '()'", 17, 81);
     }
@@ -118,9 +119,9 @@ public class MainFunctionsTest {
         CompileResult compileResult = BCompileUtil
                 .compile("test-src/main.function/test_main_with_stackoverflow.bal");
         BCompileUtil.ExitDetails details = BCompileUtil.run(compileResult, new String[]{});
-        assertTrue(details.errorOutput.contains("error: {ballerina}StackOverflow \n\tat $value$Foo:__init" +
-                "(test_main_with_stackoverflow.bal:19)\n\t   $value$Foo:__init(test_main_with_stackoverflow.bal:19)" +
-                "\n\t   $value$Foo:__init(test_main_with_stackoverflow.bal:19)"));
+        assertTrue(details.errorOutput.contains("error: {ballerina}StackOverflow\n\tat $value$Foo:init" +
+                "(test_main_with_stackoverflow.bal:19)\n\t   $value$Foo:init(test_main_with_stackoverflow.bal:19)" +
+                "\n\t   $value$Foo:init(test_main_with_stackoverflow.bal:19)"));
     }
 
 

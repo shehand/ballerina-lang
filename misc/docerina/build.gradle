@@ -29,32 +29,55 @@ configurations {
     highlighterLib {
         transitive false
     }
+
+    docSearchLib {
+        transitive false
+    }
+
+    htmlTemplateResources {
+        transitive false
+    }
+
+    syntaxHighlighter {
+        transitive false
+    }
+
+    docSearch {
+        transitive false
+    }
 }
 
 dependencies {
     highlighterLib project(path: ':composer-library', configuration: 'highlighter')
+    docSearchLib project(path: ':composer-library', configuration: 'docsearch')
     implementation project(':ballerina-lang')
     implementation project(':ballerina-tool')
     implementation project(':ballerina-lang:annotations')
-    implementation project(':language-server:language-server-core')
     implementation project(':ballerina-http')
     implementation project(':ballerina-config')
     implementation project(':ballerina-mime')
     implementation 'info.picocli:picocli'
     implementation 'com.github.jknack:handlebars'
+    implementation 'org.antlr:antlr4:4.5'
     implementation 'com.atlassian.commonmark:commonmark'
     implementation 'com.atlassian.commonmark:commonmark-ext-gfm-tables'
     implementation 'org.apache.commons:commons-lang3'
     implementation 'commons-io:commons-io'
+    implementation 'com.google.code.gson:gson:2.7'
     implementation 'org.slf4j:slf4j-api'
     distBal project(path: ':ballerina-lang:annotations', configuration: 'baloImplementation')
     distBal project(path: ':ballerina-http', configuration: 'baloImplementation')
     distBal project(path: ':ballerina-io', configuration: 'baloImplementation')
     
     testCompile 'org.testng:testng'
-    testCompile project(':language-server:language-server-compiler')
     testCompile 'org.slf4j:slf4j-jdk14'
 
+}
+
+artifacts {
+    htmlTemplateResources file("$sourceSets.main.output.resourcesDir/html-template-resources/"), { builtBy(processResources) }
+    syntaxHighlighter file("$sourceSets.main.output.resourcesDir/syntax-highlighter/"), { builtBy(processResources) }
+    docSearch file("$sourceSets.main.output.resourcesDir/doc-search/"), { builtBy(processResources) }
 }
 
 jar {
@@ -77,6 +100,7 @@ shadowJar {
     configurations = [project.configurations.runtimeClasspath]
     dependencies {
         include(dependency('com.github.jknack:handlebars'))
+        include(dependency('org.antlr:antlr4:4.5'))
         include(dependency('com.atlassian.commonmark:commonmark'))
         include(dependency('com.atlassian.commonmark:commonmark-ext-gfm-tables'))
         exclude('META-INF/*.SF')
@@ -92,6 +116,7 @@ task copyBalo(type: Copy) {
 
 processResources {
     dependsOn 'copyHighlighter'
+    dependsOn 'copyDocSearch'
 }
 
 task copyHighlighter(type: Copy) {
@@ -102,6 +127,13 @@ task copyHighlighter(type: Copy) {
     into("$buildDir/resources/main/syntax-highlighter")
 }
 
+task copyDocSearch(type: Copy) {
+    dependsOn ":composer-library:npmBuild"
+    from configurations.docSearchLib {
+        include '*.js'
+    }
+    into("$buildDir/resources/main/doc-search")
+}
 
 test {
     useTestNG() {

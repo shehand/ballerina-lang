@@ -15,16 +15,26 @@
  */
 package org.ballerinalang.langserver.util;
 
-import org.antlr.v4.runtime.Token;
-import org.ballerinalang.langserver.common.CommonKeys;
-import org.wso2.ballerinalang.compiler.parser.antlr4.BallerinaParser;
+import io.ballerina.tools.text.LinePosition;
+import io.ballerina.tools.text.TextDocument;
+import io.ballerinalang.compiler.syntax.tree.ModulePartNode;
+import io.ballerinalang.compiler.syntax.tree.SyntaxTree;
+import io.ballerinalang.compiler.syntax.tree.Token;
+import org.ballerinalang.langserver.common.utils.CommonUtil;
+import org.ballerinalang.langserver.commons.LSContext;
+import org.ballerinalang.langserver.commons.workspace.WorkspaceDocumentException;
+import org.ballerinalang.langserver.commons.workspace.WorkspaceDocumentManager;
+import org.ballerinalang.langserver.compiler.DocumentServiceKeys;
+import org.ballerinalang.langserver.util.references.TokenOrSymbolNotFoundException;
+import org.eclipse.lsp4j.Position;
 
-import java.util.List;
+import java.nio.file.Path;
 import java.util.Optional;
+
 
 /**
  * Token capturing utils.
- * 
+ *
  * @since 1.0
  */
 public class TokensUtil {
@@ -32,76 +42,30 @@ public class TokensUtil {
     }
 
     /**
-     * Search the token at a given cursor position.
+     * Find the token at position.
      *
-     * @param tokenList List of tokens in the current compilation unit's source
-     * @param cLine     Cursor line
-     * @param cCol      cursor column
-     * @return {@link Optional}
+     * @return Token at position
+     * @throws WorkspaceDocumentException while retrieving the syntax tree from the document manager
      */
-    public static Optional<Token> searchTokenAtCursor(List<Token> tokenList, int cLine, int cCol,
-                                                      boolean identifiersOnly) {
-        if (tokenList.isEmpty()) {
-            return Optional.empty();
+    public static Token findTokenAtPosition(LSContext context, Position position)
+            throws WorkspaceDocumentException, TokenOrSymbolNotFoundException {
+        WorkspaceDocumentManager docManager = context.get(DocumentServiceKeys.DOC_MANAGER_KEY);
+        Optional<Path> filePath = CommonUtil.getPathFromURI(context.get(DocumentServiceKeys.FILE_URI_KEY));
+        if (!filePath.isPresent()) {
+            throw new WorkspaceDocumentException("File " + filePath.toString() + " does not exists.");
         }
-        int tokenIndex = tokenList.size() / 2;
+        SyntaxTree syntaxTree = docManager.getTree(filePath.get());
+        TextDocument textDocument = syntaxTree.textDocument();
 
-        TokensUtil.TokenPosition position = locateTokenAtCursor(tokenList.get(tokenIndex), cLine, cCol,
-                identifiersOnly);
+        int txtPos = textDocument.textPositionFrom(LinePosition.from(position.getLine(), position.getCharacter()));
+        Token tokenAtPosition =
+                ((ModulePartNode) syntaxTree.rootNode()).findToken(
+                        txtPos);
 
-        switch (position) {
-            case ON:
-                // found the token and return it
-                return Optional.ofNullable(tokenList.get(tokenIndex));
-            case LEFT:
-                return searchTokenAtCursor(tokenList.subList(0, tokenIndex), cLine, cCol, identifiersOnly);
-            default:
-                return searchTokenAtCursor(tokenList.subList(tokenIndex + 1, tokenList.size()), cLine, cCol,
-                        identifiersOnly);
+        if (tokenAtPosition == null) {
+            throw new TokenOrSymbolNotFoundException("Couldn't find a valid identifier token at position!");
         }
-    }
 
-    private static TokenPosition locateTokenAtCursor(Token token, int cLine, int cCol, boolean identifiersOnly) {
-        int tokenLine = token.getLine() - 1;
-        int tokenStartCol = token.getCharPositionInLine();
-        int tokenEndCol = tokenStartCol +
-                ((token.getText().equals("\r\n") || token.getText().equals("\n")) ? 0 : token.getText().length());
-        
-        if (identifiersOnly) {
-            return locateIdentifierTokenAtCursor(token, cLine, cCol, tokenLine, tokenStartCol, tokenEndCol);
-        }
-        
-        /*
-        Token which is considered as the token at cursor is the token immediate before the cursor,
-         where its end column is cursor column 
-         */
-        if (tokenLine == cLine && tokenStartCol < cCol && tokenEndCol >= cCol
-                && token.getType() != BallerinaParser.NEW_LINE) {
-            return TokenPosition.ON;
-        } else if (cLine > tokenLine || (tokenLine == cLine && cCol > tokenEndCol)) {
-            return TokenPosition.RIGHT;
-        } else {
-            return TokenPosition.LEFT;
-        }
-    }
-    
-    private static TokenPosition locateIdentifierTokenAtCursor(Token token, int cLine, int cCol, int tokenLine,
-                                                               int tokenStartCol, int tokenEndCol) {
-        // NOTE: handles 'new' symbol specifically
-        boolean isValid = token.getType() == BallerinaParser.Identifier ||
-                CommonKeys.NEW_KEYWORD_KEY.equals(token.getText());
-        if (tokenLine == cLine && tokenStartCol <= cCol && tokenEndCol >= cCol && isValid) {
-            return TokenPosition.ON;
-        } else if (cLine > tokenLine || (tokenLine == cLine && cCol >= tokenEndCol)) {
-            return TokenPosition.RIGHT;
-        } else {
-            return TokenPosition.LEFT;
-        }
-    }
-
-    private enum TokenPosition {
-        LEFT,
-        ON,
-        RIGHT
+        return tokenAtPosition;
     }
 }

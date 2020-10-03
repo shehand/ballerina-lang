@@ -16,39 +16,58 @@
 
 package org.ballerinalang.debugadapter.variable.types;
 
-import com.sun.jdi.Field;
 import com.sun.jdi.Value;
-import com.sun.tools.jdi.ObjectReferenceImpl;
-import org.ballerinalang.debugadapter.variable.VariableImpl;
-import org.eclipse.lsp4j.debug.Variable;
+import org.ballerinalang.debugadapter.SuspendedContext;
+import org.ballerinalang.debugadapter.variable.BCompoundVariable;
+import org.ballerinalang.debugadapter.variable.BVariableType;
+import org.ballerinalang.debugadapter.variable.VariableUtils;
 
-import java.util.List;
-import java.util.stream.Collectors;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Optional;
+import java.util.TreeMap;
+
+import static org.ballerinalang.debugadapter.variable.VariableUtils.UNKNOWN_VALUE;
+import static org.ballerinalang.debugadapter.variable.VariableUtils.getStringFrom;
 
 /**
- * error type.
+ * Ballerina error variable type.
  */
-public class BError extends VariableImpl {
+public class BError extends BCompoundVariable {
 
-    private final ObjectReferenceImpl value;
+    private static final String FIELD_MESSAGE = "message";
+    private static final String FIELD_CAUSE = "cause";
+    private static final String FIELD_DETAILS = "details";
 
-    public BError(Value value, Variable dapVariable) {
-        this.value = (ObjectReferenceImpl) value;
-        this.setDapVariable(dapVariable);
-        dapVariable.setType("error");
-        dapVariable.setValue(this.toString());
+    public BError(SuspendedContext context, String name, Value value) {
+        super(context, name, BVariableType.ERROR, value);
     }
 
     @Override
-    public String toString() {
-        List<Field> fields = value.referenceType().allFields();
+    public String computeValue() {
+        try {
+            Optional<Value> message = VariableUtils.getFieldValue(jvmValue, FIELD_MESSAGE);
+            return message.isPresent() ? getStringFrom(message.get()) : UNKNOWN_VALUE;
+        } catch (Exception ignored) {
+            return UNKNOWN_VALUE;
+        }
+    }
 
-        Field valueField = fields.stream().filter(field ->
-                field.name().equals("reason"))
-                .collect(Collectors.toList()).get(0);
-
-        Value error = value.getValue(valueField);
-
-        return error.toString();
+    @Override
+    public Map<String, Value> computeChildVariables() {
+        try {
+            Map<String, Value> childVarMap = new TreeMap<>();
+            // Fetches message, cause and details of the error.
+            Optional<Value> message = VariableUtils.getFieldValue(jvmValue, FIELD_MESSAGE);
+            Optional<Value> cause = VariableUtils.getFieldValue(jvmValue, FIELD_CAUSE);
+            Optional<Value> details = VariableUtils.getFieldValue(jvmValue, FIELD_DETAILS);
+            // Adds NotNull information as child attributes.
+            message.ifPresent(value -> childVarMap.put(FIELD_MESSAGE, value));
+            cause.ifPresent(value -> childVarMap.put(FIELD_CAUSE, value));
+            details.ifPresent(value -> childVarMap.put(FIELD_DETAILS, value));
+            return childVarMap;
+        } catch (Exception ignored) {
+            return new HashMap<>();
+        }
     }
 }

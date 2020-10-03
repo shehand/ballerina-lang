@@ -48,6 +48,7 @@ public class GlobalVarFunctionInBaloTest {
 
     @BeforeClass
     public void setup() throws IOException {
+        BaloCreator.cleanCacheDirectories();
         BaloCreator.createAndSetupBalo("test-src/balo/test_projects/test_project", "testorg", "foo");
         result = BCompileUtil.compile("test-src/balo/test_balo/globalvar/test_global_var_function.bal");
     }
@@ -62,7 +63,7 @@ public class GlobalVarFunctionInBaloTest {
         Assert.assertSame(returns[2].getClass(), BFloat.class);
         Assert.assertSame(returns[3].getClass(), BInteger.class);
         Assert.assertEquals(((BInteger) returns[0]).intValue(), 800);
-        Assert.assertEquals(((BString) returns[1]).stringValue(), "value");
+        Assert.assertEquals(returns[1].stringValue(), "value");
         Assert.assertEquals(((BFloat) returns[2]).floatValue(), 99.34323);
         Assert.assertEquals(((BInteger) returns[3]).intValue(), 88343);
     }

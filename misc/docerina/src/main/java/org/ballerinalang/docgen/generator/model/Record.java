@@ -15,7 +15,8 @@
  */
 package org.ballerinalang.docgen.generator.model;
 
-import java.util.ArrayList;
+import com.google.gson.annotations.Expose;
+
 import java.util.List;
 
 /**
@@ -23,10 +24,15 @@ import java.util.List;
  */
 public class Record extends Construct {
 
-    public List<DefaultableVarible> fields  = new ArrayList<>();
+    @Expose
+    public List<DefaultableVariable> fields;
+    @Expose
+    public boolean isClosed;
 
-    public Record(String name, String description, List<DefaultableVarible> fields) {
-        super(name, description);
+    public Record(String name, String description, boolean isDeprecated, boolean isClosed,
+                  List<DefaultableVariable> fields) {
+        super(name, description, isDeprecated);
+        this.isClosed = isClosed;
         this.fields = fields;
     }
 }

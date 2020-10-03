@@ -16,13 +16,11 @@
 package org.ballerinalang.langserver.compiler;
 
 import org.ballerinalang.compiler.CompilerPhase;
-import org.ballerinalang.langserver.compiler.workspace.WorkspaceDocumentManager;
+import org.ballerinalang.langserver.commons.workspace.WorkspaceDocumentManager;
 import org.ballerinalang.langserver.compiler.workspace.WorkspaceDocumentManagerImpl;
 import org.ballerinalang.langserver.compiler.workspace.repository.LSPathConverter;
 import org.ballerinalang.model.elements.PackageID;
 import org.ballerinalang.repository.CompiledPackage;
-import org.ballerinalang.util.diagnostic.Diagnostic;
-import org.ballerinalang.util.diagnostic.DiagnosticListener;
 import org.wso2.ballerinalang.compiler.PackageCache;
 import org.wso2.ballerinalang.compiler.SourceDirectory;
 import org.wso2.ballerinalang.compiler.packaging.converters.Converter;
@@ -35,7 +33,6 @@ import java.io.InputStream;
 import java.nio.charset.Charset;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -70,8 +67,8 @@ public class LSContextManager {
     /**
      * Returns a unique compiler context for the project directory path.
      *
-     * @param packageID         package ID or null
-     * @param projectDir        project directory path
+     * @param packageID       package ID or null
+     * @param projectDir      project directory path
      * @param documentManager {@link WorkspaceDocumentManager} Document Manager
      * @return compiler context
      */
@@ -84,9 +81,10 @@ public class LSContextManager {
             compilerContext = null;
             compilationCounter = 0;
             LSClientLogger.logTrace("CompilationContext for {projectRoot: '" + projectDir +
-                                            "'}, has been reinitialized");
+                    "'}, has been reinitialized");
         }
 
+        // TODO: Remove the enable new parser check later.
         if (compilerContext == null) {
             synchronized (LSContextManager.class) {
                 compilerContext = contextMap.get(projectDir);
@@ -104,8 +102,8 @@ public class LSContextManager {
     /**
      * Set compiler context for a given project directory.
      *
-     * @param projectDir        project directory
-     * @param compilerContext   compiler context.
+     * @param projectDir      project directory
+     * @param compilerContext compiler context.
      */
     public void setCompilerContext(String projectDir, CompilerContext compilerContext) {
         contextMap.put(projectDir, compilerContext);
@@ -114,7 +112,7 @@ public class LSContextManager {
     /**
      * Remove a compiler context by project directory.
      *
-     * @param projectDir        project directory
+     * @param projectDir project directory
      */
     public void removeCompilerContext(String projectDir) {
         contextMap.remove(projectDir);
@@ -145,9 +143,6 @@ public class LSContextManager {
         options.put(PRESERVE_WHITESPACE, Boolean.toString(true));
         options.put(OFFLINE, Boolean.toString(true));
         context.put(SourceDirectory.class, new NullSourceDirectory(Paths.get(projectDir), documentManager));
-        List<Diagnostic> balDiagnostics = new ArrayList<>();
-        CollectDiagnosticListener diagnosticListener = new CollectDiagnosticListener(balDiagnostics);
-        context.put(DiagnosticListener.class, diagnosticListener);
         return context;
     }
 
@@ -210,7 +205,7 @@ public class LSContextManager {
 
         @Override
         public void saveCompiledPackage(CompiledPackage compiledPackage, Path dirPath, String fileName) throws
-                                                                                                        IOException {
+                IOException {
 
         }
 

@@ -16,6 +16,8 @@
 
 package org.ballerinalang.langserver.compiler.workspace;
 
+import org.ballerinalang.langserver.commons.workspace.WorkspaceDocumentException;
+import org.eclipse.lsp4j.TextDocumentContentChangeEvent;
 import org.testng.Assert;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.Test;
@@ -25,6 +27,7 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Collections;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.locks.Lock;
@@ -115,7 +118,8 @@ public class ExtendedWorkspaceDocumentManagerImplTest {
         // Update the file
         Optional<Lock> lock = documentManager.lockFile(filePath);
         try {
-            documentManager.updateFile(filePath, updateContent);
+            TextDocumentContentChangeEvent changeEvent = new TextDocumentContentChangeEvent(updateContent);
+            documentManager.updateFile(filePath, Collections.singletonList(changeEvent));
         } finally {
             lock.ifPresent(Lock::unlock);
         }
@@ -150,7 +154,8 @@ public class ExtendedWorkspaceDocumentManagerImplTest {
 
     @Test(dependsOnMethods = "testCloseFile", enabled = false)
     public void testUpdateFileOnClosedFile() throws WorkspaceDocumentException {
-        documentManager.updateFile(filePath, "");
+        TextDocumentContentChangeEvent changeEvent = new TextDocumentContentChangeEvent("");
+        documentManager.updateFile(filePath, Collections.singletonList(changeEvent));
     }
 
     @Test(dependsOnMethods = "testCloseFile", enabled = false)
@@ -159,7 +164,8 @@ public class ExtendedWorkspaceDocumentManagerImplTest {
         Optional<Lock> lock = documentManager.enableExplicitMode(filePath);
         try {
             //Update content in explicit mode
-            documentManager.updateFile(filePath, newContent);
+            TextDocumentContentChangeEvent changeEvent = new TextDocumentContentChangeEvent(newContent);
+            documentManager.updateFile(filePath, Collections.singletonList(changeEvent));
             //Check content in explicit mode
             Assert.assertEquals(newContent, documentManager.getFileContent(filePath));
         } finally {

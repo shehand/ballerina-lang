@@ -108,18 +108,18 @@ function assignFiniteValueAsDefaultParam(State cd = "on") returns State {
    return c.b ?: "off";
 }
 
-type Channel object {
+class Channel {
 
     public State? b;
 
-    function __init (State b = "off", boolean a = true){
+    function init (State b = "off", boolean a = true){
         self.b = b;
         State o =  "on";
         if(self.b == o) {
            int i = 4;
         }
     }
-};
+}
 
 type CombinedState "on"|"off"|int;
 

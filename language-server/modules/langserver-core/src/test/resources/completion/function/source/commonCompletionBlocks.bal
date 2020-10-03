@@ -64,44 +64,30 @@ function divideNumbers(int a, int b) returns int|error {
     return a / b;
 }
 
-function initiateNestedTransactionInRemote(string nestingMethod) returns @tainted string {
+function initiateNestedTransactionInRemote(string nestingMethod, int failureCutOff, boolean requestRollback) returns @tainted string {
    http:Client remoteEp = new("http://localhost:8889");
     string s = "";
     transaction {
-        s += " in initiator-trx";
-        
-        // this call sends the transaction context with it
-        var resp = remoteEp->post("/nestedTrx", nestingMethod);
-        if (resp is http:Response) {
-            if (resp.statusCode == 500) {
-                s += " remote1-excepted";
-                var payload = resp.getTextPayload();
-                if (payload is string) {
-                    s += ":[" + payload + "]";
-                }
-            } else {
-                var text = resp.getTextPayload();
-                if (text is string) {
-                    log:printInfo(text);
-                    s += " <" + text + ">";
-                } else {
-                    s += " error-in-remote-response " + text.reason();
-                    log:printError(text.reason());
-                }
+            s = s + " inTrx";
+            count = count + 1;
+            if (transactional) {
+                int booooo = 12;
             }
-        } else {
-            s += " remote call error: " + resp.reason();
+            if (count <= failureCutOff) {
+                s = s + " blowUp"; // transaction block panic scenario, Set failure cutoff to 0, for not blowing up.
+                int bV = blowUp();
+            }
+            if (requestRollback) { // Set requestRollback to true if you want to try rollback scenario, otherwise commit
+                s = s + " Rollback";
+                
+                rollback;
+            } else {
+                a = a + " Commit";
+                var i = commit;
+            }
+            s = s + " endTrx";
+            s = (s + " end");
         }
-    } onretry {
-        s += " onretry";
-        
-    } committed {
-        s += " committed";
-
-    } aborted {
-        s += " aborted";
-
-    }
     return s;
 }
 

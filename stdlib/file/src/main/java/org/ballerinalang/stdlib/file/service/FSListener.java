@@ -18,11 +18,14 @@
 
 package org.ballerinalang.stdlib.file.service;
 
-import org.ballerinalang.jvm.BRuntime;
-import org.ballerinalang.jvm.BallerinaValues;
+import org.ballerinalang.jvm.api.BRuntime;
+import org.ballerinalang.jvm.api.BStringUtils;
+import org.ballerinalang.jvm.api.BValueCreator;
+import org.ballerinalang.jvm.api.values.BMap;
+import org.ballerinalang.jvm.api.values.BObject;
+import org.ballerinalang.jvm.api.values.BString;
+import org.ballerinalang.jvm.scheduling.StrandMetadata;
 import org.ballerinalang.jvm.types.AttachedFunction;
-import org.ballerinalang.jvm.values.MapValue;
-import org.ballerinalang.jvm.values.ObjectValue;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.wso2.transport.localfilesystem.server.connector.contract.LocalFileSystemEvent;
@@ -30,7 +33,11 @@ import org.wso2.transport.localfilesystem.server.connector.contract.LocalFileSys
 
 import java.util.Map;
 
+import static org.ballerinalang.jvm.util.BLangConstants.BALLERINA_BUILTIN_PKG_PREFIX;
 import static org.ballerinalang.stdlib.file.service.DirectoryListenerConstants.FILE_SYSTEM_EVENT;
+import static org.ballerinalang.stdlib.file.service.DirectoryListenerConstants.MODULE_NAME;
+import static org.ballerinalang.stdlib.file.service.DirectoryListenerConstants.MODULE_VERSION;
+import static org.ballerinalang.stdlib.file.service.DirectoryListenerConstants.RESOURCE_NAME_ON_MESSAGE;
 import static org.ballerinalang.stdlib.file.utils.FileConstants.FILE_EVENT_NAME;
 import static org.ballerinalang.stdlib.file.utils.FileConstants.FILE_EVENT_OPERATION;
 import static org.ballerinalang.stdlib.file.utils.FileConstants.FILE_PACKAGE_ID;
@@ -42,10 +49,13 @@ public class FSListener implements LocalFileSystemListener {
 
     private static final Logger log = LoggerFactory.getLogger(FSListener.class);
     private BRuntime runtime;
-    private ObjectValue service;
+    private BObject service;
     private Map<String, AttachedFunction> attachedFunctionRegistry;
+    private static final StrandMetadata ON_MESSAGE_METADATA = new StrandMetadata(BALLERINA_BUILTIN_PKG_PREFIX,
+                                                                                 MODULE_NAME, MODULE_VERSION,
+                                                                                 RESOURCE_NAME_ON_MESSAGE);
 
-    public FSListener(BRuntime runtime, ObjectValue service, Map<String, AttachedFunction> resourceRegistry) {
+    public FSListener(BRuntime runtime, BObject service, Map<String, AttachedFunction> resourceRegistry) {
         this.runtime = runtime;
         this.service = service;
         this.attachedFunctionRegistry = resourceRegistry;
@@ -56,7 +66,8 @@ public class FSListener implements LocalFileSystemListener {
         Object[] parameters = getJvmSignatureParameters(fileEvent);
         AttachedFunction resource = getAttachedFunction(fileEvent.getEvent());
         if (resource != null) {
-            runtime.invokeMethodAsync(service, resource.getName(), new DirectoryCallback(), parameters);
+            runtime.invokeMethodAsync(service, resource.getName(), null, ON_MESSAGE_METADATA, new DirectoryCallback(),
+                                      parameters);
         } else {
             log.warn(String.format("FileEvent received for unregistered resource: [%s] %s", fileEvent.getEvent(),
                     fileEvent.getFileName()));
@@ -64,9 +75,9 @@ public class FSListener implements LocalFileSystemListener {
     }
 
     private Object[] getJvmSignatureParameters(LocalFileSystemEvent fileEvent) {
-        MapValue<String, Object> eventStruct = BallerinaValues.createRecordValue(FILE_PACKAGE_ID, FILE_SYSTEM_EVENT);
-        eventStruct.put(FILE_EVENT_NAME, fileEvent.getFileName());
-        eventStruct.put(FILE_EVENT_OPERATION, fileEvent.getEvent());
+        BMap<BString, Object> eventStruct = BValueCreator.createRecordValue(FILE_PACKAGE_ID, FILE_SYSTEM_EVENT);
+        eventStruct.put(BStringUtils.fromString(FILE_EVENT_NAME), BStringUtils.fromString(fileEvent.getFileName()));
+        eventStruct.put(BStringUtils.fromString(FILE_EVENT_OPERATION), BStringUtils.fromString(fileEvent.getEvent()));
         return new Object[] { eventStruct, true };
     }
 

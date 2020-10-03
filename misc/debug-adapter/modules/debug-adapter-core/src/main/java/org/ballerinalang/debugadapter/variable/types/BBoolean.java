@@ -16,33 +16,42 @@
 
 package org.ballerinalang.debugadapter.variable.types;
 
-import com.sun.jdi.Field;
+import com.sun.jdi.BooleanValue;
+import com.sun.jdi.ObjectReference;
 import com.sun.jdi.Value;
-import com.sun.tools.jdi.ObjectReferenceImpl;
-import org.ballerinalang.debugadapter.variable.VariableImpl;
-import org.eclipse.lsp4j.debug.Variable;
+import org.ballerinalang.debugadapter.SuspendedContext;
+import org.ballerinalang.debugadapter.variable.BSimpleVariable;
+import org.ballerinalang.debugadapter.variable.BVariableType;
+import org.ballerinalang.debugadapter.variable.VariableUtils;
 
-import java.util.stream.Collectors;
+import java.util.Optional;
+
+import static org.ballerinalang.debugadapter.variable.VariableUtils.FIELD_VALUE;
+import static org.ballerinalang.debugadapter.variable.VariableUtils.UNKNOWN_VALUE;
 
 /**
- * Boolean variable type.
+ * Ballerina boolean variable type.
  */
-public class BBoolean extends VariableImpl {
+public class BBoolean extends BSimpleVariable {
 
-    private final ObjectReferenceImpl value;
-
-    public BBoolean(Value value, Variable dapVariable) {
-        this.value = (ObjectReferenceImpl) value;
-        this.setDapVariable(dapVariable);
-        dapVariable.setType("double");
-        dapVariable.setValue(this.toString());
+    public BBoolean(SuspendedContext context, String name, Value value) {
+        super(context, name, BVariableType.BOOLEAN, value);
     }
 
     @Override
-    public String toString() {
-        Field valueField = value.referenceType().allFields().stream().filter(
-                field -> "value".equals(field.name())).collect(Collectors.toList()).get(0);
-        Value longValue = value.getValue(valueField);
-        return longValue.toString();
+    public String computeValue() {
+        try {
+            if (jvmValue instanceof BooleanValue) {
+                return jvmValue.toString();
+            } else if (jvmValue instanceof ObjectReference) {
+                Optional<Value> field = VariableUtils.getFieldValue(jvmValue, FIELD_VALUE);
+                if (field.isPresent()) {
+                    return field.get().toString();
+                }
+            }
+            return UNKNOWN_VALUE;
+        } catch (Exception e) {
+            return UNKNOWN_VALUE;
+        }
     }
 }

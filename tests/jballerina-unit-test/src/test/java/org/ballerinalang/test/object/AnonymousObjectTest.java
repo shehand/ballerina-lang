@@ -33,6 +33,7 @@ import org.testng.annotations.Test;
  *
  * @since 0.970.0
  */
+@Test(groups = "brokenOnClassChange")
 public class AnonymousObjectTest {
 
     private CompileResult compileResult;
@@ -161,5 +162,10 @@ public class AnonymousObjectTest {
         BAssertUtil.validateError(result, 2,
                 "no implementation found for the function 'test' of non-abstract object " +
                         "'object { public int age; public string name; function test () returns (); }'", 8, 58);
+    }
+
+    @Test(description = "Test Code analyzer execution on Anonymous objects")
+    public void testCodeAnalyzerRunningOnAnonymousObjectsForDeprecatedFunctionAnnotation() {
+        BAssertUtil.validateWarning(compileResult, 0, "usage of construct 'Test()' is deprecated", 218, 17);
     }
 }

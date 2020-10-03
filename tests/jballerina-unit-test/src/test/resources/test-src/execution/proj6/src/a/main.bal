@@ -1,19 +1,19 @@
 import ballerina/io;
 import ballerina/lang.'object;
 
-function __init() {
+function init() {
 	io:println("Initializing module a");
 }
 
 public function main() {
 }
 
-public type ABC object {
+public class ABC {
 
     *'object:Listener;
     private string name = "";
 
-    public function __init(string name){
+    public function init(string name){
         self.name = name;
     }
 
@@ -42,6 +42,6 @@ public type ABC object {
     public function __detach(service s) returns error? {
         io:println("a:ABC listener __detach called, service name - " + self.name);
     }
-};
+}
 
 listener ABC ep = new ABC("ModA");

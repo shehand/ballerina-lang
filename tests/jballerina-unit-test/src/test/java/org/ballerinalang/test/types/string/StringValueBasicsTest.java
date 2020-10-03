@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, WSO2 Inc. (http://www.wso2.org) All Rights Reserved.
+ * Copyright (c) 2020, WSO2 Inc. (http://www.wso2.org) All Rights Reserved.
  *
  * WSO2 Inc. licenses this file to you under the Apache License,
  * Version 2.0 (the "License"); you may not use this file except
@@ -17,28 +17,22 @@
  */
 package org.ballerinalang.test.types.string;
 
-import org.ballerinalang.model.values.BInteger;
 import org.ballerinalang.model.values.BString;
 import org.ballerinalang.model.values.BValue;
 import org.ballerinalang.test.util.BCompileUtil;
 import org.ballerinalang.test.util.BRunUtil;
-import org.ballerinalang.test.util.CompileResult;
+import org.ballerinalang.util.exceptions.BLangRuntimeException;
 import org.testng.Assert;
-import org.testng.annotations.AfterClass;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.Test;
-
-import static org.ballerinalang.test.util.BRunUtil.IS_STRING_VALUE_PROP;
 
 /**
  * Test StringValue impl of ballerina string.
  */
-public class StringValueBasicsTest {
-    private CompileResult result;
+public class StringValueBasicsTest extends BStringTestCommons {
 
     @BeforeClass
     public void setup() {
-        System.setProperty(IS_STRING_VALUE_PROP, "true");
         result = BCompileUtil.compile("test-src/types/string/string-value-test.bal");
     }
 
@@ -51,14 +45,39 @@ public class StringValueBasicsTest {
 
     @Test
     public void testNonBMPStringLength() {
-        BValue[] returns = BRunUtil.invoke(result, "nonBMPLength");
-        Assert.assertEquals(returns[0].getClass(), BInteger.class);
-        Assert.assertEquals(((BInteger) returns[0]).intValue(), 5);
+        testAndAssert("nonBMPLength", 5);
     }
 
-    @AfterClass
-    public void down() {
-        System.clearProperty(IS_STRING_VALUE_PROP);
+    @Test
+    public void testRecordStringValue() {
+        testAndAssert("recordStringValue", 5);
+        //TODO assert return value has BString
     }
 
+    @Test
+    public void testError() {
+        testAndAssert("testError", 5);
+    }
+
+    @Test
+    public void testArrayStore() {
+        testAndAssert("testArrayStore", 10);
+    }
+
+    @Test
+    public void testStringIndexAccess() {
+        testAndAssert("testStringIndexAccess", 1);
+    }
+
+    @Test(expectedExceptions = BLangRuntimeException.class,
+          expectedExceptionsMessageRegExp = ".*string index out of range: index: 6, size: 6.*")
+    public void testStringIndexAccessException() {
+        BRunUtil.invoke(result, "testStringIndexAccessException");
+    }
+
+    @Test
+    public void testCastToString() {
+        testAndAssert("anyToStringCasting", 6);
+        testAndAssert("anydataToStringCast", 6);
+    }
 }

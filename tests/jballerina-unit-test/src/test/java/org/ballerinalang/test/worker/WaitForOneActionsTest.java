@@ -90,7 +90,7 @@ public class WaitForOneActionsTest {
     }
 
     @Test (expectedExceptions = {BLangRuntimeException.class},
-            expectedExceptionsMessageRegExp = "error: err from panic .*")
+            expectedExceptionsMessageRegExp = "error: err from panic.*")
     public void waitTest8() {
         BRunUtil.invoke(result, "waitTest8");
     }
@@ -99,6 +99,11 @@ public class WaitForOneActionsTest {
     public void waitTest9() {
         BValue[] vals = BRunUtil.invoke(result, "waitTest9", new BValue[0]);
         Assert.assertEquals(vals.length, 1);
-        Assert.assertEquals(vals[0], null);
+        Assert.assertNull(vals[0]);
+    }
+
+    @Test
+    public void asyncObjectCreationTest() {
+        BRunUtil.invoke(result, "asyncObjectCreationTest", new BValue[0]);
     }
 }

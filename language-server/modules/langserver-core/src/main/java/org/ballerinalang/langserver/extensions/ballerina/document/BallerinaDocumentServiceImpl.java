@@ -20,6 +20,10 @@ import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
+import io.ballerina.tools.text.TextDocument;
+import io.ballerina.tools.text.TextDocuments;
+import io.ballerinalang.compiler.syntax.tree.ModulePartNode;
+import io.ballerinalang.compiler.syntax.tree.SyntaxTree;
 import org.ballerinalang.ballerina.openapi.convertor.service.OpenApiConverterUtils;
 import org.ballerinalang.compiler.CompilerPhase;
 import org.ballerinalang.langserver.BallerinaLanguageServer;
@@ -27,35 +31,33 @@ import org.ballerinalang.langserver.LSContextOperation;
 import org.ballerinalang.langserver.LSGlobalContext;
 import org.ballerinalang.langserver.LSGlobalContextKeys;
 import org.ballerinalang.langserver.common.utils.CommonUtil;
+import org.ballerinalang.langserver.commons.LSContext;
+import org.ballerinalang.langserver.commons.workspace.WorkspaceDocumentException;
+import org.ballerinalang.langserver.commons.workspace.WorkspaceDocumentManager;
 import org.ballerinalang.langserver.compiler.DocumentServiceKeys;
 import org.ballerinalang.langserver.compiler.ExtendedLSCompiler;
-import org.ballerinalang.langserver.compiler.LSContext;
 import org.ballerinalang.langserver.compiler.LSModuleCompiler;
-import org.ballerinalang.langserver.compiler.common.LSCustomErrorStrategy;
 import org.ballerinalang.langserver.compiler.common.modal.BallerinaFile;
 import org.ballerinalang.langserver.compiler.common.modal.SymbolMetaInfo;
-import org.ballerinalang.langserver.compiler.exception.CompilationFailedException;
 import org.ballerinalang.langserver.compiler.format.JSONGenerationException;
 import org.ballerinalang.langserver.compiler.format.TextDocumentFormatUtil;
 import org.ballerinalang.langserver.compiler.sourcegen.FormattingSourceGen;
-import org.ballerinalang.langserver.compiler.workspace.WorkspaceDocumentException;
-import org.ballerinalang.langserver.compiler.workspace.WorkspaceDocumentManager;
 import org.ballerinalang.langserver.extensions.OASGenerationException;
 import org.ballerinalang.langserver.extensions.VisibleEndpointVisitor;
 import org.ballerinalang.model.tree.ServiceNode;
 import org.ballerinalang.model.tree.TopLevelNode;
 import org.ballerinalang.openapi.CodeGenerator;
+import org.ballerinalang.openapi.cmd.Filter;
 import org.ballerinalang.openapi.model.GenSrcFile;
 import org.ballerinalang.openapi.utils.GeneratorConstants;
 import org.eclipse.lsp4j.ApplyWorkspaceEditParams;
 import org.eclipse.lsp4j.Position;
 import org.eclipse.lsp4j.Range;
+import org.eclipse.lsp4j.TextDocumentContentChangeEvent;
 import org.eclipse.lsp4j.TextDocumentEdit;
 import org.eclipse.lsp4j.TextEdit;
 import org.eclipse.lsp4j.WorkspaceEdit;
 import org.eclipse.lsp4j.jsonrpc.messages.Either;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.wso2.ballerinalang.compiler.tree.BLangCompilationUnit;
 import org.wso2.ballerinalang.compiler.tree.BLangNode;
 import org.wso2.ballerinalang.compiler.tree.BLangPackage;
@@ -78,6 +80,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.locks.Lock;
 import java.util.stream.Collectors;
 
+import static org.ballerinalang.langserver.compiler.LSClientLogger.logError;
 import static org.ballerinalang.langserver.compiler.LSCompilerUtil.getProjectDir;
 import static org.ballerinalang.langserver.compiler.LSCompilerUtil.getUntitledFilePath;
 
@@ -88,10 +91,9 @@ import static org.ballerinalang.langserver.compiler.LSCompilerUtil.getUntitledFi
  */
 public class BallerinaDocumentServiceImpl implements BallerinaDocumentService {
 
-    private static final Logger logger = LoggerFactory.getLogger(BallerinaDocumentService.class);
-
     private final BallerinaLanguageServer ballerinaLanguageServer;
     private final WorkspaceDocumentManager documentManager;
+    public static final LSContext.Key<String> UPDATED_SOURCE = new LSContext.Key<>();
 
     public BallerinaDocumentServiceImpl(LSGlobalContext globalContext) {
         this.ballerinaLanguageServer = globalContext.get(LSGlobalContextKeys.LANGUAGE_SERVER_KEY);
@@ -114,9 +116,10 @@ public class BallerinaDocumentServiceImpl implements BallerinaDocumentService {
             String openApiDefinition = OpenApiConverterUtils
                     .generateOAS3Definitions(fileContent, request.getBallerinaService());
             reply.setBallerinaOASJson(convertToJson(openApiDefinition));
-        } catch (Exception e) {
+        } catch (Throwable e) {
             reply.isIsError(true);
-            logger.error("error: while processing service definition at converter service: " + e.getMessage(), e);
+            String msg = "Operation 'ballerinaDocument/openApiDefinition' failed!";
+            logError(msg, e, request.getBallerinaDocument(), (Position) null);
         } finally {
             lock.ifPresent(Lock::unlock);
         }
@@ -145,8 +148,13 @@ public class BallerinaDocumentServiceImpl implements BallerinaDocumentService {
             //Generate compilation unit for provided Open Api Sep JSON
             File tempOasJsonFile = getOpenApiFile(params.getOASDefinition());
             CodeGenerator generator = new CodeGenerator();
+
+            List<String> tag = new ArrayList<>();
+            List<String> operation = new ArrayList<>();
+            Filter filter = new Filter(tag, operation);
+
             List<GenSrcFile> oasSources = generator.generateBalSource(GeneratorConstants.GenType.GEN_SERVICE,
-                    tempOasJsonFile.getPath(), "", null);
+                    tempOasJsonFile.getPath(), "", null, filter);
 
             Optional<GenSrcFile> oasServiceFile = oasSources.stream()
                     .filter(genSrcFile -> genSrcFile.getType().equals(GenSrcFile.GenFileType.GEN_SRC)).findAny();
@@ -198,13 +206,15 @@ public class BallerinaDocumentServiceImpl implements BallerinaDocumentService {
                 TextDocumentEdit textDocumentEdit = new TextDocumentEdit(params.getDocumentIdentifier(),
                         Collections.singletonList(textEdit));
                 WorkspaceEdit workspaceEdit = new WorkspaceEdit(Collections
-                        .singletonList(Either.forLeft(textDocumentEdit)));
+                        .singletonList(
+                                Either.forLeft(textDocumentEdit)));
                 applyWorkspaceEditParams.setEdit(workspaceEdit);
 
                 ballerinaLanguageServer.getClient().applyEdit(applyWorkspaceEditParams);
             }
-        } catch (Exception ex) {
-            logger.error("error: while processing service definition at converter service: " + ex.getMessage(), ex);
+        } catch (Throwable e) {
+            String msg = "Operation 'ballerinaDocument/apiDesignDidChange' failed!";
+            logError(msg, e, params.getDocumentIdentifier(), (Position) null);
         } finally {
             lock.ifPresent(Lock::unlock);
         }
@@ -246,8 +256,9 @@ public class BallerinaDocumentServiceImpl implements BallerinaDocumentService {
                 });
             }
             reply.setServices(services.toArray(new String[0]));
-        } catch (CompilationFailedException | WorkspaceDocumentException e) {
-            logger.error("error: while processing service definition at converter service: " + e.getMessage());
+        } catch (Throwable e) {
+            String msg = "Operation 'ballerinaDocument/serviceList' failed!";
+            logError(msg, e, request.getDocumentIdentifier(), (Position) null);
         } finally {
             lock.ifPresent(Lock::unlock);
         }
@@ -270,13 +281,155 @@ public class BallerinaDocumentServiceImpl implements BallerinaDocumentService {
                     .DocumentOperationContextBuilder(LSContextOperation.DOC_SERVICE_AST)
                     .withCommonParams(null, fileUri, documentManager)
                     .build();
-            LSModuleCompiler.getBLangPackage(astContext, this.documentManager, LSCustomErrorStrategy.class, false,
-                    false);
+            LSModuleCompiler.getBLangPackage(astContext, this.documentManager, false, false);
             reply.setAst(getTreeForContent(astContext));
-            reply.setParseSuccess(true);
-        } catch (CompilationFailedException | JSONGenerationException e) {
+            reply.setParseSuccess(isParseSuccess(astContext));
+        } catch (Throwable e) {
             reply.setParseSuccess(false);
+            String msg = "Operation 'ballerinaDocument/ast' failed!";
+            logError(msg, e, request.getDocumentIdentifier(), (Position) null);
         } finally {
+            lock.ifPresent(Lock::unlock);
+        }
+        return CompletableFuture.supplyAsync(() -> reply);
+    }
+
+    private boolean isParseSuccess(LSContext astContext) {
+        // TODO: Revisit this. Can never be false.
+        return true;
+    }
+
+    @Override
+    public CompletableFuture<BallerinaSyntaxTreeResponse> syntaxTree(BallerinaSyntaxTreeRequest request) {
+        BallerinaSyntaxTreeResponse reply = new BallerinaSyntaxTreeResponse();
+        String fileUri = request.getDocumentIdentifier().getUri();
+        Optional<Path> filePath = CommonUtil.getPathFromURI(fileUri);
+        if (!filePath.isPresent()) {
+            return CompletableFuture.supplyAsync(() -> reply);
+        }
+        Path compilationPath = getUntitledFilePath(filePath.get().toString()).orElse(filePath.get());
+        Optional<Lock> lock = documentManager.lockFile(compilationPath);
+        try {
+            TextDocument doc = documentManager.getTree(compilationPath).textDocument();
+            SyntaxTreeMapGenerator mapGenerator = new SyntaxTreeMapGenerator();
+            SyntaxTree syntaxTree = SyntaxTree.from(doc, compilationPath.toString());
+            ModulePartNode modulePartNode = syntaxTree.rootNode();
+            reply.setSyntaxTree(mapGenerator.transform(modulePartNode));
+            reply.setParseSuccess(reply.getSyntaxTree() != null);
+        } catch (Throwable e) {
+            reply.setParseSuccess(false);
+            String msg = "Operation 'ballerinaDocument/syntaxTree' failed!";
+            logError(msg, e, request.getDocumentIdentifier(), (Position) null);
+        } finally {
+            lock.ifPresent(Lock::unlock);
+        }
+        return CompletableFuture.supplyAsync(() -> reply);
+    }
+
+    @Override
+    public CompletableFuture<BallerinaSyntaxTreeResponse> syntaxTreeModify(BallerinaSyntaxTreeModifyRequest request) {
+        BallerinaSyntaxTreeResponse reply = new BallerinaSyntaxTreeResponse();
+        String fileUri = request.getDocumentIdentifier().getUri();
+
+        Optional<Path> filePath = CommonUtil.getPathFromURI(fileUri);
+        if (!filePath.isPresent()) {
+            return CompletableFuture.supplyAsync(() -> reply);
+        }
+        Path compilationPath = getUntitledFilePath(filePath.get().toString()).orElse(filePath.get());
+        Optional<Lock> lock = documentManager.lockFile(compilationPath);
+        try {
+            LSContext astContext = BallerinaTreeModifyUtil.modifyTree(request.getAstModifications(), fileUri,
+                    compilationPath, documentManager);
+            SyntaxTreeMapGenerator mapGenerator = new SyntaxTreeMapGenerator();
+            String fileContent = astContext.get(UPDATED_SOURCE);
+            TextDocument textDocument = TextDocuments.from(fileContent);
+            SyntaxTree syntaxTree = SyntaxTree.from(textDocument, compilationPath.toString());
+            ModulePartNode modulePartNode = syntaxTree.rootNode();
+            reply.setSyntaxTree(mapGenerator.transform(modulePartNode));
+            reply.setParseSuccess(reply.getSyntaxTree() != null);
+        } catch (Throwable e) {
+            reply.setParseSuccess(false);
+            String msg = "Operation 'ballerinaDocument/syntaxTreeModify' failed!";
+            logError(msg, e, request.getDocumentIdentifier(), (Position) null);
+        } finally {
+            lock.ifPresent(Lock::unlock);
+        }
+        return CompletableFuture.supplyAsync(() -> reply);
+    }
+
+    @Override
+    public CompletableFuture<BallerinaASTResponse> astModify(BallerinaASTModifyRequest request) {
+        BallerinaASTResponse reply = new BallerinaASTResponse();
+        String fileUri = request.getDocumentIdentifier().getUri();
+
+        Optional<Path> filePath = CommonUtil.getPathFromURI(fileUri);
+        if (!filePath.isPresent()) {
+            return CompletableFuture.supplyAsync(() -> reply);
+        }
+        Path compilationPath = getUntitledFilePath(filePath.get().toString()).orElse(filePath.get());
+        Optional<Lock> lock = documentManager.lockFile(compilationPath);
+        String oldContent = "";
+        try {
+            oldContent = documentManager.getFileContent(compilationPath);
+            LSContext astContext = BallerinaTreeModifyUtil.modifyTree(request.getAstModifications(),
+                    fileUri, compilationPath, documentManager);
+            LSModuleCompiler.getBLangPackage(astContext, this.documentManager, false, false);
+            reply.setSource(astContext.get(UPDATED_SOURCE));
+            reply.setAst(getTreeForContent(astContext));
+            reply.setParseSuccess(isParseSuccess(astContext));
+        } catch (Throwable e) {
+            reply.setParseSuccess(false);
+            String msg = "Operation 'ballerinaDocument/ast' failed!";
+            logError(msg, e, request.getDocumentIdentifier(), (Position) null);
+        } finally {
+            if (!reply.isParseSuccess()) {
+                try {
+                    TextDocumentContentChangeEvent changeEvent = new TextDocumentContentChangeEvent(oldContent);
+                    documentManager.updateFile(compilationPath, Collections.singletonList(changeEvent));
+                } catch (WorkspaceDocumentException e) {
+                    logError("Failed to revert file content.", e, request.getDocumentIdentifier(),
+                            (Position) null);
+                }
+            }
+            lock.ifPresent(Lock::unlock);
+        }
+        return CompletableFuture.supplyAsync(() -> reply);
+    }
+
+    @Override
+    public CompletableFuture<BallerinaASTResponse> triggerModify(BallerinaTriggerModifyRequest request) {
+        BallerinaASTResponse reply = new BallerinaASTResponse();
+        String fileUri = request.getDocumentIdentifier().getUri();
+
+        Optional<Path> filePath = CommonUtil.getPathFromURI(fileUri);
+        if (!filePath.isPresent()) {
+            return CompletableFuture.supplyAsync(() -> reply);
+        }
+        Path compilationPath = getUntitledFilePath(filePath.get().toString()).orElse(filePath.get());
+        Optional<Lock> lock = documentManager.lockFile(compilationPath);
+        String oldContent = "";
+        try {
+            oldContent = documentManager.getFileContent(compilationPath);
+            LSContext astContext = BallerinaTriggerModifyUtil.modifyTrigger(request.getType(), request.getConfig(),
+                    fileUri, compilationPath, documentManager);
+            LSModuleCompiler.getBLangPackage(astContext, this.documentManager, false, false);
+            reply.setSource(astContext.get(UPDATED_SOURCE));
+            reply.setAst(getTreeForContent(astContext));
+            reply.setParseSuccess(isParseSuccess(astContext));
+        } catch (Throwable e) {
+            reply.setParseSuccess(false);
+            String msg = "Operation 'ballerinaDocument/ast' failed!";
+            logError(msg, e, request.getDocumentIdentifier(), (Position) null);
+        } finally {
+            if (!reply.isParseSuccess()) {
+                try {
+                    TextDocumentContentChangeEvent changeEvent = new TextDocumentContentChangeEvent(oldContent);
+                    documentManager.updateFile(compilationPath, Collections.singletonList(changeEvent));
+                } catch (WorkspaceDocumentException e) {
+                    logError("Failed to revert file content.", e, request.getDocumentIdentifier(),
+                            (Position) null);
+                }
+            }
             lock.ifPresent(Lock::unlock);
         }
         return CompletableFuture.supplyAsync(() -> reply);
@@ -322,11 +475,9 @@ public class BallerinaDocumentServiceImpl implements BallerinaDocumentService {
             // update the document
             ballerinaLanguageServer.getClient().applyEdit(applyWorkspaceEditParams);
             reply.setContent(textEditContent);
-        } catch (Exception e) {
-            if (CommonUtil.LS_DEBUG_ENABLED) {
-                String msg = e.getMessage();
-                logger.error("Error while tree modification source gen" + ((msg != null) ? ": " + msg : ""), e);
-            }
+        } catch (Throwable e) {
+            String msg = "Operation 'ballerinaDocument/astDidChange' failed!";
+            logError(msg, e, notification.getTextDocumentIdentifier(), (Position) null);
         } finally {
             lock.ifPresent(Lock::unlock);
         }
@@ -337,11 +488,16 @@ public class BallerinaDocumentServiceImpl implements BallerinaDocumentService {
     public CompletableFuture<BallerinaProject> project(BallerinaProjectParams params) {
         return CompletableFuture.supplyAsync(() -> {
             BallerinaProject project = new BallerinaProject();
-            Optional<Path> filePath = CommonUtil.getPathFromURI(params.getDocumentIdentifier().getUri());
-            if (!filePath.isPresent()) {
-                return project;
+            try {
+                Optional<Path> filePath = CommonUtil.getPathFromURI(params.getDocumentIdentifier().getUri());
+                if (!filePath.isPresent()) {
+                    return project;
+                }
+                project.setPath(getProjectDir(filePath.get()));
+            } catch (Throwable e) {
+                String msg = "Operation 'ballerinaDocument/project' failed!";
+                logError(msg, e, params.getDocumentIdentifier(), (Position) null);
             }
-            project.setPath(getProjectDir(filePath.get()));
             return project;
         });
     }

@@ -17,32 +17,32 @@
  */
 package org.ballerinalang.nativeimpl.java;
 
+import org.ballerinalang.jvm.api.values.BError;
 import org.ballerinalang.jvm.util.exceptions.BLangExceptionHelper;
 import org.ballerinalang.jvm.util.exceptions.BallerinaErrorReasons;
 import org.ballerinalang.jvm.util.exceptions.RuntimeErrors;
-import org.ballerinalang.jvm.values.ErrorValue;
 
 /**
- * Contains utility methods required to implement Java related Ballerina functions in ballerinax/java module.
+ * Contains utility methods required to implement Java related Ballerina functions in ballerina/java module.
  *
  * @since 1.0.0
  */
 class JValues {
 
-    static ErrorValue getJavaNullReferenceError() {
+    static BError getJavaNullReferenceError() {
         return BLangExceptionHelper.getRuntimeException(BallerinaErrorReasons.JAVA_NULL_REFERENCE_ERROR,
                 RuntimeErrors.JAVA_NULL_REFERENCE);
     }
 
     static void rangeCheck(long index, Object[] arr) {
         if (index > Integer.MAX_VALUE || index < Integer.MIN_VALUE) {
-            throw BLangExceptionHelper.getRuntimeException(BallerinaErrorReasons.INDEX_OUT_OF_RANGE_ERROR_IDENTIFIER,
-                    RuntimeErrors.INDEX_NUMBER_TOO_LARGE, index);
+            throw BLangExceptionHelper.getRuntimeException(BallerinaErrorReasons.INDEX_OUT_OF_RANGE_ERROR,
+                                                           RuntimeErrors.INDEX_NUMBER_TOO_LARGE, index);
         }
 
         if (index < 0 || index >= arr.length) {
-            throw BLangExceptionHelper.getRuntimeException(BallerinaErrorReasons.INDEX_OUT_OF_RANGE_ERROR_IDENTIFIER,
-                    RuntimeErrors.ARRAY_INDEX_OUT_OF_RANGE, index, arr.length);
+            throw BLangExceptionHelper.getRuntimeException(BallerinaErrorReasons.INDEX_OUT_OF_RANGE_ERROR,
+                                                           RuntimeErrors.ARRAY_INDEX_OUT_OF_RANGE, index, arr.length);
         }
     }
 }

@@ -15,17 +15,17 @@
 // under the License.
 
 # Represent the iterator type returned when `iterator` method is invoked.
-type ArrayIterator object {
+class ArrayIterator {
 
     private Type[] m;
 
-    public function __init(Type[] m) {
+    public function init(Type[] m) {
         self.m = m;
     }
 
     # Return next member or nil if end of iteration is reached.
     # + return - iterator result
-    public function next() returns record {|
+    public isolated function next() returns record {|
         Type value;
     |}? = external;
-};
+}

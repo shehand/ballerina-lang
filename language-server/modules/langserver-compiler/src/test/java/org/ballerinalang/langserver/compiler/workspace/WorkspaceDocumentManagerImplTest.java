@@ -17,6 +17,8 @@
  */
 package org.ballerinalang.langserver.compiler.workspace;
 
+import org.ballerinalang.langserver.commons.workspace.WorkspaceDocumentException;
+import org.eclipse.lsp4j.TextDocumentContentChangeEvent;
 import org.testng.Assert;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.Test;
@@ -27,6 +29,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Collections;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.locks.Lock;
@@ -129,7 +132,8 @@ public class WorkspaceDocumentManagerImplTest {
         // Update the file
         Optional<Lock> lock = documentManager.lockFile(filePath);
         try {
-            documentManager.updateFile(filePath, updateContent);
+            TextDocumentContentChangeEvent changeEvent = new TextDocumentContentChangeEvent(updateContent);
+            documentManager.updateFile(filePath, Collections.singletonList(changeEvent));
         } finally {
             lock.ifPresent(Lock::unlock);
         }
@@ -164,7 +168,8 @@ public class WorkspaceDocumentManagerImplTest {
 
     @Test(dependsOnMethods = "testCloseFile", expectedExceptions = WorkspaceDocumentException.class)
     public void testUpdateFileOnClosedFile() throws WorkspaceDocumentException {
-        documentManager.updateFile(filePath, "");
+        TextDocumentContentChangeEvent changeEvent = new TextDocumentContentChangeEvent("");
+        documentManager.updateFile(filePath, Collections.singletonList(changeEvent));
     }
 
     private String readAll(File filePath) throws IOException {

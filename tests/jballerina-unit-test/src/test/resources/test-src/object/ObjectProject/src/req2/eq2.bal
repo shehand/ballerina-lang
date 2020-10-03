@@ -1,10 +1,10 @@
 
-public type userPB object {
+public class userPB {
     public int age = 0;
     public string name = "";
     public string address = "";
 
-    function __init () {}
+    function init () {}
 
     public function getName () returns (string) {
         return self.name;
@@ -13,4 +13,4 @@ public type userPB object {
     public function getAge () returns (int) {
         return self.age;
     }
-};
+}

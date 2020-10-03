@@ -18,10 +18,11 @@
 
 package org.ballerinalang.net.http.websocket.server;
 
-import org.ballerinalang.jvm.values.ObjectValue;
+import org.ballerinalang.jvm.api.values.BObject;
 import org.ballerinalang.net.http.HttpResourceArguments;
 import org.ballerinalang.net.http.websocket.WebSocketConstants;
 import org.ballerinalang.net.http.websocket.WebSocketException;
+import org.ballerinalang.net.http.websocket.WebSocketUtil;
 import org.ballerinalang.net.uri.URITemplate;
 import org.ballerinalang.net.uri.URITemplateException;
 import org.ballerinalang.net.uri.parser.Literal;
@@ -56,7 +57,8 @@ public class WebSocketServicesRegistry {
             uriTemplate.parse(basePath, service, new WebSocketDataElementFactory());
         } catch (URITemplateException | UnsupportedEncodingException e) {
             logger.error("Error when registering service", e);
-            throw new WebSocketException(e);
+            throw WebSocketUtil.getWebSocketException("", e, WebSocketConstants.ErrorCode.WsGenericError.
+                    errorCode(), null);
         }
         logger.info("WebSocketService deployed : {} with context {}", service.getName(), basePath);
     }
@@ -66,17 +68,19 @@ public class WebSocketServicesRegistry {
         return uriTemplate.matches(path, pathParams, webSocketHandshaker);
     }
 
-    public WebSocketException unRegisterService(ObjectValue serviceObj) {
+    public WebSocketException unRegisterService(BObject serviceObj) {
         try {
             String basePath = (String) serviceObj.getNativeData(WebSocketConstants.NATIVE_DATA_BASE_PATH);
             if (basePath == null) {
-                throw new WebSocketException("Cannot detach service. Service has not been registered");
+                throw WebSocketUtil.getWebSocketException("Cannot detach service. Service has not been registered",
+                        null, WebSocketConstants.ErrorCode.WsGenericError.errorCode(), null);
             }
             uriTemplate.parse(basePath, null, new WebSocketDataElementFactory());
             serviceObj.addNativeData(WebSocketConstants.NATIVE_DATA_BASE_PATH, null);
         } catch (URITemplateException | UnsupportedEncodingException e) {
             logger.error("Error when unRegistering service", e);
-            return new WebSocketException(e);
+            return WebSocketUtil.getWebSocketException("", e, WebSocketConstants.ErrorCode.WsGenericError.
+                    errorCode(), null);
         } catch (WebSocketException e) {
             return e;
         }

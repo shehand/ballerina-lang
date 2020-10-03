@@ -127,25 +127,25 @@ type Bar record {
     boolean flag;
 };
 
-type FooObj object {
+class FooObj {
     public string s;
     public float f;
     public byte b;
-    function __init(string s, float f, byte b) {
+    function init(string s, float f, byte b) {
         self.s = s;
         self.f = f;
         self.b = b;
     }
-};
+}
 
-type BarObj object {
+class BarObj {
     public boolean b;
     public int i;
-    function __init(boolean b, int i) {
+    function init(boolean b, int i) {
         self.b = b;
         self.i = i;
     }
-};
+}
 
 function testTupleVarRefWithArray1() returns [string, int[], boolean, float[]] {
     [string, [int[], [boolean, float[]]]] [a, [b, [c, d]]] = ["Test", [[32, 67], [false, [6.3, 4.2]]]];

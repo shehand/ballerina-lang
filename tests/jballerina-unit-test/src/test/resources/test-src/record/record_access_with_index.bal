@@ -198,17 +198,17 @@ function testDynamicIndexAccessTypesWithRestParam(string arg) returns string {
     return result;
 }
 
-type Obj object {
+class Obj {
     private int intField;
 
-    function __init() {
+    function init() {
         self.intField = 10;
     }
 
     function getIntField() returns int {
         return self.intField;
     }
-};
+}
 
 type FooBar record {
     Obj fieldOne?;
@@ -273,17 +273,17 @@ function testDynamicIndexAccessWithSingleType() returns int {
     string[] index = ["fieldOne", "fieldTwo", "fieldThree"];
     int marks = 0;
 
-    int? field = q[index[0]];
-    if field is int {
-        marks += (field * 2);
+    int? 'field = q[index[0]];
+    if 'field is int {
+        marks += ('field * 2);
     }
-    field = q[index[1]];
-    if field is int {
-        marks += (field * 2);
+    'field = q[index[1]];
+    if 'field is int {
+        marks += ('field * 2);
     }
-    field = q[index[2]];
-    if field is int {
-        marks += (field * 2);
+    'field = q[index[2]];
+    if 'field is int {
+        marks += ('field * 2);
     }
     return marks;
 }

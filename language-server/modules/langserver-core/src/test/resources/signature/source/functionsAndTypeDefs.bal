@@ -118,12 +118,12 @@ public function bar2(float a, boolean b) returns Child {
     return new Child();
 }
 
-public type Stub client object {
+public client class Stub {
 
     public Child obj = new Child();
 
     # Create a new Stub
-    public function __init(any arg) {
+    public function init(any arg) {
 
     }
 
@@ -156,7 +156,7 @@ public type Stub client object {
     public function optionalBar(float a, boolean b) returns Child? {
         return ();
     }
-};
+}
 
 type Employee record {
     int id;
@@ -166,7 +166,7 @@ type Employee record {
 
 public const MY_ERROR_REASON = "MyError";
 # Custom Error
-type MyError error<MY_ERROR_REASON, record {| string message?; error cause?;  string...;|}>;
+type MyError error<record {| string message?; error cause?;  string...;|}>;
 
 listener http:MockListener mockEP = new(9090);
 
@@ -306,15 +306,15 @@ public function expressions() returns error? {
     map<int> map1 = {"3": foo(1, true)};
     map<int> map2 = {[fooS(1, false)]: 1};
 
-    // -- expression, table-constructor-expr
-    table<Employee> tbEmployee = table {
-        {key id, name, salary},
-        [
-            {1, "Mary",  300},
-            {2, "John",  200},
-            {3, "Jim", foo(1, false)}
-        ]
-    };
+    //// -- expression, table-constructor-expr
+    //table<Employee> tbEmployee = table {
+    //    {key id, name, salary},
+    //    [
+    //        {1, "Mary",  300},
+    //        {2, "John",  200},
+    //        {3, "Jim", foo(1, false)}
+    //    ]
+    //};
 
     // -- expression, string-template-expr
     string s =string `${ foo(1, false) } !!!`;
@@ -350,7 +350,7 @@ public function expressions() returns error? {
     string s2 = arr[foo(1, false)];
 
     // -- expression, xml-attributes-expr
-    map<string>? attrs = fooX(1, false)@;
+    //map<string>? attrs = fooX(1, false)@;
 
     // -- expression, function-call-expr
     int f1 = foo(1, false);

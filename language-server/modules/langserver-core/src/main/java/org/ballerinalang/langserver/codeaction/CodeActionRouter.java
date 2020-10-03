@@ -15,25 +15,66 @@
  */
 package org.ballerinalang.langserver.codeaction;
 
-import org.ballerinalang.langserver.compiler.LSContext;
+import org.ballerinalang.langserver.commons.LSContext;
+import org.ballerinalang.langserver.commons.codeaction.CodeActionNodeType;
+import org.ballerinalang.langserver.compiler.LSClientLogger;
 import org.eclipse.lsp4j.CodeAction;
 import org.eclipse.lsp4j.Diagnostic;
+import org.eclipse.lsp4j.Position;
 
+import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Represents the interface for the Ballerina Code Action Router.
+ * Represents the Code Action router.
  *
  * @since 1.1.1
  */
-public interface CodeActionRouter {
+public class CodeActionRouter {
 
     /**
-     * @param nodeType    code action node type
-     * @param context     ls context
-     * @param diagnostics list of diagnostics
+     * Returns a list of supported code actions.
+     *
+     * @param nodeType           code action node type
+     * @param context            ls context
+     * @param diagnosticsOfRange list of diagnostics of the cursor range
+     * @param allDiagnostics     list of all diagnostics
      * @return list of code actions
      */
-    List<CodeAction> getBallerinaCodeActions(CodeActionNodeType nodeType, LSContext context,
-                                             List<Diagnostic> diagnostics);
+    public static List<CodeAction> getBallerinaCodeActions(CodeActionNodeType nodeType, LSContext context,
+                                                           List<Diagnostic> diagnosticsOfRange,
+                                                           List<Diagnostic> allDiagnostics) {
+        List<CodeAction> codeActions = new ArrayList<>();
+        CodeActionProvidersHolder codeActionProvidersHolder = CodeActionProvidersHolder.getInstance();
+        if (nodeType != null) {
+            codeActionProvidersHolder.getActiveNodeBasedProviders(nodeType).forEach(provider -> {
+                try {
+                    List<CodeAction> codeActionList = provider.getNodeBasedCodeActions(nodeType, context,
+                                                                                       allDiagnostics);
+                    if (codeActionList != null) {
+                        codeActions.addAll(codeActionList);
+                    }
+                } catch (Exception e) {
+                    String msg = "CodeAction '" + provider.getClass().getSimpleName() + "' failed!";
+                    LSClientLogger.logError(msg, e, null, (Position) null);
+                }
+            });
+        }
+        if (diagnosticsOfRange != null && diagnosticsOfRange.size() > 0) {
+            codeActionProvidersHolder.getActiveDiagnosticsBasedProviders().forEach(provider -> {
+                try {
+                    List<CodeAction> codeActionList = provider.getDiagBasedCodeActions(nodeType, context,
+                                                                                       diagnosticsOfRange,
+                                                                                       allDiagnostics);
+                    if (codeActionList != null) {
+                        codeActions.addAll(codeActionList);
+                    }
+                } catch (Exception e) {
+                    String msg = "CodeAction '" + provider.getClass().getSimpleName() + "' failed!";
+                    LSClientLogger.logError(msg, e, null, (Position) null);
+                }
+            });
+        }
+        return codeActions;
+    }
 }

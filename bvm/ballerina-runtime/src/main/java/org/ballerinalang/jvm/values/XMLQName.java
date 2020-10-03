@@ -17,11 +17,14 @@
 */
 package org.ballerinalang.jvm.values;
 
+import org.ballerinalang.jvm.api.values.BLink;
+import org.ballerinalang.jvm.api.values.BString;
+import org.ballerinalang.jvm.api.values.BXMLQName;
 import org.ballerinalang.jvm.types.BType;
 import org.ballerinalang.jvm.types.BTypes;
-import org.ballerinalang.jvm.values.api.BXMLQName;
 
 import java.util.Map;
+import java.util.Objects;
 
 /**
  * <p>
@@ -57,7 +60,7 @@ public final class XMLQName implements RefValue, BXMLQName {
     public XMLQName(String qNameStr) {
         int parenEndIndex = qNameStr.indexOf('}');
         if (qNameStr.startsWith("{") && parenEndIndex > 0) {
-            localName = qNameStr.substring(parenEndIndex + 1, qNameStr.length());
+            localName = qNameStr.substring(parenEndIndex + 1);
             uri = qNameStr.substring(1, parenEndIndex);
         } else {
             localName = qNameStr;
@@ -65,14 +68,40 @@ public final class XMLQName implements RefValue, BXMLQName {
         }
     }
 
-    @Override
-    public String toString() {
-        return stringValue();
+    @Deprecated
+    public XMLQName(BString localName, BString uri, BString prefix) {
+        this.localName = localName.getValue();
+        if (uri != null) {
+            this.uri = uri.getValue();
+        }
+        if (prefix != null) {
+            this.prefix = prefix.getValue();
+        }
+    }
+
+    @Deprecated
+    public XMLQName(BString qNameStrVal) {
+        this(qNameStrVal.getValue());
     }
 
     @Override
-    public String stringValue() {
+    public String toString() {
+        return stringValue(null);
+    }
+
+    @Override
+    public String stringValue(BLink parent) {
         return (uri == null || uri.isEmpty()) ? localName : '{' + uri + '}' + localName;
+    }
+
+    @Override
+    public String informalStringValue(BLink parent) {
+        return "`" + toString() + "`";
+    }
+
+    @Override
+    public String expressionStringValue(BLink parent) {
+        return "xml`" + toString() + "`";
     }
 
     @Override
@@ -82,11 +111,16 @@ public final class XMLQName implements RefValue, BXMLQName {
 
     @Override
     public boolean equals(Object obj) {
-        if (obj == null || !(obj instanceof XMLQName)) {
+        if (!(obj instanceof XMLQName)) {
             return false;
         }
 
-        return ((XMLQName) obj).toString().equals(localName);
+        return obj.toString().equals(localName);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(localName, uri);
     }
 
     @Override

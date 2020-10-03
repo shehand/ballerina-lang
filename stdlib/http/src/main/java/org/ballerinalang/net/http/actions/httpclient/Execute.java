@@ -16,11 +16,12 @@
 
 package org.ballerinalang.net.http.actions.httpclient;
 
+import org.ballerinalang.jvm.api.BalEnv;
+import org.ballerinalang.jvm.api.values.BObject;
+import org.ballerinalang.jvm.api.values.BString;
 import org.ballerinalang.jvm.scheduling.Scheduler;
 import org.ballerinalang.jvm.scheduling.Strand;
 import org.ballerinalang.jvm.values.MapValue;
-import org.ballerinalang.jvm.values.ObjectValue;
-import org.ballerinalang.jvm.values.connector.NonBlockingCallback;
 import org.ballerinalang.net.http.DataContext;
 import org.ballerinalang.net.http.HttpConstants;
 import org.ballerinalang.net.http.HttpUtil;
@@ -37,21 +38,22 @@ import static org.ballerinalang.net.http.HttpConstants.CLIENT_ENDPOINT_SERVICE_U
  */
 public class Execute extends AbstractHTTPAction {
     @SuppressWarnings("unchecked")
-    public static Object execute(ObjectValue httpClient, String verb, String path,
-                                       ObjectValue requestObj) {
-        String url = httpClient.getStringValue(CLIENT_ENDPOINT_SERVICE_URI);
+    public static Object execute(BalEnv env, BObject httpClient, BString verb, BString path, BObject requestObj) {
+        String url = httpClient.getStringValue(CLIENT_ENDPOINT_SERVICE_URI).getValue();
         Strand strand = Scheduler.getStrand();
-        MapValue<String, Object> config = (MapValue<String, Object>) httpClient.get(CLIENT_ENDPOINT_CONFIG);
+        MapValue<BString, Object> config = (MapValue<BString, Object>) httpClient.get(CLIENT_ENDPOINT_CONFIG);
         HttpClientConnector clientConnector = (HttpClientConnector) httpClient.getNativeData(HttpConstants.CLIENT);
-        HttpCarbonMessage outboundRequestMsg = createOutboundRequestMsg(strand, config, url, verb, path, requestObj);
-        DataContext dataContext = new DataContext(strand, clientConnector, new NonBlockingCallback(strand), requestObj,
+        HttpCarbonMessage outboundRequestMsg = createOutboundRequestMsg(strand, config, url, verb.getValue(),
+                                                                        path.getValue(), requestObj);
+        DataContext dataContext = new DataContext(strand, clientConnector, env.markAsync(), requestObj,
                                                   outboundRequestMsg);
         executeNonBlockingAction(dataContext, false);
         return null;
     }
 
-    protected static HttpCarbonMessage createOutboundRequestMsg(Strand strand, MapValue config, String serviceUri,
-                                                                String httpVerb, String path, ObjectValue requestObj) {
+    protected static HttpCarbonMessage createOutboundRequestMsg(Strand strand, MapValue<BString, Object> config,
+                                                                String serviceUri, String httpVerb, String path,
+                                                                BObject requestObj) {
         HttpCarbonMessage outboundRequestMsg = HttpUtil
                 .getCarbonMsg(requestObj, HttpUtil.createHttpCarbonMessage(true));
 

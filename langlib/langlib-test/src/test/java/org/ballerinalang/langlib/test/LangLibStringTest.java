@@ -125,6 +125,11 @@ public class LangLibStringTest {
         }
     }
 
+    @Test(description = "Test the lastIndexOf() method.")
+    public void testLastIndexOf() {
+        BRunUtil.invoke(compileResult, "testLastIndexOf");
+    }
+
     @Test(dataProvider = "codePointCompareProvider")
     public void testCodePointCompare(String st1, String st2, int expected) {
         BValue[] args = {new BString(st1), new BString(st2)};
@@ -140,7 +145,8 @@ public class LangLibStringTest {
     }
 
     @Test(expectedExceptions = BLangRuntimeException.class,
-        expectedExceptionsMessageRegExp = ".*IndexOutOfRange message=String codepoint index out of range: 1.*")
+        expectedExceptionsMessageRegExp = ".*IndexOutOfRange \\{\"message\":\"String codepoint index out of range: " +
+                "1\"\\}.*")
     public void testGetCodepointNegative() {
         testGetCodepoint("", 1, 0);
     }
@@ -232,7 +238,7 @@ public class LangLibStringTest {
 
     @Test(expectedExceptions = BLangRuntimeException.class,
             expectedExceptionsMessageRegExp = "error: \\{ballerina/lang.string\\}StringOperationError " +
-                    "message=string index out of range. Length:'6' requested: '7' to '9'.*")
+                    "\\{\"message\":\"string index out of range. Length:'6' requested: '7' to '9'\"\\}.*")
     public void testSubstringOutRange() {
         BRunUtil.invoke(compileResult, "testSubstringOutRange");
         Assert.fail();
@@ -243,7 +249,12 @@ public class LangLibStringTest {
         BValue[] args = {new BString(str), new BInteger(start), new BInteger(end)};
         BValue[] returns = BRunUtil.invoke(compileResult, "testSubstring", args);
         Assert.assertEquals(returns[0].stringValue(),
-                            "{ballerina/lang.string}StringOperationError {message:\"" + result + "\"}");
+                            "{ballerina/lang.string}StringOperationError {\"message\":\"" + result + "\"}");
+    }
+
+    @Test
+    public void testEqualsIgnoreCaseAscii() {
+        BRunUtil.invoke(compileResult, "testEqualsIgnoreCaseAscii");
     }
 
     @DataProvider(name = "testSubstringDataProvider")

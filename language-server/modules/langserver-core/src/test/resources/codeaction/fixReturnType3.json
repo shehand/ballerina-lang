@@ -3,18 +3,20 @@
     "character": 11,
     "expected": {
         "title": "Change Return Type to 'int[]'",
-        "edit": {
-            "range": {
-                "start": {
-                    "line": 8,
-                    "character": 48
+        "edits": [
+            {
+                "range": {
+                    "start": {
+                        "line": 8,
+                        "character": 47
+                    },
+                    "end": {
+                        "line": 8,
+                        "character": 54
+                    }
                 },
-                "end": {
-                    "line": 8,
-                    "character": 55
-                }
-            },
-            "newText": "int[]"
-        }
+                "newText": "int[]"
+            }
+        ]
     }
 }

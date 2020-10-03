@@ -29,30 +29,30 @@ type ClosedEmployee record {|
     int id = 0;
 |};
 
-type Abc object {
+class Abc {
     public string name;
     float salary;
     int id;
 
-    public function __init (string name, float salary, int id) {
+    public function init (string name, float salary, int id) {
         self.name = name;
         self.salary = salary;
         self.id = id;
     }
-};
+}
 
-type Def object {
+class Def {
     public string name;
     float salary;
     int id;
     private int idTwo = 0;
 
-    public function __init(string name, float salary, int id) {
+    public function init(string name, float salary, int id) {
         self.name = name;
         self.salary = salary;
         self.id = id;
     }
-};
+}
 
 function testBooleanRefEquality(boolean a, boolean b) returns boolean {
     return a === b && !(a !== b);
@@ -178,7 +178,7 @@ function checkMapRefEqualityPositive() returns boolean {
     map<string> m3 = {};
     map<string> m4 = m3;
 
-    boolean equals = m1 === m2 && !(m1 !== m2) && isRefEqual(m3, m4);
+    boolean 'equals = m1 === m2 && !(m1 !== m2) && isRefEqual(m3, m4);
 
     m1["one"] = 1;
     m1["two"] = "two";
@@ -189,19 +189,19 @@ function checkMapRefEqualityPositive() returns boolean {
     m3["a"] = "a";
     m4 = m3;
 
-    return equals && m1 === m2 && m3 === m4 && !(m1 !== m2) && !(m3 !== m4);
+    return 'equals && m1 === m2 && m3 === m4 && !(m1 !== m2) && !(m3 !== m4);
 }
 
 function checkMapRefEqualityNegative() returns boolean {
     map<any> m1 = {};
     map<any> m2 = {};
 
-    boolean equals = m1 === m2 || !(m1 !== m2);
+    boolean 'equals = m1 === m2 || !(m1 !== m2);
 
     m1["one"] = "hi";
     m2["one"] = "hi";
 
-    equals = equals && m1 === m2 || !(m1 !== m2);
+    'equals = 'equals && m1 === m2 || !(m1 !== m2);
 
     map<int> m3 = {};
     map<int> m4 = {};
@@ -209,7 +209,7 @@ function checkMapRefEqualityNegative() returns boolean {
     m3["one"] = 1;
     m4["one"] = 1;
 
-    return equals || m3 === m4 || !(m4 !== m3);
+    return 'equals || m3 === m4 || !(m4 !== m3);
 }
 
 function checkTupleRefEqualityPositive() returns boolean {
@@ -235,26 +235,26 @@ function checkTupleRefEqualityNegative() returns boolean {
 function checkJsonRefEqualityPositive() returns boolean {
     json j = { Hello: "World" };
     json j2 = j;
-    boolean equals = j === j2 && !(j2 !== j);
+    boolean 'equals = j === j2 && !(j2 !== j);
 
     j = "Hello";
     j2 = j;
-    equals = equals && j === j2 && !(j !== j2);
+    'equals = 'equals && j === j2 && !(j !== j2);
 
     int[] intArr = [1, 2, 3];
     json[] jArr = intArr;
     int[] intArrTwo = intArr;
-    equals = equals && isRefEqual(intArrTwo, jArr);
+    'equals = 'equals && isRefEqual(intArrTwo, jArr);
 
     string[] strArr = ["hello world", "ballerina"];
     jArr = strArr;
     string[] strArrTwo = strArr;
-    equals = equals && isRefEqual(strArrTwo, jArr);
+    'equals = 'equals && isRefEqual(strArrTwo, jArr);
 
     [string, int] tup = ["hi", 1];
     [string, int] tup1 = tup;
     [json, int] jTup = tup;
-    return equals && isRefEqual(jTup, tup1);
+    return 'equals && isRefEqual(jTup, tup1);
 }
 
 function checkJsonRefEqualityNegative() returns boolean {
@@ -268,12 +268,12 @@ function testIntByteRefEqualityPositive() returns boolean {
     byte a = 0;
     int b = 0;
 
-    boolean equals = a === b && !(a !== b);
+    boolean 'equals = a === b && !(a !== b);
 
     a = 5;
     b = 5;
 
-    return equals && a === b && !(a !== b);
+    return 'equals && a === b && !(a !== b);
 }
 
 function testIntByteEqualityNegative() returns boolean {
@@ -393,3 +393,56 @@ function isRefEqual(any a, any b) returns boolean {
     return a === b && !(b !== a);
 }
 
+function testXMLSequenceRefEquality() returns boolean {
+    xml x = xml `<a>a</a>`;
+    xml x1 = xml `<b>b</b>`;
+    xml x2 = x + x1;
+    xml x3 = x + x1;
+
+    return x2 === x3;
+}
+
+function testXMLSequenceRefEqualityDifferentLength() returns boolean {
+    xml x = xml `<a>a</a>`;
+    xml x1 = xml `<b>b</b>`;
+    xml x2 = x + x1;
+    xml x3 = x + x1 + xml `<c>c</c>`;
+
+    return x2 === x3;
+}
+
+function testXMLSequenceRefEqualityFalse() returns boolean {
+    xml x = xml `<a>a</a>`;
+    xml x1 = xml `<b>b</b>`;
+    xml x11 = xml `<b>b</b>`;
+    xml x2 = x + x1;
+    xml x3 = x + x11;
+
+    return x2 === x3;
+}
+
+function testXMLSequenceRefEqualityIncludingString() returns boolean {
+    xml x = xml `<a>a</a>`;
+    xml x1 = xml `<b>b</b>`;
+    xml x2 = x + x1 + "abcd";
+    xml x3 = x + x1 + "abcd";
+
+    return x2 === x3;
+}
+
+function testXMLSequenceRefEqualityIncludingDifferentString() returns boolean {
+    xml x = xml `<a>a</a>`;
+    xml x1 = xml `<b>b</b>`;
+    xml x2 = x + x1 + "abcd";
+    xml x3 = x + x1 + "abcde";
+
+    return x2 === x3;
+}
+
+function testEmptyXMLSequencesRefEquality() returns boolean {
+    xml x = xml `<elem></elem>`;
+    xml y = xml `<elem></elem>`;
+    xml z = x/*;
+    xml q = y/*;
+    return z === q;
+}

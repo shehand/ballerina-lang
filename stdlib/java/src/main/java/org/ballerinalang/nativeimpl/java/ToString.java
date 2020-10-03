@@ -17,17 +17,19 @@
  */
 package org.ballerinalang.nativeimpl.java;
 
+import org.ballerinalang.jvm.api.BStringUtils;
+import org.ballerinalang.jvm.api.values.BString;
 import org.ballerinalang.jvm.scheduling.Strand;
 import org.ballerinalang.jvm.values.HandleValue;
 import org.ballerinalang.natives.annotations.BallerinaFunction;
 
 /**
- * This class contains the implementation of the "toString" ballerina function in ballerinax/java module.
+ * This class contains the implementation of the "toString" ballerina function in ballerina/java module.
  *
  * @since 1.0.0
  */
 @BallerinaFunction(
-        orgName = "ballerinax", packageName = "java",
+        orgName = "ballerina", packageName = "java", version = "0.9.0",
         functionName = "toString"
 )
 public class ToString {
@@ -37,6 +39,9 @@ public class ToString {
         if (referredValue == null) {
             return null;
         }
-        return referredValue.toString();
+        if (value instanceof BString) {
+            return value;
+        }
+        return BStringUtils.fromString(referredValue.toString());
     }
 }

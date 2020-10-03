@@ -18,18 +18,27 @@ import ballerina/time;
 
 # FileInfo record contains metadata information of a file.
 # This record is returned by getFileInfo function is os module.
-public type FileInfo object {
+public class FileInfo {
 
     string name;
     int size;
     time:Time modifiedTime;
     boolean dir;
+    string path;
 
-    public function __init(string name, int size, time:Time modifiedTime, boolean dir) {
+    # Creates a FileInfo object.
+    #
+    # + name - Name of the file
+    # + size - Size of the file (in bytes)
+    # + modifiedTime - The last modified time of the file
+    # + dir - Whether the file is a directory or not
+    # + path - Absolute path of the file
+    public function init(string name, int size, time:Time modifiedTime, boolean dir, string path) {
         self.name = name;
         self.size = size;
         self.modifiedTime = modifiedTime;
         self.dir = dir;
+        self.path = path;
     }
 
     # Returns the file name.
@@ -46,17 +55,24 @@ public type FileInfo object {
         return self.size;
     }
 
-    # Returns last modified time of the file.
+    # Returns the last-modified time of the file.
     #
-    # + return - Last modified time of the file.
+    # + return - Last-modified time of the file
     public function getLastModifiedTime() returns time:Time {
         return self.modifiedTime;
     }
 
-    # Returns whether the file is a directory.
+    # Returns whether the file is a directory or not.
     #
-    # + return - File is a directory or not.
+    # + return - File is a directory or not
     public function isDir() returns boolean {
         return self.dir;
     }
-};
+
+    # Returns the absolute file path.
+    #
+    # + return - The file path
+    public function getPath() returns string {
+        return self.path;
+    }
+}

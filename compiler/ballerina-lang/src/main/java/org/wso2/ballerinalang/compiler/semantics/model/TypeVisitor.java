@@ -27,16 +27,19 @@ import org.wso2.ballerinalang.compiler.semantics.model.types.BErrorType;
 import org.wso2.ballerinalang.compiler.semantics.model.types.BFiniteType;
 import org.wso2.ballerinalang.compiler.semantics.model.types.BFutureType;
 import org.wso2.ballerinalang.compiler.semantics.model.types.BHandleType;
-import org.wso2.ballerinalang.compiler.semantics.model.types.BIntermediateCollectionType;
+import org.wso2.ballerinalang.compiler.semantics.model.types.BIntersectionType;
 import org.wso2.ballerinalang.compiler.semantics.model.types.BInvokableType;
 import org.wso2.ballerinalang.compiler.semantics.model.types.BJSONType;
 import org.wso2.ballerinalang.compiler.semantics.model.types.BMapType;
+import org.wso2.ballerinalang.compiler.semantics.model.types.BNeverType;
 import org.wso2.ballerinalang.compiler.semantics.model.types.BNilType;
 import org.wso2.ballerinalang.compiler.semantics.model.types.BNoType;
 import org.wso2.ballerinalang.compiler.semantics.model.types.BObjectType;
 import org.wso2.ballerinalang.compiler.semantics.model.types.BPackageType;
+import org.wso2.ballerinalang.compiler.semantics.model.types.BParameterizedType;
 import org.wso2.ballerinalang.compiler.semantics.model.types.BRecordType;
 import org.wso2.ballerinalang.compiler.semantics.model.types.BServiceType;
+import org.wso2.ballerinalang.compiler.semantics.model.types.BStreamType;
 import org.wso2.ballerinalang.compiler.semantics.model.types.BStructureType;
 import org.wso2.ballerinalang.compiler.semantics.model.types.BTableType;
 import org.wso2.ballerinalang.compiler.semantics.model.types.BTupleType;
@@ -47,10 +50,11 @@ import org.wso2.ballerinalang.compiler.semantics.model.types.BXMLType;
 
 /**
  * Visit ballerina types and maps them to instances T.
- * 
+ *
  * @since 0.995.0
  */
 public interface TypeVisitor {
+
     void visit(BAnnotationType bAnnotationType);
 
     void visit(BArrayType bArrayType);
@@ -65,17 +69,19 @@ public interface TypeVisitor {
 
     void visit(BFiniteType bFiniteType);
 
-    void visit(BIntermediateCollectionType bIntermediateCollectionType);
-
     void visit(BInvokableType bInvokableType);
 
     void visit(BJSONType bjsonType);
 
     void visit(BMapType bMapType);
 
-    void visit(BTableType bTableType);
+    void visit(BStreamType bStreamType);
 
     void visit(BTypedescType bTypedescType);
+
+    void visit(BParameterizedType bTypedescType);
+
+    void visit(BNeverType bNeverType);
 
     void visit(BNilType bNilType);
 
@@ -91,7 +97,11 @@ public interface TypeVisitor {
 
     void visit(BUnionType bUnionType);
 
+    void visit(BIntersectionType bIntersectionType);
+
     void visit(BXMLType bxmlType);
+
+    void visit(BTableType bTableType);
 
     void visit(BRecordType bRecordType);
 

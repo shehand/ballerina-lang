@@ -39,14 +39,13 @@ public class TypedescTests {
         result = BCompileUtil.compile("test-src/types/typedesc/typedesc_positive.bal");
     }
 
-    @Test(description = "Test basics types")
+    @Test(description = "Test basics types", groups = { "disableOnOldParser" })
     public void testNegative() {
         final CompileResult compile = BCompileUtil.compile("test-src/types/typedesc/typedesc_negative.bal");
         Assert.assertEquals(compile.getErrorCount(), 2);
-        BAssertUtil.validateError(compile, 0, "variable assignment is required", 2, 5);
+        BAssertUtil.validateError(compile, 0, "missing identifier", 2, 8);
         BAssertUtil.validateError(compile, 1, "undefined symbol 'i'", 7, 9);
     }
-
 
     @Test(description = "Test basics types")
     public void testBasicTypes() {
@@ -61,14 +60,8 @@ public class TypedescTests {
 
     @Test(description = "Test buildin ref types")
     public void testRefTypes() {
-        BValue[] returns = BRunUtil.invoke(result, "testRefTypes");
-        Assert.assertEquals(returns.length, 4);
-        Assert.assertEquals(returns[0].stringValue(), "xml");
-        Assert.assertEquals(returns[1].stringValue(), "json");
-        Assert.assertEquals(returns[2].stringValue(), "map");
-        Assert.assertEquals(returns[3].stringValue(), "table<Employee>");
+        BRunUtil.invoke(result, "testRefTypes");
     }
-
 
     @Test(description = "Test object types")
     public void testObjectTypes() {
@@ -76,7 +69,7 @@ public class TypedescTests {
         Assert.assertEquals(returns.length, 2);
         Assert.assertEquals(returns[0].stringValue(), "Person");
         Assert.assertTrue(returns[1] instanceof BTypeDescValue);
-        Assert.assertTrue(((BTypeDescValue) returns[1]).value().getTag() == TypeTags.OBJECT_TYPE_TAG);
+        Assert.assertEquals(TypeTags.OBJECT_TYPE_TAG, ((BTypeDescValue) returns[1]).value().getTag());
     }
 
     @Test(description = "Test array types")
@@ -98,7 +91,7 @@ public class TypedescTests {
     @Test(description = "Test tuples with expressions")
     public void testTuplesWithExpressions() {
         BValue[] returns = BRunUtil.invoke(result, "testTuplesWithExpressions");
-        Assert.assertEquals(returns[0].stringValue(), "[string,int,string[],string,int]");
+        Assert.assertEquals(returns[0].stringValue(), "[string,int,[string,string,string],string,int]");
     }
 
     @Test(description = "Test Record types")
@@ -107,7 +100,7 @@ public class TypedescTests {
         Assert.assertEquals(returns.length, 2);
         Assert.assertEquals(returns[0].stringValue(), "RecordA");
         Assert.assertTrue(returns[1] instanceof BTypeDescValue);
-        Assert.assertTrue(((BTypeDescValue) returns[1]).value().getTag() == TypeTags.RECORD_TYPE_TAG);
+        Assert.assertEquals(TypeTags.RECORD_TYPE_TAG, ((BTypeDescValue) returns[1]).value().getTag());
     }
 
     @Test(description = "Test any to typedesc cast")
@@ -129,4 +122,59 @@ public class TypedescTests {
         Assert.assertTrue(returns[0] instanceof BTypeDescValue);
         Assert.assertEquals(TypeTags.JSON_TAG, ((BTypeDescValue) returns[0]).value().getTag());
     }
+
+    @Test(description = "Test custom error typedesc")
+    public void testCustomErrorTypeDesc() {
+        BValue[] returns = BRunUtil.invoke(result, "testCustomErrorTypeDesc");
+    }
+
+    @Test
+    public void testBasicTypesWithoutTypedescConstraint() {
+        BRunUtil.invoke(result, "testBasicTypesWithoutTypedescConstraint");
+    }
+
+    @Test
+    public void testRefTypesWithoutTypedescConstraint() {
+        BRunUtil.invoke(result, "testRefTypesWithoutTypedescConstraint");
+    }
+
+    @Test
+    public void testObjectTypesWithoutTypedescConstraint() {
+        BRunUtil.invoke(result, "testObjectTypesWithoutTypedescConstraint");
+    }
+
+    @Test
+    public void testArrayTypesWithoutTypedescConstraint() {
+        BRunUtil.invoke(result, "testArrayTypesWithoutTypedescConstraint");
+    }
+
+    @Test
+    public void testRecordTypesWithoutTypedescConstraint() {
+        BRunUtil.invoke(result, "testRecordTypesWithoutTypedescConstraint");
+    }
+
+    @Test
+    public void testTuplesWithExpressionsWithoutTypedescConstraint() {
+        BRunUtil.invoke(result, "testTuplesWithExpressionsWithoutTypedescConstraint");
+    }
+
+    @Test
+    public void testAnyToTypedescWithoutConstraint() {
+        BRunUtil.invoke(result, "testAnyToTypedescWithoutConstraint");
+    }
+
+    @Test
+    public void testModuleLevelTypeDescWithoutConstraint() {
+        BRunUtil.invoke(result, "testModuleLevelTypeDescWithoutConstraint");
+    }
+
+    @Test
+    public void testMethodLevelTypeDescWithoutConstraint() {
+        BRunUtil.invoke(result, "testMethodLevelTypeDescWithoutConstraint");
+    }
+
+   @Test
+   public void testCustomErrorTypeDescWithoutConstraint() {
+       BRunUtil.invoke(result, "testCustomErrorTypeDescWithoutConstraint");
+   }
 }

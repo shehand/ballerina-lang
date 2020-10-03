@@ -18,14 +18,21 @@
 
 package org.ballerinalang.langlib.xml;
 
+import org.ballerinalang.jvm.runtime.AsyncUtils;
+import org.ballerinalang.jvm.scheduling.Scheduler;
 import org.ballerinalang.jvm.scheduling.Strand;
+import org.ballerinalang.jvm.scheduling.StrandMetadata;
 import org.ballerinalang.jvm.values.FPValue;
-import org.ballerinalang.jvm.values.IteratorValue;
-import org.ballerinalang.jvm.values.XMLSequence;
 import org.ballerinalang.jvm.values.XMLValue;
 import org.ballerinalang.model.types.TypeKind;
 import org.ballerinalang.natives.annotations.Argument;
 import org.ballerinalang.natives.annotations.BallerinaFunction;
+
+import java.util.concurrent.atomic.AtomicInteger;
+
+import static org.ballerinalang.jvm.util.BLangConstants.BALLERINA_BUILTIN_PKG_PREFIX;
+import static org.ballerinalang.jvm.util.BLangConstants.XML_LANG_LIB;
+import static org.ballerinalang.util.BLangCompilerConstants.XML_VERSION;
 
 /**
  * Native implementation of lang.xml:forEach(map&lt;Type&gt;, function).
@@ -33,7 +40,7 @@ import org.ballerinalang.natives.annotations.BallerinaFunction;
  * @since 1.0
  */
 @BallerinaFunction(
-        orgName = "ballerina", packageName = "lang.xml", functionName = "forEach",
+        orgName = "ballerina", packageName = "lang.xml", version = XML_VERSION, functionName = "forEach",
         args = {
                 @Argument(name = "x", type = TypeKind.XML),
                 @Argument(name = "func", type = TypeKind.FUNCTION)},
@@ -41,16 +48,20 @@ import org.ballerinalang.natives.annotations.BallerinaFunction;
 )
 public class ForEach {
 
-    public static void forEach(Strand strand, XMLValue<?> x, FPValue<Object, Object> func) {
+    private static final StrandMetadata METADATA = new StrandMetadata(BALLERINA_BUILTIN_PKG_PREFIX, XML_LANG_LIB,
+                                                                      XML_VERSION, "forEach");
+
+    public static void forEach(Strand strand, XMLValue x, FPValue<Object, Object> func) {
         if (x.isSingleton()) {
-            func.call(new Object[]{strand, x, true});
+            func.asyncCall(new Object[]{strand, x, true}, METADATA);
             return;
         }
-
-        IteratorValue iterator = ((XMLSequence) x).getIterator();
-        while (iterator.hasNext()) {
-            Object xmlOrStringVal = iterator.next();
-            func.call(new Object[]{strand, xmlOrStringVal, true});
-        }
+        AtomicInteger index = new AtomicInteger(-1);
+        AsyncUtils
+                .invokeFunctionPointerAsyncIteratively(func, null, METADATA, x.size(),
+                                                       () -> new Object[]{strand, x.getItem(index.incrementAndGet()),
+                                                               true},
+                                                       result -> {
+                                                       }, () -> null, Scheduler.getStrand().scheduler);
     }
 }

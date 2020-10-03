@@ -18,7 +18,10 @@
 
 package org.ballerinalang.langlib.array;
 
+import org.ballerinalang.jvm.runtime.AsyncUtils;
+import org.ballerinalang.jvm.scheduling.Scheduler;
 import org.ballerinalang.jvm.scheduling.Strand;
+import org.ballerinalang.jvm.scheduling.StrandMetadata;
 import org.ballerinalang.jvm.types.BArrayType;
 import org.ballerinalang.jvm.types.BFunctionType;
 import org.ballerinalang.jvm.types.BType;
@@ -32,8 +35,12 @@ import org.ballerinalang.natives.annotations.Argument;
 import org.ballerinalang.natives.annotations.BallerinaFunction;
 import org.ballerinalang.natives.annotations.ReturnType;
 
-import static org.ballerinalang.jvm.values.utils.ArrayUtils.add;
+import java.util.concurrent.atomic.AtomicInteger;
+
+import static org.ballerinalang.jvm.util.BLangConstants.ARRAY_LANG_LIB;
+import static org.ballerinalang.jvm.util.BLangConstants.BALLERINA_BUILTIN_PKG_PREFIX;
 import static org.ballerinalang.jvm.values.utils.ArrayUtils.createOpNotSupportedError;
+import static org.ballerinalang.util.BLangCompilerConstants.ARRAY_VERSION;
 
 /**
  * Native implementation of lang.array:map(Type[]).
@@ -41,12 +48,15 @@ import static org.ballerinalang.jvm.values.utils.ArrayUtils.createOpNotSupported
  * @since 1.0
  */
 @BallerinaFunction(
-        orgName = "ballerina", packageName = "lang.array", functionName = "map",
+        orgName = "ballerina", packageName = "lang.array", version = ARRAY_VERSION, functionName = "map",
         args = {@Argument(name = "arr", type = TypeKind.ARRAY), @Argument(name = "func", type = TypeKind.FUNCTION)},
         returnType = {@ReturnType(type = TypeKind.ARRAY)},
         isPublic = true
 )
 public class Map {
+
+    private static final StrandMetadata METADATA = new StrandMetadata(BALLERINA_BUILTIN_PKG_PREFIX, ARRAY_LANG_LIB,
+                                                                      ARRAY_VERSION, "map");
 
     public static ArrayValue map(Strand strand, ArrayValue arr, FPValue<Object, Object> func) {
         BType elemType = ((BFunctionType) func.getType()).retType;
@@ -54,26 +64,25 @@ public class Map {
         ArrayValue retArr = new ArrayValueImpl((BArrayType) retArrType);
         int size = arr.size();
         GetFunction getFn;
-        int elemTypeTag;
 
         BType arrType = arr.getType();
         switch (arrType.getTag()) {
             case TypeTags.ARRAY_TAG:
                 getFn = ArrayValue::get;
-                elemTypeTag = elemType.getTag();
                 break;
             case TypeTags.TUPLE_TAG:
                 getFn = ArrayValue::getRefValue;
-                elemTypeTag = elemType.getTag();
                 break;
             default:
                 throw createOpNotSupportedError(arrType, "map()");
         }
-
-        for (int i = 0; i < size; i++) {
-            Object newVal = func.getFunction().apply(new Object[]{strand, getFn.get(arr, i), true});
-            add(retArr, elemTypeTag, i, newVal);
-        }
+        AtomicInteger index = new AtomicInteger(-1);
+        AsyncUtils
+                .invokeFunctionPointerAsyncIteratively(func, null, METADATA, size,
+                                                       () -> new Object[]{strand,
+                                                               getFn.get(arr, index.incrementAndGet()), true},
+                                                       result -> retArr.add(index.get(), result),
+                                                       () -> retArr, Scheduler.getStrand().scheduler);
 
         return retArr;
     }

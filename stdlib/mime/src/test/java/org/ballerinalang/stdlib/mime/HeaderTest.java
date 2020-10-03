@@ -54,6 +54,17 @@ public class HeaderTest {
         Assert.assertEquals(returns[0].stringValue(), "application/json");
     }
 
+    @Test(description = "Test whether the empty http header value is returned when the header exist")
+    public void testGetEmptyHeaderValue() {
+        BString headerName = new BString("X-Empty-Header");
+        BString headerValue = new BString("");
+        BString headerNameToBeUsedForRetrieval = new BString("X-Empty-Header");
+        BValue[] args = {headerName, headerValue, headerNameToBeUsedForRetrieval};
+        BValue[] returns = BRunUtil.invoke(compileResult, "testAddHeader", args);
+        Assert.assertEquals(returns.length, 1);
+        Assert.assertEquals(returns[0].stringValue(), "");
+    }
+
     @Test(description = "Test whether the case is ignored when dealing with http headers")
     public void testCaseInsensitivityOfHeaders() {
         BString headerName = new BString("content-type");
@@ -89,7 +100,7 @@ public class HeaderTest {
         BValue[] args = {};
         BValue[] returns = BRunUtil.invoke(compileResult, "testSetHeader", args);
         Assert.assertEquals(returns.length, 2);
-        Assert.assertEquals(returns[0].stringValue(), "[]");
+        Assert.assertEquals(returns[0].stringValue(), "[\"totally different value\"]");
         Assert.assertEquals(returns[1].stringValue(), "totally different value");
     }
 
@@ -111,19 +122,16 @@ public class HeaderTest {
         Assert.assertEquals(returns[1].stringValue(), "totally different value");
     }
 
-    @Test(description = "Test remove header function")
+    @Test(description = "Test remove header function", expectedExceptions = BLangRuntimeException.class,
+          expectedExceptionsMessageRegExp = ".*error: Http header does not exist.*")
     public void testRemoveHeader() {
         BValue[] args = {};
         BValue[] returns = BRunUtil.invoke(compileResult, "testRemoveHeader", args);
-        Assert.assertEquals(returns.length, 2);
-        Assert.assertEquals(returns[0].stringValue(), "[]");
-        Assert.assertEquals(returns[1].stringValue(), "totally different value");
     }
 
     @Test(description = "Test getting a value out of a non existence header", expectedExceptions =
             BLangRuntimeException.class,
-          expectedExceptionsMessageRegExp = ".*HeaderNotFound message=Http header does not " +
-                  "exist.*")
+          expectedExceptionsMessageRegExp = ".*error: Http header does not exist.*")
     public void testNonExistenceHeader() {
         BValue[] returns = BRunUtil.invoke(compileResult, "testNonExistenceHeader");
         Assert.assertEquals(returns.length, 1);

@@ -55,11 +55,11 @@ function testOutputNestedStruct(string name) returns Person|string {
 }
 
 
-public type HelloWorldBlockingClient client object {
+public client class HelloWorldBlockingClient {
 
     private grpc:Client grpcClient;
 
-    function __init(string url, grpc:ClientConfiguration? config = ()) {
+    function init(string url, grpc:ClientConfiguration? config = ()) {
         // initialize client endpoint.
         grpc:Client c = new(url, config = config);
         error? result = c.initStub("blocking", ROOT_DESCRIPTOR, getDescriptorMap());
@@ -90,13 +90,13 @@ public type HelloWorldBlockingClient client object {
             return value;
         }
     }
-};
+}
 
-public type HelloWorldClient client object {
+public client class HelloWorldClient {
 
     private grpc:Client grpcClient;
 
-    function __init(string url, grpc:ClientConfiguration? config = ()) {
+    function init(string url, grpc:ClientConfiguration? config = ()) {
         // initialize client endpoint.
         grpc:Client c = new(url, config = config);
         error? result = c.initStub("non-blocking", ROOT_DESCRIPTOR, getDescriptorMap());
@@ -115,7 +115,7 @@ public type HelloWorldClient client object {
                                                                                                              error? {
         return self.grpcClient->nonBlockingExecute("foo.HelloWorld/testOutputNestedStruct", req, msgListener, headers = headers);
     }
-};
+}
 
 
 type Person record {

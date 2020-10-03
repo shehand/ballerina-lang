@@ -18,7 +18,6 @@ import ballerina/cache;
 import ballerina/lang.'array as arrays;
 import ballerina/lang.'string as strings;
 import ballerina/log;
-import ballerina/runtime;
 import ballerina/stringutils;
 
 # Default charset to be used with password hashing.
@@ -39,131 +38,79 @@ public const string CONFIG_PREFIX_SHA512 = "@sha512:";
 # Prefix used to denote Basic Authentication scheme.
 public const string AUTH_SCHEME_BASIC = "Basic ";
 
-# Prefix used to denote Bearer Authentication scheme.
+# The prefix used to denote the Bearer Authentication scheme.
 public const string AUTH_SCHEME_BEARER = "Bearer ";
 
-# The table name of the config user section of the TOML file.
+# The table name specified in the user section of the TOML configuration.
 const string CONFIG_USER_SECTION = "b7a.users";
 
-# Extracts the username and password from the credential values.
+# Extracts the username and the password from the base64-encoded `username:password` value.
+# ```ballerina
+# [string, string]|auth:Error [username, password] = auth:extractUsernameAndPassword("<credential>");
+# ```
 #
-# + credential - The credential values.
-# + return - A `string` tuple with the extracted username and password or `Error` occurred while extracting credentials
+# + credential - Base64-encoded `username:password` value
+# + return - A `string` tuple with the extracted username and password or else an `auth:Error` occurred while
+#            extracting credentials
 public function extractUsernameAndPassword(string credential) returns [string, string]|Error {
-    string decodedHeaderValue = "";
-
     byte[]|error result = arrays:fromBase64(credential);
     if (result is error) {
-        return prepareError(result.reason(), result);
-    } else {
-        string|error fromBytesResults = strings:fromBytes(result);
-        if (fromBytesResults is string) {
-            decodedHeaderValue = fromBytesResults;
+        return prepareError(result.message(), result);
+    }
+
+    string|error fromBytesResults = strings:fromBytes(<byte[]>result);
+    if (fromBytesResults is string) {
+        string[] decodedCredentials = stringutils:split(fromBytesResults, ":");
+        if (decodedCredentials.length() != 2) {
+            return prepareError("Incorrect credential format. Format should be username:password");
         } else {
-            return prepareError(fromBytesResults.reason(), fromBytesResults);
+            return [decodedCredentials[0], decodedCredentials[1]];
         }
-    }
-
-    string[] decodedCredentials = stringutils:split(decodedHeaderValue, ":");
-    if (decodedCredentials.length() != 2) {
-        return prepareError("Incorrect credential format. Format should be username:password");
     } else {
-        return [decodedCredentials[0], decodedCredentials[1]];
+        return prepareError(fromBytesResults.message(), fromBytesResults);
     }
 }
 
-# Log and prepare `error` as a `Error`.
+# Checks whether the scopes of the user match the scopes of the resource.
 #
-# + message - Error message
-# + err - `error` instance
-# + return - Prepared `Error` instance
-function prepareError(string message, error? err = ()) returns Error {
-    log:printError(message, err);
-    Error authError;
-    if (err is error) {
-        authError = error(AUTH_ERROR, message = message, cause = err);
-    } else {
-        authError = error(AUTH_ERROR, message = message);
-    }
-    return authError;
-}
-
-# Set the authentication related values (scheme, auth token) to the authentication context of the invocation context.
-#
-# + scheme - Auth scheme (JWT, LDAP, OAuth2, Basic etc.)
-# + authToken - Auth token (credential)
-public function setAuthenticationContext(string scheme, string authToken) {
-    runtime:InvocationContext invocationContext = runtime:getInvocationContext();
-    invocationContext.authenticationContext = {
-        scheme: scheme,
-        authToken: authToken
-    };
-}
-
-# Set the authentication related values (user id, username, scopes, claims) to the principal of the invocation context.
-#
-# + userId - User Id of the authenticated user.
-# + username - Username of the authenticated user.
-# + claims - Claims of the authenticated user.
-# + scopes - Authenticated user scopes.
-public function setPrincipal(public string? userId = (), public string? username = (), public string[]? scopes = (),
-                             public map<any>? claims = ()) {
-    runtime:InvocationContext invocationContext = runtime:getInvocationContext();
-    if (!(userId is ()) && userId != "") {
-        invocationContext.principal.userId = userId;
-    }
-    if (!(username is ()) && username != "") {
-        invocationContext.principal.username = username;
-    }
-    if (!(scopes is ())) {
-        invocationContext.principal.scopes = scopes;
-    }
-    if (!(claims is ())) {
-        invocationContext.principal.claims = claims;
-    }
-}
-
-# Check whether the scopes of the user and scopes of resource matches.
-#
-# + resourceScopes - Scopes of resource
-# + userScopes - Scopes of user
+# + resourceScopes - Scopes of the resource
+# + userScopes - Scopes of the user
 # + authzCacheKey - Authorization cache key
-# + positiveAuthzCache - The cache for positive authorizations
-# + negativeAuthzCache - The cache for negative authorizations
-# + return - true if there is a match between resource and user scopes, else false
+# + positiveAuthzCache - The `cache:Cache` for positive authorizations
+# + negativeAuthzCache - The `cache:Cache` for negative authorizations
+# + return - `true` if there is a match between the resource and user scopes or else `false` otherwise
 public function checkForScopeMatch(string[]|string[][] resourceScopes, string[] userScopes, string authzCacheKey,
                                    cache:Cache? positiveAuthzCache, cache:Cache? negativeAuthzCache) returns boolean {
-    var authorizedFromCache = authorizeFromCache(authzCacheKey, positiveAuthzCache, negativeAuthzCache);
+    boolean? authorizedFromCache = authorizeFromCache(authzCacheKey, positiveAuthzCache, negativeAuthzCache);
     if (authorizedFromCache is boolean) {
         return authorizedFromCache;
-    } else {
-        if (userScopes.length() > 0) {
-            boolean authorized = true;
-            if (resourceScopes is string[]) {
-                authorized = matchScopes(resourceScopes, userScopes);
-            } else {
-                foreach string[] resourceScope in resourceScopes {
-                    authorized = authorized && matchScopes(resourceScope, userScopes);
-                }
+    }
+    if (userScopes.length() > 0) {
+        boolean authorized = true;
+        if (resourceScopes is string[]) {
+            authorized = matchScopes(resourceScopes, userScopes);
+        } else {
+            foreach string[] resourceScope in resourceScopes {
+                authorized = authorized && matchScopes(resourceScope, userScopes);
             }
-            cacheAuthzResult(authorized, authzCacheKey, positiveAuthzCache, negativeAuthzCache);
-            return authorized;
         }
+        cacheAuthzResult(authorized, authzCacheKey, positiveAuthzCache, negativeAuthzCache);
+        return authorized;
     }
     return false;
 }
 
-# Tries to retrieve authorization decision from the cached information, if any.
+# Tries to retrieve an authorization decision from the cached information if any.
 #
 # + authzCacheKey - Cache key
-# + positiveAuthzCache - The cache for positive authorizations
-# + negativeAuthzCache - The cache for negative authorizations
-# + return - `true` or `false` in case of a cache hit, `()` in case of a cache miss
+# + positiveAuthzCache - Cache for positive authorizations
+# + negativeAuthzCache - Cache for negative authorizations
+# + return - `true` or `false` in case of a cache hit or else `()` in case of a cache miss
 function authorizeFromCache(string authzCacheKey, cache:Cache? positiveAuthzCache,
                             cache:Cache? negativeAuthzCache) returns boolean? {
     cache:Cache? pCache = positiveAuthzCache;
     if (pCache is cache:Cache) {
-        var positiveCacheResponse = pCache.get(authzCacheKey);
+        any|cache:Error positiveCacheResponse = pCache.get(authzCacheKey);
         if (positiveCacheResponse is boolean) {
             return true;
         }
@@ -171,7 +118,7 @@ function authorizeFromCache(string authzCacheKey, cache:Cache? positiveAuthzCach
 
     cache:Cache? nCache = negativeAuthzCache;
     if (nCache is cache:Cache) {
-        var negativeCacheResponse = nCache.get(authzCacheKey);
+        any|cache:Error negativeCacheResponse = nCache.get(authzCacheKey);
         if (negativeCacheResponse is boolean) {
             return false;
         }
@@ -179,35 +126,47 @@ function authorizeFromCache(string authzCacheKey, cache:Cache? positiveAuthzCach
     return ();
 }
 
-# Cached the authorization result.
+# Caches the authorization result.
 #
-# + authorized - boolean flag to indicate the authorization decision
+# + authorized - The `boolean` flag to indicate the authorization decision
 # + authzCacheKey - Cache key
-# + positiveAuthzCache - The cache for positive authorizations
-# + negativeAuthzCache - The cache for negative authorizations
+# + positiveAuthzCache - The `cache:Cache` for positive authorizations
+# + negativeAuthzCache - The `cache:Cache` for negative authorizations
 function cacheAuthzResult(boolean authorized, string authzCacheKey, cache:Cache? positiveAuthzCache,
                           cache:Cache? negativeAuthzCache) {
     if (authorized) {
         cache:Cache? pCache = positiveAuthzCache;
         if (pCache is cache:Cache) {
-            pCache.put(authzCacheKey, authorized);
+            cache:Error? result = pCache.put(authzCacheKey, authorized);
+            if (result is cache:Error) {
+                log:printDebug(function() returns string {
+                    return "Failed to add entry to positive authz cache";
+                });
+                return;
+            }
         }
     } else {
         cache:Cache? nCache = negativeAuthzCache;
-         if (nCache is cache:Cache) {
-            nCache.put(authzCacheKey, authorized);
+        if (nCache is cache:Cache) {
+            cache:Error? result = nCache.put(authzCacheKey, authorized);
+            if (result is cache:Error) {
+                log:printDebug(function() returns string {
+                    return "Failed to add entry to negative authz cache";
+                });
+                return;
+            }
          }
     }
 }
 
 # Tries to find a match between the two scope arrays.
 #
-# + resourceScopes - Scopes of resource
+# + resourceScopes - Scopes of the resource
 # + userScopes - Scopes of the user
-# + return - true if one of the resourceScopes can be found at userScopes, else false
+# + return - `true` if one of the resourceScopes can be found at `userScopes` or else `false` otherwise
 function matchScopes(string[] resourceScopes, string[] userScopes) returns boolean {
-    foreach var resourceScope in resourceScopes {
-        foreach var userScope in userScopes {
+    foreach string resourceScope in resourceScopes {
+        foreach string userScope in userScopes {
             if (resourceScope == userScope) {
                 return true;
             }

@@ -17,6 +17,7 @@
  */
 package org.ballerinalang.langlib.test.statements.foreach;
 
+import org.ballerinalang.model.values.BBoolean;
 import org.ballerinalang.model.values.BValue;
 import org.ballerinalang.test.util.BCompileUtil;
 import org.ballerinalang.test.util.BRunUtil;
@@ -30,6 +31,7 @@ import org.testng.annotations.Test;
  *
  * @since 0.985.0
  */
+
 public class ForeachTableTypedBindingPatternsTests {
 
     private CompileResult program;
@@ -44,7 +46,8 @@ public class ForeachTableTypedBindingPatternsTests {
         BValue[] returns = BRunUtil.invoke(program, "testTableWithoutType");
         Assert.assertEquals(returns.length, 1);
         Assert.assertEquals(returns[0].stringValue(),
-                "0:id=1 name=Mary salary=300.5 1:id=2 name=John salary=200.5 2:id=3 name=Jim salary=330.5 ");
+                "0:{\"id\":1,\"name\":\"Mary\",\"salary\":300.5} 1:{\"id\":2,\"name\":\"John\"," +
+                        "\"salary\":200.5} 2:{\"id\":3,\"name\":\"Jim\",\"salary\":330.5} ");
     }
 
     @Test
@@ -52,7 +55,9 @@ public class ForeachTableTypedBindingPatternsTests {
         BValue[] returns = BRunUtil.invoke(program, "testTableWithType");
         Assert.assertEquals(returns.length, 1);
         Assert.assertEquals(returns[0].stringValue(),
-                "0:id=1 name=Mary salary=300.5 1:id=2 name=John salary=200.5 2:id=3 name=Jim salary=330.5 ");
+                "0:{\"id\":1,\"name\":\"Mary\",\"salary\":300.5} " +
+                        "1:{\"id\":2,\"name\":\"John\",\"salary\":200.5} " +
+                        "2:{\"id\":3,\"name\":\"Jim\",\"salary\":330.5} ");
     }
 
     @Test
@@ -67,5 +72,11 @@ public class ForeachTableTypedBindingPatternsTests {
         BValue[] returns = BRunUtil.invoke(program, "testEmptyTableIteration");
         Assert.assertEquals(returns.length, 1);
         Assert.assertEquals(returns[0].stringValue(), "");
+    }
+
+    @Test
+    public void testIterationOverKeylessTable() {
+        BValue[] returns = BRunUtil.invoke(program, "testIterationOverKeylessTable");
+        Assert.assertTrue(((BBoolean) returns[0]).booleanValue());
     }
 }

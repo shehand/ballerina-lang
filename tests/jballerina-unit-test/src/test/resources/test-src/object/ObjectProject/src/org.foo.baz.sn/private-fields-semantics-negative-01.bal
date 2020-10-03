@@ -1,35 +1,35 @@
 
-public type ParentFoo object {
+public class ParentFoo {
 
     public int i;
     public ChildFoo c;
     private string s = "";
 
-    function __init (int i, ChildFoo c){
+    function init (int i, ChildFoo c){
         self.i = i;
         self.c = c;
     }
-};
+}
 
-type ChildFoo object {
+class ChildFoo {
     private string name = "";
 
-    function __init (string name) {
+    function init (string name) {
         self.name = name;
     }
-};
+}
 
-type PrivatePerson object {
+class PrivatePerson {
 
     public int age = 0;
     public string name = "";
 
-    function __init (int age, string name){
+    function init (int age, string name){
         self.age = age;
         self.name = name;
     }
     public function getPrivatePersonName() returns string { return self.name; }
-};
+}
 
 public function newPrivatePerson() returns (PrivatePerson) {
     return new PrivatePerson(12, "mad");

@@ -18,9 +18,12 @@
 
 package org.ballerinalang.stdlib.crypto.nativeimpl;
 
-import org.ballerinalang.jvm.BallerinaValues;
+import org.apache.commons.codec.binary.Base64;
+import org.ballerinalang.jvm.api.BStringUtils;
+import org.ballerinalang.jvm.api.BValueCreator;
+import org.ballerinalang.jvm.api.values.BMap;
+import org.ballerinalang.jvm.api.values.BString;
 import org.ballerinalang.jvm.values.ArrayValueImpl;
-import org.ballerinalang.jvm.values.MapValue;
 import org.ballerinalang.stdlib.crypto.Constants;
 import org.ballerinalang.stdlib.crypto.CryptoUtils;
 import org.ballerinalang.stdlib.time.util.TimeUtils;
@@ -29,6 +32,8 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.math.BigInteger;
+import java.security.KeyFactory;
 import java.security.KeyStore;
 import java.security.KeyStoreException;
 import java.security.NoSuchAlgorithmException;
@@ -38,6 +43,9 @@ import java.security.UnrecoverableKeyException;
 import java.security.cert.Certificate;
 import java.security.cert.CertificateException;
 import java.security.cert.X509Certificate;
+import java.security.interfaces.RSAPublicKey;
+import java.security.spec.InvalidKeySpecException;
+import java.security.spec.RSAPublicKeySpec;
 
 /**
  * Extern functions ballerina decoding keys.
@@ -47,10 +55,8 @@ import java.security.cert.X509Certificate;
 public class Decode {
 
     @SuppressWarnings("unchecked")
-    public static Object decodePrivateKey(Object keyStoreValue, String keyAlias, String keyPassword) {
-        MapValue<String, Object> keyStore = (MapValue<String, Object>) keyStoreValue;
-
-        PrivateKey privateKey;
+    public static Object decodePrivateKey(Object keyStoreValue, BString keyAlias, BString keyPassword) {
+        BMap<BString, Object> keyStore = (BMap<BString, Object>) keyStoreValue;
 
         File keyStoreFile = new File(CryptoUtils.substituteVariables(
                 keyStore.get(Constants.KEY_STORE_RECORD_PATH_FIELD).toString()));
@@ -63,21 +69,93 @@ public class Decode {
                 return CryptoUtils.createError("Keystore integrity check algorithm is not found: " + e.getMessage());
             }
 
-            try {
-                privateKey = (PrivateKey) keystore.getKey(keyAlias, keyPassword.toCharArray());
-            } catch (NoSuchAlgorithmException e) {
-                return CryptoUtils.createError("algorithm for key recovery is not found: " + e.getMessage());
-            } catch (UnrecoverableKeyException e) {
-                return CryptoUtils.createError("key cannot be recovered: " + e.getMessage());
+            PrivateKey privateKey = (PrivateKey) keystore.getKey(keyAlias.getValue(),
+                                                                 keyPassword.getValue().toCharArray());
+            if (privateKey == null) {
+                return CryptoUtils.createError("Key cannot be recovered by using given key alias: " + keyAlias);
             }
-
             //TODO: Add support for DSA/ECDSA keys and associated crypto operations
             if (privateKey.getAlgorithm().equals("RSA")) {
-                MapValue<String, Object> privateKeyRecord = BallerinaValues.
+                BMap<BString, Object> privateKeyRecord = BValueCreator.
                         createRecordValue(Constants.CRYPTO_PACKAGE_ID, Constants.PRIVATE_KEY_RECORD);
                 privateKeyRecord.addNativeData(Constants.NATIVE_DATA_PRIVATE_KEY, privateKey);
-                privateKeyRecord.put(Constants.PRIVATE_KEY_RECORD_ALGORITHM_FIELD, privateKey.getAlgorithm());
+                privateKeyRecord.put(BStringUtils.fromString(Constants.PRIVATE_KEY_RECORD_ALGORITHM_FIELD),
+                                     BStringUtils.fromString(privateKey.getAlgorithm()));
                 return privateKeyRecord;
+            } else {
+                return CryptoUtils.createError("Not a valid RSA key");
+            }
+        } catch (FileNotFoundException e) {
+            throw CryptoUtils.createError("PKCS12 key store not found at: " + keyStoreFile.getAbsoluteFile());
+        } catch (KeyStoreException | CertificateException | IOException e) {
+            throw CryptoUtils.createError("Unable to open keystore: " + e.getMessage());
+        } catch (NoSuchAlgorithmException e) {
+            return CryptoUtils.createError("Algorithm for key recovery is not found: " + e.getMessage());
+        } catch (UnrecoverableKeyException e) {
+            return CryptoUtils.createError("Key cannot be recovered: " + e.getMessage());
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    public static Object decodePublicKey(Object keyStoreValue, BString keyAlias) {
+        BMap<BString, Object> keyStore = (BMap<BString, Object>) keyStoreValue;
+
+        File keyStoreFile = new File(CryptoUtils.substituteVariables(
+                keyStore.get(Constants.KEY_STORE_RECORD_PATH_FIELD).toString()));
+        try (FileInputStream fileInputStream = new FileInputStream(keyStoreFile)) {
+            KeyStore keystore = KeyStore.getInstance(Constants.KEYSTORE_TYPE_PKCS12);
+            try {
+                keystore.load(fileInputStream, keyStore.get(Constants.KEY_STORE_RECORD_PASSWORD_FIELD).toString()
+                        .toCharArray());
+            } catch (NoSuchAlgorithmException e) {
+                throw CryptoUtils.createError("Keystore integrity check algorithm is not found: " + e.getMessage());
+            }
+
+            Certificate certificate = keystore.getCertificate(keyAlias.getValue());
+            if (certificate == null) {
+                return CryptoUtils.createError("Certificate cannot be recovered by using given key alias: " + keyAlias);
+            }
+            BMap<BString, Object> certificateBMap = BValueCreator.
+                    createRecordValue(Constants.CRYPTO_PACKAGE_ID, Constants.CERTIFICATE_RECORD);
+            if (certificate instanceof X509Certificate) {
+                X509Certificate x509Certificate = (X509Certificate) certificate;
+                certificateBMap.put(BStringUtils.fromString(Constants.CERTIFICATE_RECORD_ISSUER_FIELD),
+                                    BStringUtils.fromString(x509Certificate.getIssuerX500Principal().getName()));
+                certificateBMap.put(BStringUtils.fromString(Constants.CERTIFICATE_RECORD_SUBJECT_FIELD),
+                                    BStringUtils.fromString(x509Certificate.getSubjectX500Principal().getName()));
+                certificateBMap.put(BStringUtils.fromString(Constants.CERTIFICATE_RECORD_VERSION_FIELD),
+                                    x509Certificate.getVersion());
+                certificateBMap.put(BStringUtils.fromString(Constants.CERTIFICATE_RECORD_SERIAL_FIELD),
+                                    x509Certificate.getSerialNumber().longValue());
+
+                certificateBMap.put(BStringUtils.fromString(Constants.CERTIFICATE_RECORD_NOT_BEFORE_FIELD),
+                                    TimeUtils.createTimeRecord(TimeUtils.getTimeZoneRecord(), TimeUtils.getTimeRecord(),
+                                                               x509Certificate.getNotBefore().getTime(),
+                                                               BStringUtils.fromString(Constants.TIMEZONE_GMT)));
+                certificateBMap.put(BStringUtils.fromString(Constants.CERTIFICATE_RECORD_NOT_AFTER_FIELD),
+                                    TimeUtils.createTimeRecord(TimeUtils.getTimeZoneRecord(), TimeUtils.getTimeRecord(),
+                                                               x509Certificate.getNotAfter().getTime(),
+                                                               BStringUtils.fromString(Constants.TIMEZONE_GMT)));
+
+                certificateBMap.put(BStringUtils.fromString(Constants.CERTIFICATE_RECORD_SIGNATURE_FIELD),
+                                    new ArrayValueImpl(x509Certificate.getSignature()));
+                certificateBMap.put(BStringUtils.fromString(Constants.CERTIFICATE_RECORD_SIGNATURE_ALG_FIELD),
+                                    BStringUtils.fromString(x509Certificate.getSigAlgName()));
+            }
+            PublicKey publicKey = certificate.getPublicKey();
+            //TODO: Add support for DSA/ECDSA keys and associated crypto operations
+            if (publicKey.getAlgorithm().equals("RSA")) {
+                BMap<BString, Object> publicKeyMap = BValueCreator.
+                        createRecordValue(Constants.CRYPTO_PACKAGE_ID, Constants.PUBLIC_KEY_RECORD);
+                publicKeyMap.addNativeData(Constants.NATIVE_DATA_PUBLIC_KEY, publicKey);
+                publicKeyMap.addNativeData(Constants.NATIVE_DATA_PUBLIC_KEY_CERTIFICATE, certificate);
+                publicKeyMap.put(BStringUtils.fromString(Constants.PUBLIC_KEY_RECORD_ALGORITHM_FIELD),
+                                 BStringUtils.fromString(publicKey.getAlgorithm()));
+                if (certificateBMap.size() > 0) {
+                    publicKeyMap.put(BStringUtils.fromString(Constants.PUBLIC_KEY_RECORD_CERTIFICATE_FIELD),
+                                     certificateBMap);
+                }
+                return publicKeyMap;
             } else {
                 return CryptoUtils.createError("Not a valid RSA key");
             }
@@ -88,64 +166,24 @@ public class Decode {
         }
     }
 
-    @SuppressWarnings("unchecked")
-    public static Object decodePublicKey(Object keyStoreValue, String keyAlias) {
-        MapValue<String, Object> keyStore = (MapValue<String, Object>) keyStoreValue;
+    public static Object buildRsaPublicKey(BString modulus, BString exponent) {
+        try {
+            byte[] decodedModulus = Base64.decodeBase64(modulus.getValue());
+            byte[] decodedExponent = Base64.decodeBase64(exponent.getValue());
+            RSAPublicKeySpec spec = new RSAPublicKeySpec(new BigInteger(1, decodedModulus),
+                                                         new BigInteger(1, decodedExponent));
+            RSAPublicKey publicKey = (RSAPublicKey) KeyFactory.getInstance("RSA").generatePublic(spec);
 
-        File keyStoreFile = new File(
-                CryptoUtils.substituteVariables(keyStore.get(Constants.KEY_STORE_RECORD_PATH_FIELD).toString()));
-        try (FileInputStream fileInputStream = new FileInputStream(keyStoreFile)) {
-            KeyStore keystore = KeyStore.getInstance(Constants.KEYSTORE_TYPE_PKCS12);
-            try {
-                keystore.load(fileInputStream, keyStore.get(Constants.KEY_STORE_RECORD_PASSWORD_FIELD).toString()
-                        .toCharArray());
-            } catch (NoSuchAlgorithmException e) {
-                throw CryptoUtils.createError("Keystore integrity check algorithm is not found: " + e.getMessage());
-            }
-
-            Certificate certificate = keystore.getCertificate(keyAlias);
-            MapValue<String, Object> certificateBMap = BallerinaValues.
-                    createRecordValue(Constants.CRYPTO_PACKAGE_ID, Constants.CERTIFICATE_RECORD);
-            if (certificate instanceof X509Certificate) {
-                X509Certificate x509Certificate = (X509Certificate) certificate;
-                certificateBMap.put(Constants.CERTIFICATE_RECORD_ISSUER_FIELD,
-                        x509Certificate.getIssuerX500Principal().getName());
-                certificateBMap.put(Constants.CERTIFICATE_RECORD_SUBJECT_FIELD,
-                        x509Certificate.getSubjectX500Principal().getName());
-                certificateBMap.put(Constants.CERTIFICATE_RECORD_VERSION_FIELD, x509Certificate.getVersion());
-                certificateBMap.put(Constants.CERTIFICATE_RECORD_SERIAL_FIELD,
-                        x509Certificate.getSerialNumber().longValue());
-
-                certificateBMap.put(Constants.CERTIFICATE_RECORD_NOT_BEFORE_FIELD, TimeUtils
-                        .createTimeRecord(TimeUtils.getTimeZoneRecord(), TimeUtils.getTimeRecord(),
-                                x509Certificate.getNotBefore().getTime(), Constants.TIMEZONE_GMT));
-                certificateBMap.put(Constants.CERTIFICATE_RECORD_NOT_AFTER_FIELD, TimeUtils
-                        .createTimeRecord(TimeUtils.getTimeZoneRecord(), TimeUtils.getTimeRecord(),
-                                x509Certificate.getNotAfter().getTime(), Constants.TIMEZONE_GMT));
-
-                certificateBMap.put(Constants.CERTIFICATE_RECORD_SIGNATURE_FIELD,
-                        new ArrayValueImpl(x509Certificate.getSignature()));
-                certificateBMap.put(Constants.CERTIFICATE_RECORD_SIGNATURE_ALG_FIELD, x509Certificate.getSigAlgName());
-            }
-            PublicKey publicKey = certificate.getPublicKey();
-            //TODO: Add support for DSA/ECDSA keys and associated crypto operations
-            if (publicKey.getAlgorithm().equals("RSA")) {
-                MapValue<String, Object> publicKeyMap = BallerinaValues.
-                        createRecordValue(Constants.CRYPTO_PACKAGE_ID, Constants.PUBLIC_KEY_RECORD);
-                publicKeyMap.addNativeData(Constants.NATIVE_DATA_PUBLIC_KEY, publicKey);
-                publicKeyMap.addNativeData(Constants.NATIVE_DATA_PUBLIC_KEY_CERTIFICATE, certificate);
-                publicKeyMap.put(Constants.PUBLIC_KEY_RECORD_ALGORITHM_FIELD, publicKey.getAlgorithm());
-                if (certificateBMap.size() > 0) {
-                    publicKeyMap.put(Constants.PUBLIC_KEY_RECORD_CERTIFICATE_FIELD, certificateBMap);
-                }
-                return publicKeyMap;
-            } else {
-                return CryptoUtils.createError("Not a valid RSA key");
-            }
-        } catch (FileNotFoundException e) {
-            throw CryptoUtils.createError("PKCS12 key store not found at: " + keyStoreFile.getAbsoluteFile());
-        } catch (KeyStoreException | CertificateException | IOException e) {
-            throw CryptoUtils.createError("Unable to open keystore: " + e.getMessage());
+            BMap<BString, Object> publicKeyMap = BValueCreator.
+                    createRecordValue(Constants.CRYPTO_PACKAGE_ID, Constants.PUBLIC_KEY_RECORD);
+            publicKeyMap.addNativeData(Constants.NATIVE_DATA_PUBLIC_KEY, publicKey);
+            publicKeyMap.put(BStringUtils.fromString(Constants.PUBLIC_KEY_RECORD_ALGORITHM_FIELD),
+                             BStringUtils.fromString(publicKey.getAlgorithm()));
+            return publicKeyMap;
+        } catch (InvalidKeySpecException e) {
+            return CryptoUtils.createError("Invalid modulus or exponent: " + e.getMessage());
+        } catch (NoSuchAlgorithmException e) {
+            throw CryptoUtils.createError("Algorithm of the key factory is not found: " + e.getMessage());
         }
     }
 }

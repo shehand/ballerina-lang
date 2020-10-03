@@ -19,18 +19,6 @@ apply from: "$rootDir/gradle/javaProjectWithExtBalo.gradle"
 apply from: "$rootDir/gradle/birTestableProject.gradle"
 apply from: "$rootDir/gradle/baseNativeStdLibProject.gradle"
 
-if (project.name != "ballerina-jvm" && project.name != "ballerina-backend-jvm" && project.name != "ballerina-bir") {
-
-    dependencies {
-        testRuntime project(':ballerina-jvm')
-        testRuntime project(':ballerina-bir')
-        testRuntime project(':ballerina-backend-jvm')
-
-        testRuntime project(path: ':ballerina-backend-jvm', configuration: 'birJar')
-        testRuntime project(path: ':ballerina-jvm', configuration: 'birJar')
-        testRuntime project(path: ':ballerina-bir', configuration: 'birJar')
-    }
-}
 
 configurations {
     testLibs {
@@ -47,6 +35,9 @@ configurations {
     observeTestUtils {
         transitive false
     }
+    launchListenerTestUtils {
+        transitive false
+    }
 }
 
 dependencies {
@@ -60,32 +51,15 @@ dependencies {
     implementation project(':ballerina-runtime-api')
     implementation project(':ballerina-tool')
     implementation project(':ballerina-http')
-    implementation project(':ballerina-grpc')
-    implementation project(':protobuf-ballerina')
-    implementation project(':ballerina-jdbc')
     implementation project(':ballerina-transactions')
-    implementation project(':protobuf-ballerina')
+    implementation project(':ballerina-packerina')
     implementation project(':ballerina-transactions')
-    implementation project(':ballerina-websub')
-    implementation project(':ballerina-socket')
-    implementation project(':ballerina-crypto')
     implementation project(':ballerina-time')
-    implementation project(':ballerina-filepath')
     implementation project(':ballerina-observability')
-    implementation project(':ballerina-jwt')
-    implementation project(':ballerina-ldap')
-    implementation project(':ballerina-oauth2')
-    implementation project(':ballerina-task')
-    implementation project(':ballerina-backend-jvm')
-    implementation project(':ballerina-jvm')
     implementation project(':ballerina-stringutils')
     implementation project(':ballerina-java')
-    implementation project(':ballerina-jsonutils')
-    implementation project(':ballerina-xmlutils')
     implementation project(':observability-test-utils')
     implementation project(path: ':ballerina-test-utils', configuration: 'shadow')
-
-
     implementation 'io.netty:netty-tcnative-boringssl-static'
     implementation 'org.slf4j:slf4j-api'
     implementation 'com.google.protobuf:protobuf-java'
@@ -94,37 +68,20 @@ dependencies {
     balRuntime project(':ballerina-runtime')
 
     baloTestImplementation project(path: ':ballerina-http', configuration: 'baloImplementation')
-    baloTestImplementation project(path: ':ballerina-jdbc', configuration: 'baloImplementation')
     baloTestImplementation project(path: ':ballerina-transactions', configuration: 'baloImplementation')
-    baloTestImplementation project(path: ':ballerina-websub', configuration: 'baloImplementation')
-    baloTestImplementation project(path: ':ballerina-grpc', configuration: 'baloImplementation')
-    baloTestImplementation project(path: ':ballerina-socket', configuration: 'baloImplementation')
     baloTestImplementation project(path: ':ballerina-observability', configuration: 'baloImplementation')
-    baloTestImplementation project(path: ':ballerina-encoding', configuration: 'baloImplementation')
     baloTestImplementation project(path: ':ballerina-lang:annotations', configuration: 'baloImplementation')
     baloTestImplementation project(path: ':ballerina-io', configuration: 'baloImplementation')
     baloTestImplementation project(path: ':ballerina-runtime-api', configuration: 'baloImplementation')
     baloTestImplementation project(path: ':ballerina-system', configuration: 'baloImplementation')
     baloTestImplementation project(path: ':ballerina-config-api', configuration: 'baloImplementation')
     baloTestImplementation project(path: ':observability-test-utils', configuration: 'baloImplementation')
-    baloTestImplementation project(path: ':ballerina-crypto', configuration: 'baloImplementation')
     baloTestImplementation project(path: ':ballerina-time', configuration: 'baloImplementation')
     baloTestImplementation project(path: ':ballerina-log-api', configuration: 'baloImplementation')
-    baloTestImplementation project(path: ':ballerina-task', configuration: 'baloImplementation')
-    baloTestImplementation project(path: ':ballerina-math', configuration: 'baloImplementation')
     baloTestImplementation project(path: ':ballerina-mime', configuration: 'baloImplementation')
     baloTestImplementation project(path: ':ballerina-cache', configuration: 'baloImplementation')
     baloTestImplementation project(path: ':ballerina-reflect', configuration: 'baloImplementation')
     baloTestImplementation project(path: ':ballerina-auth', configuration: 'baloImplementation')
-    baloTestImplementation project(path: ':ballerina-encoding', configuration: 'baloImplementation')
-    baloTestImplementation project(path: ':ballerina-filepath', configuration: 'baloImplementation')
-    baloTestImplementation project(path: ':ballerina-jwt', configuration: 'baloImplementation')
-    baloTestImplementation project(path: ':ballerina-ldap', configuration: 'baloImplementation')
-    baloTestImplementation project(path: ':ballerina-oauth2', configuration: 'baloImplementation')
-    baloTestImplementation project(path: ':ballerina-task', configuration: 'baloImplementation')
-    baloTestImplementation project(path: ':ballerina-xmlutils', configuration: 'baloImplementation')
-    baloTestImplementation project(path: ':ballerina-jsonutils', configuration: 'baloImplementation')
-    baloTestImplementation project(path: ':ballerina-backend-jvm', configuration: 'baloImplementation')
     baloTestImplementation project(path: ':ballerina-stringutils', configuration: 'baloImplementation')
     baloTestImplementation project(path: ':ballerina-java', configuration: 'baloImplementation')
 
@@ -140,13 +97,17 @@ dependencies {
     testCompile 'org.hsqldb:hsqldb'
     testCompile 'com.h2database:h2'
     testCompile 'io.ballerina.messaging:broker-amqp'
-    testCompile 'org.apache.directory.server:apacheds-all'
     testCompile 'org.apache.commons:commons-text'
     testCompile 'org.testng:testng'
 
     testUtils project(path: ':ballerina-test-utils', configuration: 'shadow')
     jballerinaTools project(path: ':jballerina-tools', configuration: 'zip')
     observeTestUtils project(path: ':observability-test-utils', configuration: 'shadow')
+
+    launchListenerTestUtils project(':test-launch-listener-01')
+    launchListenerTestUtils project(':test-launch-listener-02')
+    launchListenerTestUtils project(':test-launch-listener-03')
+    launchListenerTestUtils project(':test-launch-listener-04')
 
     testLibs 'org.hsqldb:hsqldb:2.4.1'
 }
@@ -192,3 +153,10 @@ task copyToLib(type: Copy) {
 }
 
 test.dependsOn(copyToLib)
+
+task createLaunchListenerUtilsLib(type: Copy) {
+    from configurations.launchListenerTestUtils
+    into "${buildDir}/launch-listener/libs"
+}
+
+test.dependsOn(createLaunchListenerUtilsLib)

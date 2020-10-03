@@ -15,21 +15,26 @@
  */
 package org.ballerinalang.docgen.generator.model;
 
+import com.google.gson.annotations.Expose;
 import org.ballerinalang.docgen.docs.BallerinaDocDataHolder;
 import org.ballerinalang.model.elements.Flag;
+import org.wso2.ballerinalang.compiler.semantics.model.symbols.BClassSymbol;
 import org.wso2.ballerinalang.compiler.semantics.model.symbols.BObjectTypeSymbol;
 import org.wso2.ballerinalang.compiler.semantics.model.symbols.BSymbol;
 import org.wso2.ballerinalang.compiler.semantics.model.symbols.BTypeSymbol;
 import org.wso2.ballerinalang.compiler.semantics.model.types.BFiniteType;
 import org.wso2.ballerinalang.compiler.semantics.model.types.BNilType;
 import org.wso2.ballerinalang.compiler.semantics.model.types.BObjectType;
+import org.wso2.ballerinalang.compiler.semantics.model.types.BRecordType;
 import org.wso2.ballerinalang.compiler.semantics.model.types.BType;
 import org.wso2.ballerinalang.compiler.semantics.model.types.BUnionType;
 import org.wso2.ballerinalang.compiler.tree.expressions.BLangExpression;
 import org.wso2.ballerinalang.compiler.tree.expressions.BLangLiteral;
 import org.wso2.ballerinalang.compiler.tree.types.BLangArrayType;
+import org.wso2.ballerinalang.compiler.tree.types.BLangConstrainedType;
 import org.wso2.ballerinalang.compiler.tree.types.BLangFiniteTypeNode;
 import org.wso2.ballerinalang.compiler.tree.types.BLangFunctionTypeNode;
+import org.wso2.ballerinalang.compiler.tree.types.BLangStreamType;
 import org.wso2.ballerinalang.compiler.tree.types.BLangTupleTypeNode;
 import org.wso2.ballerinalang.compiler.tree.types.BLangType;
 import org.wso2.ballerinalang.compiler.tree.types.BLangUnionTypeNode;
@@ -46,22 +51,44 @@ import java.util.stream.Collectors;
  * Represents a Ballerina Type.
  */
 public class Type {
+    @Expose
     public String orgName;
+    @Expose
     public String moduleName;
+    @Expose
     public String name;
+    @Expose
     public String description;
+    @Expose
     public String category;
+    @Expose
     public boolean isAnonymousUnionType;
+    @Expose
     public boolean isArrayType;
+    @Expose
     public boolean isNullable;
+    @Expose
     public boolean isTuple;
+    @Expose
+    public boolean isRestParam;
+    @Expose
     public boolean isLambda;
+    @Expose
+    public boolean isDeprecated;
+    @Expose
     public boolean generateUserDefinedTypeLink = true;
+    @Expose
     public List<Type> memberTypes = new ArrayList<>();
+    @Expose
     public List<Type> paramTypes = new ArrayList<>();
+    @Expose
     public int arrayDimensions;
+    @Expose
     public Type elementType;
+    @Expose
     public Type returnType;
+    @Expose
+    public Type constraint;
 
     private Type() {
     }
@@ -112,9 +139,17 @@ public class Type {
         setCategory(type.type);
     }
 
-    public Type(String name, String description) {
+    public Type(String name, String description, boolean isDeprecated) {
         this.name = name;
         this.description = description;
+        this.isDeprecated = isDeprecated;
+    }
+
+    public static Type fromTypeNode(BLangType type, BType bType, String currentModule) {
+        if (type == null) {
+            return new Type(bType);
+        }
+        return fromTypeNode(type, currentModule);
     }
 
     public static Type fromTypeNode(BLangType type, String currentModule) {
@@ -133,7 +168,8 @@ public class Type {
             }
         } else if (type instanceof BLangArrayType) {
             BLangType elemtype = ((BLangArrayType) type).elemtype;
-            String moduleName = elemtype.type.tsymbol.pkgID.name.toString();
+            String moduleName = elemtype.type.tsymbol == null ? type.type.tsymbol.pkgID.name.toString() :
+                    elemtype.type.tsymbol.pkgID.name.toString();
             Type elementType = fromTypeNode(elemtype, moduleName);
             typeModel = new Type(type, currentModule);
             typeModel.elementType = elementType;
@@ -154,6 +190,17 @@ public class Type {
                 && ((BLangUnionTypeNode) type).getMemberTypeNodes().size() == 2) {
             BLangUnionTypeNode unionType = (BLangUnionTypeNode) type;
             typeModel = fromTypeNode((BLangType) unionType.getMemberTypeNodes().toArray()[0], currentModule);
+        } else if (type instanceof BLangConstrainedType) {
+            typeModel = new Type(type, currentModule);
+            typeModel.constraint = Type.fromTypeNode(((BLangConstrainedType) type).constraint, currentModule);
+        } else if (type instanceof BLangStreamType) {
+            typeModel = new Type(type, currentModule);
+            List<Type> memberTypeNodes = new ArrayList<>();
+            memberTypeNodes.add(Type.fromTypeNode(((BLangStreamType) type).constraint, currentModule));
+            if (((BLangStreamType) type).error != null) {
+                memberTypeNodes.add(Type.fromTypeNode(((BLangStreamType) type).error, currentModule));
+            }
+            typeModel.memberTypes = memberTypeNodes;
         }
         if (typeModel == null) {
             typeModel = new Type(type, currentModule);
@@ -167,6 +214,17 @@ public class Type {
         if (type.type instanceof BNilType) {
             typeModel.name = "()";
         }
+        // If anonymous type substitute the name
+        if (typeModel.name != null && typeModel.name.contains("$anonType$")) {
+            // if anonymous empty record
+            if (type.type instanceof BRecordType && ((BRecordType) type.type).fields.isEmpty() &&
+                    type.type.isAnydata()) {
+                typeModel.name = "record {}";
+            } else {
+                typeModel.name = type.type.toString();
+            }
+            typeModel.generateUserDefinedTypeLink = false;
+        }
         return typeModel;
     }
 
@@ -177,8 +235,10 @@ public class Type {
                 this.category = "clients";
             } else if (objSymbol.getFlags().contains(Flag.LISTENER) || isListenerObject(objSymbol)) {
                 this.category = "listeners";
+            } else if (objSymbol instanceof BClassSymbol) {
+                this.category = "classes";
             } else {
-                this.category = "objects";
+                this.category = "abstractobjects";
             }
         } else {
             switch (type.tag) {
@@ -191,7 +251,7 @@ public class Type {
                 case TypeTags
                         .FINITE:
                         if (type instanceof BFiniteType) {
-                            Set<BLangExpression> valueSpace = ((BFiniteType) type).valueSpace;
+                            Set<BLangExpression> valueSpace = ((BFiniteType) type).getValueSpace();
                             if (valueSpace.size() == 1 && valueSpace.toArray()[0] instanceof BLangLiteral) {
                                 BLangLiteral literal = (BLangLiteral) valueSpace.toArray()[0];
                                 if (literal.isConstant) {
@@ -203,6 +263,10 @@ public class Type {
                         this.category = "types"; break;
                 case TypeTags
                         .ERROR: this.category = "errors"; break;
+                case TypeTags
+                        .MAP: this.category = "map"; break;
+                case TypeTags
+                        .TUPLE: this.category = "types"; break;
                 case TypeTags.INT:
                 case TypeTags.BYTE:
                 case TypeTags.FLOAT:
@@ -215,11 +279,11 @@ public class Type {
                 case TypeTags.ANY:
                 case TypeTags.ANYDATA:
                 case TypeTags.XMLNS:
-                case TypeTags.MAP: // TODO generate type for constraint type
-                case TypeTags.TABLE:
                 case TypeTags.FUTURE:
                 case TypeTags.HANDLE:
                     this.category = "builtin"; break;
+                case TypeTags.STREAM:
+                    this.category = "stream"; break;
                 default:
                     this.category = "UNKNOWN";
             }
@@ -229,7 +293,7 @@ public class Type {
     }
 
     /**
-     * Check whether the symbol is a listener object.
+     * Check whether the symbol is a listener bClass.
      *
      * @param bSymbol Symbol to evaluate
      * @return {@link Boolean}  whether listener or not
